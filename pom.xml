@@ -5,21 +5,23 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>statement-platform</artifactId>
+    <artifactId>secure-statement-delivery</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>Statement Platform</name>
+    <name>Secure Statement Delivery Platform</name>
     <description>Multi-module project for Statement Service, Config Server and infra</description>
 
     <properties>
         <java.version>25</java.version>
-        <spring.boot.version>3.5.7</spring.boot.version>
-        <spring-cloud.version>2025.0.0</spring-cloud.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
-        <lombok.version>1.18.38</lombok.version>
+        <spring.boot.version>4.0.7</spring.boot.version>
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <lombok.version>1.18.46</lombok.version>
         <commons-io.version>2.20.0</commons-io.version>
-        <springdoc-openapi.version>2.8.14</springdoc-openapi.version>
+        <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
+        <spring-retry.version>2.0.13</spring-retry.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <jackson-databind-nullable.version>0.2.4</jackson-databind-nullable.version>
         <spotless.version>3.0.0</spotless.version>
         <openapi-generator.version>7.0.1</openapi-generator.version>
@@ -47,6 +49,13 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
                 <version>${mapstruct.version}</version>
@@ -65,6 +74,11 @@
                 <groupId>org.openapitools</groupId>
                 <artifactId>jackson-databind-nullable</artifactId>
                 <version>${jackson-databind-nullable.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.retry</groupId>
+                <artifactId>spring-retry</artifactId>
+                <version>${spring-retry.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

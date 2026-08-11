@@ -1,4 +1,4 @@
-### Statement Service Platform - README
+### Secure Statement Service Delivery - README
 
 A multi-module platform for secure storage and delivery of monthly account statements.
 

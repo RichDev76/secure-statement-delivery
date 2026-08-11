@@ -1,0 +1,49 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mvc:
+    problemdetails:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Never contacted: tests authenticate via MockMvc jwt() post-processors.
+          jwk-set-uri: http://localhost:65535/unused-in-tests
+
+statement:
+  encryption:
+    algorithm: AES/GCM/NoPadding
+    # Test-only AES-256 key (base64 of 32 bytes), not a real secret.
+    master-key: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
+    signature:
+      secret: test-signature-secret
+  files:
+    link-expiry-seconds: 900
+  api:
+    download-path: /api/v1/statements/download/
+  storage:
+    base-dir: ${java.io.tmpdir}/statement-service-it-storage
+  signed-link:
+    cleanup:
+      # "-" disables the @Scheduled cron trigger while keeping the bean graph intact.
+      cron: "-"
+
+security:
+  endpoints:
+    csrfIgnored:
+      - /api/v1/statements/**
+    whitelist:
+      - /api/v1/statements/download/**
+      - /api/v1/statements/actuator/health/**
+      - /api/v1/statements/actuator/info
+      - /api/v1/statements/v3/api-docs/**
+      - /api/v1/statements/swagger-ui/**
+      - /api/v1/statements/swagger-ui.html

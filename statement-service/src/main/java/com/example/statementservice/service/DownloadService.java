@@ -1,6 +1,7 @@
 package com.example.statementservice.service;
 
-import com.example.statementservice.model.AuditAction;
+import com.example.statementservice.audit.AuditAction;
+import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.model.DownloadFailureReason;
 import com.example.statementservice.model.DownloadOutcome;
 import com.example.statementservice.model.entity.SignedLink;

@@ -1,7 +1,5 @@
-package com.example.statementservice.mapper;
+package com.example.statementservice.audit;
 
-import com.example.statementservice.model.dto.AuditLogDto;
-import com.example.statementservice.model.entity.AuditLog;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

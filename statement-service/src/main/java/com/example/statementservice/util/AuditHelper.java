@@ -1,7 +1,7 @@
 package com.example.statementservice.util;
 
-import com.example.statementservice.model.AuditAction;
-import com.example.statementservice.service.AuditService;
+import com.example.statementservice.audit.AuditAction;
+import com.example.statementservice.audit.AuditService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;

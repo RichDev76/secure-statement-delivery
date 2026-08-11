@@ -9,7 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.model.AuditAction;
+import com.example.statementservice.audit.AuditAction;
+import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.model.DownloadOutcome;
 import com.example.statementservice.model.entity.SignedLink;
 import com.example.statementservice.model.entity.Statement;

@@ -1,15 +1,13 @@
-package com.example.statementservice.service;
+package com.example.statementservice.audit;
 
 import com.example.statementservice.exception.InvalidDateException;
-import com.example.statementservice.mapper.AuditApiMapper;
-import com.example.statementservice.mapper.AuditLogEntityMapper;
-import com.example.statementservice.model.api.AuditLogPage;
-import com.example.statementservice.repository.AuditLogRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -26,9 +24,8 @@ public class AuditQueryService {
 
     private final AuditLogRepository auditLogRepository;
     private final AuditLogEntityMapper auditLogEntityMapper;
-    private final AuditApiMapper auditApiMapper;
 
-    public AuditLogPage getFilteredAuditLogs(
+    public Page<AuditLogDto> getFilteredAuditLogs(
             String accountNumber, String startDate, String endDate, Integer page, Integer size) {
 
         log.debug(
@@ -52,17 +49,11 @@ public class AuditQueryService {
                 normalizeAccountNumber(accountNumber), startDateTime, endDateTime, pageable);
 
         var auditLogDtos = auditLogEntityMapper.toDtos(auditLogPage.getContent());
-        var apiPage = auditApiMapper.toPage(auditLogDtos);
-
-        apiPage.page(pageNum);
-        apiPage.size(pageSize);
-        apiPage.totalElements(auditLogPage.getTotalElements());
-        apiPage.totalPages(auditLogPage.getTotalPages());
 
         log.debug(
                 "Retrieved {} audit logs (page {} of {})", auditLogDtos.size(), pageNum, auditLogPage.getTotalPages());
 
-        return apiPage;
+        return new PageImpl<>(auditLogDtos, pageable, auditLogPage.getTotalElements());
     }
 
     private OffsetDateTime parseDate(String dateString, boolean isEndOfDay) {

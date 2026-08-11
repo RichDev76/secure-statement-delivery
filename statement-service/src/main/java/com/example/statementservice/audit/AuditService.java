@@ -1,33 +1,23 @@
-package com.example.statementservice.service;
+package com.example.statementservice.audit;
 
-import com.example.statementservice.model.entity.AuditLog;
-import com.example.statementservice.repository.AuditLogRepository;
-import jakarta.annotation.PreDestroy;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
-    private final ExecutorService executor;
-
-    public AuditService(AuditLogRepository auditLogRepository) {
-        this.auditLogRepository = auditLogRepository;
-        this.executor = Executors.newVirtualThreadPerTaskExecutor();
-    }
-
-    @PreDestroy
-    void shutdownExecutor() {
-        executor.shutdown();
-    }
+    private final ExecutorService auditExecutor;
+    private final Clock clock;
 
     public void record(
             String action,
@@ -37,7 +27,7 @@ public class AuditService {
             String performedBy,
             Map<String, Object> details) {
         var auditLog = buildAuditLog(action, statementId, accountNumber, signedLinkId, performedBy, details);
-        executor.submit(() -> {
+        auditExecutor.submit(() -> {
             try {
                 auditLogRepository.save(auditLog);
             } catch (Exception e) {
@@ -64,7 +54,7 @@ public class AuditService {
         auditLog.setAccountNumber(accountNumber);
         auditLog.setSignedLinkId(signedLinkId);
         auditLog.setPerformedBy(performedBy);
-        auditLog.setPerformedAt(OffsetDateTime.now());
+        auditLog.setPerformedAt(OffsetDateTime.now(clock));
         auditLog.setDetails(details);
         return auditLog;
     }

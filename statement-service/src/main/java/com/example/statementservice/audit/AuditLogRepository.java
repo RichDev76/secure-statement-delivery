@@ -1,6 +1,5 @@
-package com.example.statementservice.repository;
+package com.example.statementservice.audit;
 
-import com.example.statementservice.model.entity.AuditLog;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.data.domain.Page;

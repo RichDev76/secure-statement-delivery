@@ -1,8 +1,8 @@
-package com.example.statementservice.mapper;
+package com.example.statementservice.audit.infrastructure;
 
+import com.example.statementservice.audit.AuditLogDto;
 import com.example.statementservice.model.api.AuditLogEntry;
 import com.example.statementservice.model.api.AuditLogPage;
-import com.example.statementservice.model.dto.AuditLogDto;
 import com.example.statementservice.shared.DateMapper;
 import java.util.List;
 import java.util.stream.Collectors;

@@ -1,9 +1,7 @@
-package com.example.statementservice.mapper;
+package com.example.statementservice.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.statementservice.model.dto.AuditLogDto;
-import com.example.statementservice.model.entity.AuditLog;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;

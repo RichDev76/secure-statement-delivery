@@ -1,4 +1,4 @@
-package com.example.statementservice.model.dto;
+package com.example.statementservice.audit;
 
 import java.time.OffsetDateTime;
 import java.util.Map;

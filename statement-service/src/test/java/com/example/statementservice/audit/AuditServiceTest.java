@@ -1,4 +1,4 @@
-package com.example.statementservice.service;
+package com.example.statementservice.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -7,9 +7,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.model.entity.AuditLog;
-import com.example.statementservice.repository.AuditLogRepository;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +31,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuditService Unit Tests")
 class AuditServiceTest {
+
+    private static final Instant FIXED_INSTANT = Instant.parse("2026-08-11T10:15:30Z");
 
     @Mock
     private AuditLogRepository auditLogRepository;
@@ -44,7 +48,10 @@ class AuditServiceTest {
 
     @BeforeEach
     void setUp() {
-        auditService = new AuditService(auditLogRepository);
+        auditService = new AuditService(
+                auditLogRepository,
+                Executors.newVirtualThreadPerTaskExecutor(),
+                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
 
         testStatementId = UUID.randomUUID();
         testSignedLinkId = UUID.randomUUID();
@@ -156,20 +163,16 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should set performedAt timestamp")
-    void record_PerformedAtTimestamp() {
+    @DisplayName("record - should stamp performedAt from the injected clock")
+    void GivenFixedClock_WhenRecording_ThenPerformedAtIsExactlyTheClockInstant() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        var before = OffsetDateTime.now();
         auditService.record(
                 testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
             ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
             verify(auditLogRepository).save(captor.capture());
-            var savedLog = captor.getValue();
-            var after = OffsetDateTime.now();
-            assertThat(savedLog.getPerformedAt()).isNotNull();
-            assertThat(savedLog.getPerformedAt()).isAfterOrEqualTo(before.minusSeconds(1));
-            assertThat(savedLog.getPerformedAt()).isBeforeOrEqualTo(after.plusSeconds(1));
+            assertThat(captor.getValue().getPerformedAt())
+                    .isEqualTo(OffsetDateTime.ofInstant(FIXED_INSTANT, ZoneOffset.UTC));
         });
     }
 

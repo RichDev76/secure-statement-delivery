@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.exception.InvalidAccountNumberException;
 import com.example.statementservice.exception.InvalidDateException;
 import com.example.statementservice.exception.InvalidMessageDigestException;

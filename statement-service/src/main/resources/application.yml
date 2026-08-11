@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: statement-service
+  config:
+    import: optional:configserver:http://localhost:8888
+  cloud:
+    config:
+      enabled: true
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    com.example.statementservice: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{correlationId}] %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /api/v1/statements/actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+  info:
+    env:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /api/v1/statements/v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /api/v1/statements/swagger-ui/index.html
+    enabled: true
+

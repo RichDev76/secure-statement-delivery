@@ -1,0 +1,83 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+out/
+
+# Keep project-level settings if intentionally shared, otherwise ignore
+# /.idea/codeStyles/   # uncomment to ignore shared code style files
+
+# Maven
+/target/
+/dependency-reduced-pom.xml
+/release.properties
+
+# Build / packaging
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+
+# Logs
+*.log
+/logs/
+
+# IDE/editor
+/.workspace/
+*.sublime-workspace
+*.sublime-project
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# Visual Studio Code
+.vscode/
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# Java virtual machine crash logs
+hs_err_pid*
+replay_pid*
+
+# Local environment and secrets
+.env
+*.env
+*.local
+*.secret
+/secrets/
+
+# Database files
+*.db
+*.sqlite
+*.h2.db
+
+# Test / coverage
+/target/
+/coverage/
+*.lcov
+
+# Misc
+/reports/
+/tmp/
+/temp/
+/node_modules/
+
+# JetBrains HTTP Client requests and datasource local storage
+/httpRequests/
+/dataSources/
+/dataSources.local.xml
+
+# Maven wrapper (do NOT ignore .mvn/wrapper/maven-wrapper.jar if you track it)
+!/.mvn/wrapper/maven-wrapper.jar
+
+/.env

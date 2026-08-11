@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Statement Service V1",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

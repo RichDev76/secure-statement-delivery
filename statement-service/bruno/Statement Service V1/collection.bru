@@ -1,0 +1,16 @@
+meta {
+  name: Statement Service
+}
+
+auth {
+  mode: none
+}
+
+vars:pre-request {
+  baseUrl: https://api.example.com/statements/api/v1
+}
+
+docs {
+  Upload a PDF account statement with metadata and strict validation rules. Also provides search endpoints to retrieve statements by statementId, by account number (all statements), and by account number + date. Includes audit log retrieval capabilities.
+  
+}

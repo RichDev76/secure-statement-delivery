@@ -1,0 +1,103 @@
+server:
+  port: 8080
+  shutdown:
+    grace-period: 30s
+
+spring:
+  config:
+    activate:
+      on-profile: develop
+      import: optional:configserver:http://localhost:8888
+      cloud:
+        config:
+          enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Africa/Johannesburg
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mvc:
+    problemdetails:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/statement-service
+  datasource:
+    url: jdbc:postgresql://db:5432/statementdb?TimeZone=Africa/Johannesburg
+    username: ${APP_DB_USER}
+    password: ${APP_DB_PASSWORD}
+  jackson:
+    time-zone: Africa/Johannesburg
+
+statement:
+  encryption:
+    algorithm: AES/GCM/NoPadding
+    files:
+      link-expiry-seconds: 900
+    master-key: ${STATEMENT_MASTER_KEY}
+    signature:
+      secret: ${STATEMENT_SIGNATURE_SECRET}
+  api:
+    download-path: /api/v1/statements/download/
+  storage:
+    base-dir: ${STATEMENT_STORAGE_DIR}
+  signed-link:
+    cleanup:
+      enabled: true
+      cron: "0 0/5 * * * *"          # every 5 minutes
+      retention-period: "PT0S"       # ISO-8601 duration; extra grace period after expiry
+      batch-size: 500                 # max rows to delete per run
+      lock-at-most-for: "PT5M"       # ShedLock max lock time
+      lock-at-least-for: "PT10S"     # ShedLock min lock time
+
+logging:
+  level:
+    root: INFO
+    com.example.statementservice: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{correlationId}] %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /api/v1/statements/actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+  info:
+    env:
+      enabled: true
+
+security:
+  endpoints:
+    admin:
+      - /api/v1/statements/upload
+    audit:
+      - /api/v1/statements/audit/logs
+    statement:
+      - /api/v1/statements/search
+      - /api/v1/statements/link/**
+    csrfIgnored:
+      - /api/v1/statements/**
+    whitelist:
+      - /api/v1/statements/download/**
+      - /api/v1/statements/actuator/health/**
+      - /api/v1/statements/actuator/info
+      - /api/v1/statements/v3/api-docs/**
+      - /api/v1/statements/swagger-ui/**
+      - /api/v1/statements/swagger-ui.html

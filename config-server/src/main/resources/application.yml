@@ -1,0 +1,33 @@
+server:
+  port: 8888
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: config-server
+  profiles:
+    active: composite
+  cloud:
+    vault:
+      enabled: false
+    config:
+      server:
+        allowOverride: true
+        composite:
+          # 1) Native file system repository mounted into the container
+          - type: native
+            # The infra/docker-compose.yml mounts infra/config-repo to /config-repo (read-only)
+            search-locations:
+              - "file:/config-repo"
+              - "file:/config-repo/statement-service"
+              - "file:/config-repo/shared"
+          - type: vault
+            host: ${VAULT_HOST:vault}
+            port: ${VAULT_PORT:8200}
+            scheme: ${VAULT_SCHEME:http}
+            backend: ${VAULT_BACKEND:secret}
+            profile-separator: "/"
+            kv-version: 2
+            # default-key maps to the base context (typically "application")
+            default-key: application

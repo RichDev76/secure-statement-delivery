@@ -1,0 +1,42 @@
+meta {
+  name: Get Consumer Token
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{KEYCLOAK_URL}}/realms/{{REALM}}/protocol/openid-connect/token
+  body: formUrlEncoded
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/x-www-form-urlencoded
+}
+
+body:json {
+  {
+      grant_type: client_credentials
+      client_id: statement-service-admin-client
+      client_secret: {{ADMIN_CLIENT_SECRET}}
+  }
+}
+
+body:form-urlencoded {
+  grant_type: client_credentials
+  client_id: statement-service-consumer-client
+  client_secret: {{CONSUMER_CLIENT_SECRET}}
+}
+
+vars:post-response {
+  response: 
+}
+
+script:post-response {
+      bru.setEnvVar('CONSUMER_ACCESS_TOKEN', res.body.access_token);
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

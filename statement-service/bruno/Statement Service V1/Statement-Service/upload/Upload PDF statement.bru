@@ -1,0 +1,37 @@
+meta {
+  name: Upload PDF statement
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: 408d40ed18872f2f4b77800392c3e1d3f1fa5a2ddbcdc56341598f4530f46e05
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: 349098CF-1A12-46C7-8E4A-46B886E2E8DF
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(/Users/devonrichards/data/../data/statement1.pdf)
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Upload a PDF file with metadata. The SHA-256 message digest must be supplied in the `X-Message-Digest` header.
+}

@@ -1,0 +1,647 @@
+openapi: 3.0.0
+info:
+  title: Statement Upload & Search API
+  version: 1.8.0
+  description: >
+    Upload a PDF account statement with metadata and strict validation rules.
+    Also provides search endpoints to retrieve statements by statementId,
+    and to search by account number and/or date using paginated results.
+    Includes audit log retrieval capabilities.
+    All endpoints require JWT bearer authentication and support the x-correlation-id header for request tracing.
+
+servers:
+  - url: https://api.example.com/api/v1/statements
+    description: Production server
+  - url: http://localhost:8080/api/v1/statements
+    description: Local development server
+
+tags:
+  - name: Admin
+    description: Administrative operations for statement management (requires JWT authentication)
+  - name: Statements
+    description: Statement search and retrieval operations
+  - name: Audit
+    description: Audit log operations (requires JWT authentication)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /upload:
+    post:
+      tags:
+        - Admin
+      summary: Upload PDF statement
+      description: Upload a PDF file with metadata. The SHA-256 message digest must be supplied in the `X-Message-Digest` header.
+      operationId: uploadStatement
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/correlationIdHeader'
+        - name: X-Message-Digest
+          in: header
+          required: true
+          description: |
+            Hex-encoded SHA-256 message digest of the uploaded PDF file.
+            
+            **How to Generate:**
+            
+            **Command Line:**
+            ```bash
+            # Linux/macOS
+            sha256sum statement.pdf | awk '{print $1}'
+            
+            # Windows PowerShell
+            (Get-FileHash -Algorithm SHA256 statement.pdf).Hash.ToLower()
+            ```
+          schema:
+            type: string
+            pattern: "^[A-Fa-f0-9]{64}$"
+            example: "3a7bd3e2360a3c8d9f1e4b5a6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - accountNumber
+                - date
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "PDF file to upload."
+                accountNumber:
+                  type: string
+                  description: "Customer account number (numeric, 9–15 digits)."
+                  example: "123456789"
+                  pattern: "^[0-9]{9,15}$"
+                date:
+                  type: string
+                  description: "Statement date in YYYY-MM-DD format."
+                  example: "2025-11-01"
+                  pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+      responses:
+        '201':
+          description: Statement uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: Bad request (validation or digest mismatch)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/validation"
+                title: "Invalid Message Digest"
+                status: 400
+                detail: "X-Message-Digest must be a 64-character hex string"
+                instance: "/api/v1/statements/upload"
+                errorCode: "INVALID_MESSAGE_DIGEST"
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '415':
+          description: Unsupported media type (non-PDF)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/media-type"
+                title: "Unsupported Media Type"
+                status: 415
+                detail: "Only application/pdf is supported"
+                errorCode: "UNSUPPORTED_MEDIA_TYPE"
+
+  /link/{statementId}:
+    get:
+      tags:
+        - Statements
+      summary: Get statement metadata and download link by its unique statement id
+      description: >
+        Retrieve statement metadata and download link (does not return binary PDF).
+        Use the `statementId` returned at upload time.
+      operationId: getDownloadSignedLinkById
+      parameters:
+        - $ref: '#/components/parameters/correlationIdHeader'
+        - name: statementId
+          in: path
+          required: true
+          description: Unique identifier of the statement.
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Base statement information with download link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementSummary'
+        '400':
+          description: Invalid statementId supplied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Statement not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+
+  /search:
+    get:
+      tags:
+        - Statements
+      summary: Search statements (paged) by account number and date range
+      description: >
+        Return a paged list of statements filtered by mandatory criteria.
+        All of `accountNumber`, `startDate`, and `endDate` must be provided.
+        Results are ordered by `uploadedAt` descending by default.
+        The list does not include download links.
+      operationId: searchStatements
+      parameters:
+        - $ref: '#/components/parameters/correlationIdHeader'
+        - $ref: '#/components/parameters/accountNumberSearchParam'
+        - $ref: '#/components/parameters/startDateSearchParam'
+        - $ref: '#/components/parameters/endDateSearchParam'
+        - $ref: '#/components/parameters/pageParam'
+        - $ref: '#/components/parameters/sizeParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        '200':
+          description: Matching statements page (possibly empty) without download links
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementSummaryPage'
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/validation"
+                title: "Invalid Search Criteria"
+                status: 400
+                detail: "Provide at least one search criterion: accountNumber or date"
+                errorCode: "INVALID_INPUT"
+        '404':
+          description: No statements found for the given criteria
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '410':
+          description: Download link has expired or already been used
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/gone"
+                title: "Link Expired"
+                status: 410
+                detail: "This signed download link has expired or has already been used."
+                errorCode: "LINK_EXPIRED"
+
+  /download/{fileName}:
+    get:
+      tags:
+        - Statements
+      summary: Download statement PDF using signed URL
+      description: Download the encrypted statement PDF file using a filename-based signed URL with expires and signature parameters.
+      operationId: downloadStatementByFileName
+      parameters:
+        - $ref: '#/components/parameters/correlationIdHeader'
+        - name: fileName
+          in: path
+          required: true
+          description: The filename of the statement to download
+          schema:
+            type: string
+            pattern: "^[a-zA-Z0-9_-]+\\.(pdf|pdf\\.enc)$"
+            example: "44568188-d4a4-418b-8a8b-e45ffd5a1be5.pdf.enc"
+        - name: expires
+          in: query
+          required: true
+          description: Unix timestamp when the link expires
+          schema:
+            type: integer
+            format: int64
+            example: 1763460031
+        - name: signature
+          in: query
+          required: true
+          description: URL signature for verification
+          schema:
+            type: string
+            example: "HCxRyKaDnOCn7EQ-jUUbQ6QNWfwbWj5LXqLiCVJMsgY"
+      responses:
+        '200':
+          description: Statement file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid or missing parameters
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Invalid signature
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Statement not found or link expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+
+  /audit/logs:
+    get:
+      tags:
+        - Audit
+      summary: Get audit logs
+      description: >
+        Retrieve paginated audit logs for statement-related activities such as
+        uploads, downloads, and link generations.
+      operationId: getFilteredAuditLogs
+      parameters:
+        - $ref: '#/components/parameters/correlationIdHeader'
+        - name: accountNumber
+          in: query
+          required: false
+          description: Filter logs by account number.
+          schema:
+            type: string
+            pattern: "^[0-9]{9,15}$"
+            example: "123456789"
+        - name: startDate
+          in: query
+          required: false
+          description: Filter logs from this date (inclusive), format YYYY-MM-DD.
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+            example: "2025-11-01"
+        - name: endDate
+          in: query
+          required: false
+          description: Filter logs up to this date (inclusive), format YYYY-MM-DD.
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+            example: "2025-11-30"
+        - name: page
+          in: query
+          required: false
+          description: Page number (0-based).
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Page size.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Paginated audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogPage'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token obtained from the identity provider.
+
+  parameters:
+    correlationIdHeader:
+      name: x-correlation-id
+      in: header
+      required: false
+      description: >
+        Optional correlation ID for tracing requests across services. If not provided, the server will
+        generate one and return it in the response header. The same value is also used for log correlation.
+      schema:
+        type: string
+        example: "9f1b2c3d-4e5f-6789-aaaa-bbbbccccdddd"
+
+    accountNumberParam:
+      name: accountNumber
+      in: query
+      required: true
+      description: "Customer account number (numeric, 9–15 digits)."
+      schema:
+        type: string
+        pattern: "^[0-9]{9,15}$"
+        example: "123456789"
+
+    accountNumberSearchParam:
+      name: accountNumber
+      in: query
+      required: true
+      description: >
+        Customer account number (numeric, 9–15 digits). Required for search;
+        must be combined with `startDate` and `endDate`.
+      schema:
+        type: string
+        pattern: "^[0-9]{9,15}$"
+        example: "123456789"
+
+    startDateSearchParam:
+      name: startDate
+      in: query
+      required: true
+      description: >
+        Start date for date range search in YYYY-MM-DD format. Required for search;
+        must be combined with `accountNumber` and `endDate`.
+      schema:
+        type: string
+        pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        example: "2025-11-01"
+
+    endDateSearchParam:
+      name: endDate
+      in: query
+      required: true
+      description: >
+        End date for date range search in YYYY-MM-DD format. Required for search;
+        must be combined with `accountNumber` and `startDate`.
+      schema:
+        type: string
+        pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        example: "2025-11-30"
+
+
+    pageParam:
+      name: page
+      in: query
+      required: false
+      description: "Page number (0-based)."
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+
+    sizeParam:
+      name: size
+      in: query
+      required: false
+      description: "Page size."
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 50
+
+    sortParam:
+      name: sort
+      in: query
+      required: false
+      description: >
+        Sort criteria in the format: property,(asc|desc). E.g. uploadedAt,desc.
+        Multiple sort parameters are allowed.
+      schema:
+        type: string
+        example: "uploadedAt,desc"
+
+  schemas:
+    UploadResponse:
+      type: object
+      properties:
+        statementId:
+          type: string
+          format: uuid
+          description: Unique identifier for the uploaded statement.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        uploadedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the statement was stored.
+          example: "2025-11-15T14:32:10Z"
+        fileSize:
+          type: integer
+          format: int64
+          description: Size of the stored file in bytes.
+          example: 482991
+        fileName:
+          type: string
+          description: Original uploaded filename.
+          example: "statement_2025-11.pdf"
+
+    BaseStatement:
+      type: object
+      description: "Base statement metadata (no download link)."
+      properties:
+        statementId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        accountNumber:
+          type: string
+          pattern: "^[0-9]{9,15}$"
+          example: "123456789"
+        date:
+          type: string
+          description: "Statement date in YYYY-MM-DD format."
+          example: "2025-11-01"
+        uploadedAt:
+          type: string
+          format: date-time
+          example: "2025-11-15T14:32:10Z"
+        fileSize:
+          type: integer
+          format: int64
+          example: 482991
+        fileName:
+          type: string
+          example: "statement_2025-11.pdf"
+
+    StatementSummary:
+      allOf:
+        - $ref: '#/components/schemas/BaseStatement'
+        - type: object
+          description: "Base statement metadata plus a time-limited download link."
+          properties:
+            downloadLink:
+              type: string
+              format: uri
+              description: "Time-limited signed URL for downloading the PDF statement"
+              example: "https://files.example.com/statements/statement_2025-11.pdf?expires=1723859200&signature=1a8f3bc..."
+
+    StatementSummaryPage:
+      type: object
+      description: "Paginated statement search response without download links."
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/BaseStatement'
+        page:
+          type: integer
+          description: "Current page number (0-based)."
+        size:
+          type: integer
+          description: "Size of the page."
+        totalElements:
+          type: integer
+          format: int64
+          description: "Total number of statements."
+        totalPages:
+          type: integer
+          description: "Total number of pages."
+
+    AuditLogEntry:
+      type: object
+      description: "Represents a single audit log entry for a statement-related action"
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "c0a80123-4567-89ab-cdef-0123456789ab"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-11-15T14:32:10Z"
+        accountNumber:
+          type: string
+          pattern: "^[0-9]{9,15}$"
+          example: "123456789"
+        statementId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        action:
+          type: string
+          description: "Action performed, e.g. DOWNLOAD_SUCCESS, DOWNLOAD_FAILED."
+          example: "DOWNLOAD_SUCCESS"
+        ipAddress:
+          type: string
+          description: "IP address from which the action was performed."
+          example: "192.168.0.10"
+        userAgent:
+          type: string
+          description: User agent string
+        performedBy:
+          type: string
+          description: "The role that performed the action"
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional details about the action
+
+    AuditLogPage:
+      type: object
+      description: "Paginated result set of audit logs"
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogEntry'
+        page:
+          type: integer
+          description: "Current page number (0-based)"
+        size:
+          type: integer
+          description: "Page size"
+        totalElements:
+          type: integer
+          format: int64
+          description: "Total number of log entries"
+        totalPages:
+          type: integer
+          description: "Total number of pages"
+
+    ApiProblem:
+      type: object
+      description: "RFC 9457 Problem Details for HTTP APIs"
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+          description: "URI reference that identifies the problem type"
+          example: "https://api.example.com/errors/validation"
+        title:
+          type: string
+          description: "Short, human-readable summary of the problem type"
+          example: "Invalid Message Digest"
+        status:
+          type: integer
+          format: int32
+          description: "HTTP status code"
+          example: 400
+        detail:
+          type: string
+          description: "Human-readable explanation specific to this occurrence"
+          example: "X-Message-Digest must be a 64-character hex string"
+        instance:
+          type: string
+          format: uri
+          description: "URI reference that identifies the specific occurrence"
+          example: "/api/v1/statements/upload"
+        errorCode:
+          type: string
+          description: "Application-specific error code for programmatic handling"
+          enum:
+            - INVALID_INPUT
+            - INVALID_MESSAGE_DIGEST
+            - MISSING_FILE
+            - INVALID_ACCOUNT_NUMBER
+            - INVALID_DATE
+            - DIGEST_MISMATCH
+            - DIGEST_ERROR
+            - STATEMENT_UPLOAD_FAILED
+            - UNSUPPORTED_MEDIA_TYPE
+            - INTERNAL_ERROR
+          example: "INVALID_MESSAGE_DIGEST"

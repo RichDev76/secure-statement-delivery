@@ -2,6 +2,7 @@ package com.example.statementservice.mapper;
 
 import com.example.statementservice.model.api.UploadResponse;
 import com.example.statementservice.model.dto.UploadResponseDto;
+import com.example.statementservice.shared.DateMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

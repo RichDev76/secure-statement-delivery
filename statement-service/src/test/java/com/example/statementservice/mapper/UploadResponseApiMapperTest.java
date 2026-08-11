@@ -3,6 +3,7 @@ package com.example.statementservice.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.statementservice.model.dto.UploadResponseDto;
+import com.example.statementservice.shared.DateMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.UUID;

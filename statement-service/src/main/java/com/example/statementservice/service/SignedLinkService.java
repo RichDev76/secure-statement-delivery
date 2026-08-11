@@ -1,9 +1,9 @@
 package com.example.statementservice.service;
 
+import com.example.statementservice.infrastructure.crypto.SignatureUtil;
 import com.example.statementservice.model.entity.SignedLink;
 import com.example.statementservice.repository.SignedLinkRepository;
 import com.example.statementservice.util.LinkValidationResult;
-import com.example.statementservice.util.SignatureUtil;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.UUID;

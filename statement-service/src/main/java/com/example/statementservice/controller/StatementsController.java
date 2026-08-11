@@ -2,12 +2,12 @@ package com.example.statementservice.controller;
 
 import com.example.statementservice.api.StatementsApi;
 import com.example.statementservice.exception.StatementNotFoundException;
+import com.example.statementservice.infrastructure.web.RequestInfoProvider;
 import com.example.statementservice.model.api.StatementSummary;
 import com.example.statementservice.model.api.StatementSummaryPage;
 import com.example.statementservice.service.DownloadService;
 import com.example.statementservice.service.StatementQueryService;
 import com.example.statementservice.util.DownloadResponseFactory;
-import com.example.statementservice.util.RequestInfoProvider;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

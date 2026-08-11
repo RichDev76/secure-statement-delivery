@@ -1,7 +1,7 @@
 package com.example.statementservice.service;
 
-import com.example.statementservice.config.MasterKeyProvider;
 import com.example.statementservice.exception.DigestComputationException;
+import com.example.statementservice.infrastructure.crypto.MasterKeyProvider;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;

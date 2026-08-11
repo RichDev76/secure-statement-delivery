@@ -11,14 +11,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.statementservice.exception.StatementNotFoundException;
+import com.example.statementservice.infrastructure.web.RequestInfoProvider;
 import com.example.statementservice.model.DownloadOutcome;
 import com.example.statementservice.model.api.StatementSummary;
 import com.example.statementservice.model.api.StatementSummaryPage;
 import com.example.statementservice.service.DownloadService;
 import com.example.statementservice.service.StatementQueryService;
+import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.util.DownloadResponseFactory;
-import com.example.statementservice.util.RequestInfo;
-import com.example.statementservice.util.RequestInfoProvider;
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Optional;

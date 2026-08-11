@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.config.MasterKeyProvider;
 import com.example.statementservice.exception.DigestComputationException;
+import com.example.statementservice.infrastructure.crypto.MasterKeyProvider;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;

@@ -9,10 +9,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.infrastructure.crypto.SignatureUtil;
 import com.example.statementservice.model.ValidationFailureReason;
 import com.example.statementservice.model.entity.SignedLink;
 import com.example.statementservice.repository.SignedLinkRepository;
-import com.example.statementservice.util.SignatureUtil;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;

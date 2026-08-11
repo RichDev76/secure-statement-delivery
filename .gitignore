@@ -79,3 +79,5 @@ replay_pid*
 
 # Maven wrapper (do NOT ignore .mvn/wrapper/maven-wrapper.jar if you track it)
 !/.mvn/wrapper/maven-wrapper.jar
+/docs/standards/
+/CLAUDE.md

@@ -3,7 +3,6 @@ package com.example.statementservice.config;
 import static com.example.statementservice.util.CommonUtil.buildProblemDetailTypeURI;
 
 import com.example.statementservice.security.KeycloakRoleConverter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +19,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import tools.jackson.databind.json.JsonMapper;
 
 @Slf4j
 @Configuration
@@ -70,7 +70,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationEntryPoint problemDetailAuthEntryPoint(ObjectMapper objectMapper) {
+    public AuthenticationEntryPoint problemDetailAuthEntryPoint(JsonMapper jsonMapper) {
         return (request, response, authException) -> {
             log.warn("Unauthenticated access - path={}, method={}", request.getRequestURI(), request.getMethod());
 
@@ -86,12 +86,12 @@ public class SecurityConfig {
 
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-            objectMapper.writeValue(response.getOutputStream(), pd);
+            jsonMapper.writeValue(response.getOutputStream(), pd);
         };
     }
 
     @Bean
-    public AccessDeniedHandler problemDetailAccessDeniedHandler(ObjectMapper objectMapper) {
+    public AccessDeniedHandler problemDetailAccessDeniedHandler(JsonMapper jsonMapper) {
         return (request, response, accessDeniedException) -> {
             log.warn("Access denied - path={}, method={}", request.getRequestURI(), request.getMethod());
 
@@ -106,7 +106,7 @@ public class SecurityConfig {
 
             response.setStatus(HttpStatus.FORBIDDEN.value());
             response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-            objectMapper.writeValue(response.getOutputStream(), pd);
+            jsonMapper.writeValue(response.getOutputStream(), pd);
         };
     }
 }

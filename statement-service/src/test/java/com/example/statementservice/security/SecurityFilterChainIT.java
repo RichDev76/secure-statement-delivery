@@ -83,9 +83,22 @@ class SecurityFilterChainIT extends AbstractIntegrationTest {
     void GivenJwtWithGenerateSignedLinkRole_WhenRequestingSignedLink_ThenAccessIsGranted() throws Exception {
         var linkRole = jwtWithRole("GenerateSignedLink");
 
-        mockMvc.perform(get("/api/v1/statements/00000000-0000-0000-0000-000000000000/link")
+        mockMvc.perform(get("/api/v1/statements/link/00000000-0000-0000-0000-000000000000")
                         .with(linkRole))
                 .andExpect(accessGranted());
+    }
+
+    @Test
+    void GivenJwtWithoutGenerateSignedLinkRole_WhenRequestingSignedLink_ThenProblemDetail403IsReturned()
+            throws Exception {
+        var wrongRole = jwtWithRole("Search");
+
+        mockMvc.perform(get("/api/v1/statements/link/00000000-0000-0000-0000-000000000000")
+                        .with(wrongRole))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Forbidden"))
+                .andExpect(jsonPath("$.status").value(403));
     }
 
     @Test

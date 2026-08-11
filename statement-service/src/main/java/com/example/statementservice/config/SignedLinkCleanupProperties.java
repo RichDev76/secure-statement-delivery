@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 @Getter
 @Setter
 @Configuration
-@ConfigurationProperties(prefix = "statements.signed-link.cleanup")
+@ConfigurationProperties(prefix = "statement.signed-link.cleanup")
 public class SignedLinkCleanupProperties {
 
     private boolean enabled = true;

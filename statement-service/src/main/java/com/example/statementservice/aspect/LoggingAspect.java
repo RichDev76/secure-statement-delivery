@@ -19,13 +19,13 @@ import org.springframework.web.multipart.MultipartFile;
 @Component
 public class LoggingAspect {
 
-    @Pointcut("within(com.example.statementservice.controller..*)")
-    public void controllerPackage() {}
+    @Pointcut("@within(org.springframework.web.bind.annotation.RestController)")
+    public void restControllerBeans() {}
 
-    @Pointcut("within(com.example.statementservice.service..*)")
-    public void servicePackage() {}
+    @Pointcut("@within(org.springframework.stereotype.Service)")
+    public void serviceBeans() {}
 
-    @Around("controllerPackage()")
+    @Around("restControllerBeans()")
     public Object logController(ProceedingJoinPoint pjp) throws Throwable {
         var className = pjp.getSignature().getDeclaringTypeName();
         var methodName = pjp.getSignature().getName();
@@ -54,7 +54,7 @@ public class LoggingAspect {
         }
     }
 
-    @Around("servicePackage()")
+    @Around("serviceBeans()")
     public Object logService(ProceedingJoinPoint pjp) throws Throwable {
         var className = pjp.getSignature().getDeclaringTypeName();
         var methodName = pjp.getSignature().getName();

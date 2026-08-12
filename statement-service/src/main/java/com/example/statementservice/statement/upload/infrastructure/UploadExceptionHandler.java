@@ -23,7 +23,7 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@Order(Ordered.HIGHEST_PRECEDENCE)
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @RestControllerAdvice
 public class UploadExceptionHandler {
 
@@ -58,6 +58,9 @@ public class UploadExceptionHandler {
             new ExceptionMetadata(TITLE_DESCRIPTION_MISSING_FILE, ERROR_CODE_MISSING_FILE),
             InvalidAccountNumberException.class,
             new ExceptionMetadata(TITLE_DESCRIPTION_INVALID_ACCOUNT_NUMBER, ERROR_CODE_INVALID_ACCOUNT_NUMBER),
+            // InvalidDateException lives in shared/ and is also thrown by the search feature
+            // (StatementQueryService.parseDate) - this is its only handler, don't scope it to
+            // upload-only without adding an equivalent entry wherever else it's thrown.
             InvalidDateException.class,
             new ExceptionMetadata(TITLE_DESCRIPTION_INVALID_DATE_FORMAT, ERROR_CODE_INVALID_DATE),
             DigestMismatchException.class,

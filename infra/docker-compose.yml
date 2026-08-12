@@ -77,18 +77,18 @@
         - |
           set -e
           mkdir -p /opt/keycloak/data/import
-          # Use sed for variable substitution
-          sed -e "s|\${KEYCLOAK_ADMIN_CLIENT}|$KEYCLOAK_ADMIN_CLIENT|g" \
-              -e "s|\${KEYCLOAK_ADMIN_CLIENT_SECRET}|$KEYCLOAK_ADMIN_CLIENT_SECRET|g" \
-              -e "s|\${KEYCLOAK_CONSUMER_CLIENT}|$KEYCLOAK_CONSUMER_CLIENT|g" \
-              -e "s|\${KEYCLOAK_CONSUMER_CLIENT_SECRET}|$KEYCLOAK_CONSUMER_CLIENT_SECRET|g" \
-              -e "s|\${KEYCLOAK_REDIRECT_URI:-http://localhost:8081/\*}|$KEYCLOAK_REDIRECT_URI|g" \
-              -e "s|\${KEYCLOAK_WEB_ORIGIN:-http://localhost:8081}|$KEYCLOAK_WEB_ORIGIN|g" \
-              -e "s|\${KEYCLOAK_SSL_REQUIRED:-none}|$KEYCLOAK_SSL_REQUIRED|g" \
-              -e "s|\${KEYCLOAK_ACCESS_TOKEN_LIFESPAN:-3600}|$KEYCLOAK_ACCESS_TOKEN_LIFESPAN|g" \
-              -e "s|\${KEYCLOAK_SSO_SESSION_IDLE_TIMEOUT:-4200}|$KEYCLOAK_SSO_SESSION_IDLE_TIMEOUT|g" \
-              -e "s|\${KEYCLOAK_SSO_SESSION_MAX_LIFESPAN:-4200}|$KEYCLOAK_SSO_SESSION_MAX_LIFESPAN|g" \
-              -e "s|\${KEYCLOAK_CLIENT_TOKEN_LIFESPAN:-3600}|$KEYCLOAK_CLIENT_TOKEN_LIFESPAN|g" \
+          # Use $$ to prevent Docker Compose expansion in the search pattern
+          sed -e "s|\$${KEYCLOAK_ADMIN_CLIENT}|$KEYCLOAK_ADMIN_CLIENT|g" \
+              -e "s|\$${KEYCLOAK_ADMIN_CLIENT_SECRET}|$KEYCLOAK_ADMIN_CLIENT_SECRET|g" \
+              -e "s|\$${KEYCLOAK_CONSUMER_CLIENT}|$KEYCLOAK_CONSUMER_CLIENT|g" \
+              -e "s|\$${KEYCLOAK_CONSUMER_CLIENT_SECRET}|$KEYCLOAK_CONSUMER_CLIENT_SECRET|g" \
+              -e "s|\$${KEYCLOAK_REDIRECT_URI:-http://localhost:8081/\*}|$KEYCLOAK_REDIRECT_URI|g" \
+              -e "s|\$${KEYCLOAK_WEB_ORIGIN:-http://localhost:8081}|$KEYCLOAK_WEB_ORIGIN|g" \
+              -e "s|\$${KEYCLOAK_SSL_REQUIRED:-none}|$KEYCLOAK_SSL_REQUIRED|g" \
+              -e "s|\$${KEYCLOAK_ACCESS_TOKEN_LIFESPAN:-3600}|$KEYCLOAK_ACCESS_TOKEN_LIFESPAN|g" \
+              -e "s|\$${KEYCLOAK_SSO_SESSION_IDLE_TIMEOUT:-4200}|$KEYCLOAK_SSO_SESSION_IDLE_TIMEOUT|g" \
+              -e "s|\$${KEYCLOAK_SSO_SESSION_MAX_LIFESPAN:-4200}|$KEYCLOAK_SSO_SESSION_MAX_LIFESPAN|g" \
+              -e "s|\$${KEYCLOAK_CLIENT_TOKEN_LIFESPAN:-3600}|$KEYCLOAK_CLIENT_TOKEN_LIFESPAN|g" \
               /opt/keycloak/data/import-templates/statement-service-realm.json > /opt/keycloak/data/import/statement-service-realm.json
           exec /opt/keycloak/bin/kc.sh start-dev --import-realm
       volumes:

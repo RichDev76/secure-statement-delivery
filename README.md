@@ -76,8 +76,11 @@ APP_DB=statementdb
 APP_DB_USER=statementuser
 APP_DB_PASSWORD=<your-app-db-password>
 
-# Statement Service
-STATEMENT_STORAGE_DIR=/app/data/files
+# Statement Service (S3-compatible storage via Floci - see ADR 0026)
+S3_BUCKET=statements
+AWS_S3_REGION=eu-west-1
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
 STATEMENT_MASTER_KEY=<32-byte-key>
 STATEMENT_SIGNATURE_SECRET=<your-signature-secret>
 ```
@@ -179,16 +182,18 @@ Export the required environment variables for the Statement Service:
 ```bash
 export APP_DB_USER=statementuser
 export APP_DB_PASSWORD=<your-app-db-password>
-export STATEMENT_STORAGE_DIR=/tmp/statement-files
+export S3_BUCKET=statements
+export AWS_S3_REGION=eu-west-1
+export AWS_ACCESS_KEY_ID=test
+export AWS_SECRET_ACCESS_KEY=test
 export STATEMENT_MASTER_KEY=<32-byte-key>
 export STATEMENT_SIGNATURE_SECRET=<your-signature-secret>
 ```
 
-Create the storage directory:
-
-```bash
-mkdir -p $STATEMENT_STORAGE_DIR
-```
+Statements are stored in Floci (an S3-compatible emulator, started by `infra/docker-compose.yml` and
+exposed on `localhost:4566`) — no local storage directory to create. Floci does not enforce auth
+locally, so `test`/`test` works for the `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` pair above; use
+a least-privilege IAM role instead in real deployments.
 
 #### Step 4: Run Statement Service Locally
 
@@ -329,7 +334,8 @@ docker exec -it db psql -U statementuser -d statementdb -c "SELECT 1"
 #### Statement Service Won't Start
 - Ensure all environment variables are set
 - Check that Keycloak and PostgreSQL are healthy
-- Verify the `STATEMENT_STORAGE_DIR` exists and is writable
+- Verify Floci is healthy and the `statements` bucket exists: `docker compose ps floci` and
+  `aws s3api head-bucket --bucket statements --endpoint-url http://localhost:4566`
 
 ---
 

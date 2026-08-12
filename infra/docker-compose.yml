@@ -127,6 +127,32 @@
         retries: 6
         start_period: 30s
 
+    floci:
+      image: floci/floci:1.5.33-compat
+      container_name: floci
+      restart: unless-stopped
+      environment:
+        FLOCI_STORAGE_MODE: persistent
+        FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+        FLOCI_DEFAULT_REGION: ${AWS_S3_REGION:-eu-west-1}
+        # Read by ./floci/init/create-bucket.sh so the bootstrapped bucket always matches
+        # whatever statement-service is actually configured to use (S3_BUCKET below) - a
+        # hardcoded bucket name here would silently drift from that if S3_BUCKET is ever changed.
+        S3_BUCKET: ${S3_BUCKET:-statements}
+      volumes:
+        - floci-data:/app/data
+        - ./floci/init:/etc/localstack/init/ready.d:ro
+      ports:
+        - "4566:4566"
+      healthcheck:
+        # Checking the actual dependency (bucket reachable via the S3 API) rather than an
+        # internal health-JSON endpoint - see docs/StorageFlociMigrationPlan.html §3.7.
+        test: ["CMD-SHELL", "aws s3api head-bucket --bucket ${S3_BUCKET:-statements}"]
+        interval: 10s
+        timeout: 5s
+        retries: 8
+        start_period: 20s
+
     statement-service:
       build:
         context: ..
@@ -140,17 +166,20 @@
         - CONFIG_URL=http://config-server:8888/actuator/health
         - APP_DB_USER=${APP_DB_USER}
         - APP_DB_PASSWORD=${APP_DB_PASSWORD}
-        - STATEMENT_STORAGE_DIR=/app/data/files
+        - S3_BUCKET=${S3_BUCKET}
+        - AWS_S3_REGION=${AWS_S3_REGION}
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
         - STATEMENT_MASTER_KEY=${STATEMENT_MASTER_KEY}
         - STATEMENT_SIGNATURE_SECRET=${STATEMENT_SIGNATURE_SECRET}
-      volumes:
-        - statement-data:/app/data/files
       depends_on:
         config-server:
           condition: service_healthy
         db:
           condition: service_healthy
         keycloak:
+          condition: service_healthy
+        floci:
           condition: service_healthy
       ports:
         - "8080:8080"
@@ -164,4 +193,4 @@
     db-data:
     vault-data:
     keycloak-data:
-    statement-data:
+    floci-data:

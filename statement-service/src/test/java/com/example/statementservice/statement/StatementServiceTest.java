@@ -77,7 +77,7 @@ class StatementServiceTest {
         testStatement.setAccountNumber(testAccountNumber);
         testStatement.setStatementDate(testStatementDate);
         testStatement.setUploadFileName("statement.pdf");
-        testStatement.setFilePath("/path/to/statement.pdf");
+        testStatement.setStorageKey("statements/hash/2026/07/statement.pdf.enc");
         testStatement.setSizeBytes(1024L);
         testStatement.setUploadedAt(OffsetDateTime.now());
         testStatement.setUploadedBy("admin");

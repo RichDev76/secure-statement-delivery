@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -41,10 +42,9 @@ public class SecurityConfig {
                 .csrf(csrf ->
                         csrf.ignoringRequestMatchers(endpoints.getCsrfIgnored().toArray(String[]::new)))
                 .authorizeHttpRequests(auth -> {
-                    if (!endpoints.getWhitelist().isEmpty()) {
-                        auth.requestMatchers(endpoints.getWhitelist().toArray(String[]::new))
-                                .permitAll();
-                    }
+                    endpoints.getWhitelist().forEach(rule -> auth.requestMatchers(
+                                    HttpMethod.valueOf(rule.getMethod()), rule.getPattern())
+                            .permitAll());
 
                     auth.requestMatchers("/api/v1/statements/upload").hasRole("Upload");
                     auth.requestMatchers("/api/v1/statements/audit/logs").hasRole("AuditLogsSearch");

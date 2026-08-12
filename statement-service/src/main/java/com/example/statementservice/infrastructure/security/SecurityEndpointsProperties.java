@@ -31,8 +31,6 @@ public class SecurityEndpointsProperties {
     @NotEmpty(message = "security.endpoints.link must declare at least one rule")
     private List<@Valid EndpointRule> link = new ArrayList<>();
 
-    private List<String> csrfIgnored = new ArrayList<>();
-
     @Getter
     @Setter
     public static class EndpointRule {

@@ -38,8 +38,6 @@ statement:
 
 security:
   endpoints:
-    csrfIgnored:
-      - /api/v1/statements/**
     admin:
       - method: POST
         pattern: /api/v1/statements/upload

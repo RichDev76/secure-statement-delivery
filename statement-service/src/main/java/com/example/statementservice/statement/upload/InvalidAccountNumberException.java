@@ -1,4 +1,4 @@
-package com.example.statementservice.exception;
+package com.example.statementservice.statement.upload;
 
 /**
  * Thrown when the provided account number does not meet validation rules.

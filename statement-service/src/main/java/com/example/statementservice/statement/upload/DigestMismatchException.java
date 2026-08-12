@@ -1,4 +1,4 @@
-package com.example.statementservice.exception;
+package com.example.statementservice.statement.upload;
 
 public class DigestMismatchException extends RuntimeException {
     public DigestMismatchException(String message) {

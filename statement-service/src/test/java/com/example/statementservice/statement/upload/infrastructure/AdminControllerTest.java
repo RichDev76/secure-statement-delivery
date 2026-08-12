@@ -1,4 +1,4 @@
-package com.example.statementservice.controller;
+package com.example.statementservice.statement.upload.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,10 +9,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.mapper.UploadResponseApiMapper;
+import com.example.statementservice.infrastructure.web.RequestInfoProvider;
 import com.example.statementservice.model.api.UploadResponse;
-import com.example.statementservice.model.dto.UploadResponseDto;
-import com.example.statementservice.service.StatementUploadService;
+import com.example.statementservice.shared.RequestInfo;
+import com.example.statementservice.statement.upload.StatementUploadService;
+import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,9 @@ class AdminControllerTest {
 
     @Mock
     private UploadResponseApiMapper uploadResponseApiMapper;
+
+    @Mock
+    private RequestInfoProvider requestInfoProvider;
 
     @InjectMocks
     private AdminController adminController;
@@ -68,13 +72,16 @@ class AdminControllerTest {
         testApiResponse.setUploadedAt(testDto.getUploadedAt());
         testApiResponse.setFileSize(testDto.getFileSize());
         testApiResponse.setFileName(testDto.getFileName());
+
+        when(requestInfoProvider.get()).thenReturn(new RequestInfo("192.168.1.1", "Mozilla/5.0", "testUser"));
     }
 
     @Test
     @DisplayName("uploadStatement - should return CREATED status with upload response on success")
     void uploadStatement_Success() {
 
-        when(statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate))
+        when(statementUploadService.upload(
+                        eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(testDto)).thenReturn(testApiResponse);
 
@@ -88,7 +95,8 @@ class AdminControllerTest {
         assertThat(response.getBody().getFileName()).isEqualTo(testDto.getFileName());
         assertThat(response.getBody().getFileSize()).isEqualTo(testDto.getFileSize());
 
-        verify(statementUploadService).upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
         verify(uploadResponseApiMapper).toApi(testDto);
     }
 
@@ -96,27 +104,29 @@ class AdminControllerTest {
     @DisplayName("uploadStatement - should pass all parameters to service")
     void uploadStatement_PassesAllParameters() {
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(any())).thenReturn(testApiResponse);
 
         adminController.uploadStatement(testMessageDigest, testFile, testAccountNumber, testDate, null);
 
-        verify(statementUploadService).upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate));
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
     }
 
     @Test
     @DisplayName("uploadStatement - should propagate service exceptions")
     void uploadStatement_ServiceException() {
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenThrow(new RuntimeException("Service error"));
         assertThatThrownBy(() ->
                         adminController.uploadStatement(testMessageDigest, testFile, testAccountNumber, testDate, null))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Service error");
 
-        verify(statementUploadService).upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
         verifyNoInteractions(uploadResponseApiMapper);
     }
 
@@ -138,7 +148,8 @@ class AdminControllerTest {
         largeResponse.setStatementId(largeDto.getStatementId());
         largeResponse.setFileSize(10000L);
 
-        when(statementUploadService.upload(testMessageDigest, largeFile, testAccountNumber, testDate))
+        when(statementUploadService.upload(
+                        eq(testMessageDigest), eq(largeFile), eq(testAccountNumber), eq(testDate), any()))
                 .thenReturn(largeDto);
         when(uploadResponseApiMapper.toApi(largeDto)).thenReturn(largeResponse);
 
@@ -158,15 +169,17 @@ class AdminControllerTest {
         String minAccountNumber = "123456789"; // 9 digits
         String maxAccountNumber = "123456789012345"; // 15 digits
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(any())).thenReturn(testApiResponse);
 
         adminController.uploadStatement(testMessageDigest, testFile, minAccountNumber, testDate, null);
         adminController.uploadStatement(testMessageDigest, testFile, maxAccountNumber, testDate, null);
 
-        verify(statementUploadService).upload(testMessageDigest, testFile, minAccountNumber, testDate);
-        verify(statementUploadService).upload(testMessageDigest, testFile, maxAccountNumber, testDate);
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(testFile), eq(minAccountNumber), eq(testDate), any());
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(testFile), eq(maxAccountNumber), eq(testDate), any());
     }
 
     @Test
@@ -176,22 +189,24 @@ class AdminControllerTest {
         String pastDate = "2020-01-01";
         String futureDate = "2025-12-31";
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(any())).thenReturn(testApiResponse);
 
         adminController.uploadStatement(testMessageDigest, testFile, testAccountNumber, pastDate, null);
         adminController.uploadStatement(testMessageDigest, testFile, testAccountNumber, futureDate, null);
 
-        verify(statementUploadService).upload(testMessageDigest, testFile, testAccountNumber, pastDate);
-        verify(statementUploadService).upload(testMessageDigest, testFile, testAccountNumber, futureDate);
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(pastDate), any());
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(futureDate), any());
     }
 
     @Test
     @DisplayName("uploadStatement - should call mapper with correct DTO")
     void uploadStatement_MapperCalledWithCorrectDto() {
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(testDto)).thenReturn(testApiResponse);
 
@@ -222,7 +237,7 @@ class AdminControllerTest {
         apiResponse.setFileSize(expectedSize);
         apiResponse.setFileName(expectedFileName);
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(dto);
         when(uploadResponseApiMapper.toApi(dto)).thenReturn(apiResponse);
 
@@ -240,7 +255,7 @@ class AdminControllerTest {
     @DisplayName("uploadStatement - should handle mapper exception")
     void uploadStatement_MapperException() {
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(any())).thenThrow(new RuntimeException("Mapper error"));
 
@@ -249,7 +264,8 @@ class AdminControllerTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Mapper error");
 
-        verify(statementUploadService).upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
         verify(uploadResponseApiMapper).toApi(testDto);
     }
 
@@ -259,7 +275,7 @@ class AdminControllerTest {
 
         MultipartFile fileWithoutName = new MockMultipartFile("file", "", "application/pdf", new byte[100]);
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(any())).thenReturn(testApiResponse);
 
@@ -268,14 +284,15 @@ class AdminControllerTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        verify(statementUploadService).upload(testMessageDigest, fileWithoutName, testAccountNumber, testDate);
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), eq(fileWithoutName), eq(testAccountNumber), eq(testDate), any());
     }
 
     @Test
     @DisplayName("uploadStatement - should maintain status code as CREATED for all successful uploads")
     void uploadStatement_AlwaysReturnsCreatedStatus() {
 
-        when(statementUploadService.upload(anyString(), any(), anyString(), anyString()))
+        when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(any())).thenReturn(testApiResponse);
 

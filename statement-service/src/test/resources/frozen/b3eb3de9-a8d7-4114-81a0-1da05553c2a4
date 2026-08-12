@@ -1,2 +1,1 @@
-Class <com.example.statementservice.controller.AdminController> does not reside in a package '..infrastructure..' in (AdminController.java:0)
 Class <com.example.statementservice.controller.StatementsController> does not reside in a package '..infrastructure..' in (StatementsController.java:0)

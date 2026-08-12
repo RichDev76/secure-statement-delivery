@@ -1,9 +1,9 @@
-package com.example.statementservice.mapper;
+package com.example.statementservice.statement.upload.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.statementservice.model.dto.UploadResponseDto;
 import com.example.statementservice.shared.DateMapper;
+import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.UUID;

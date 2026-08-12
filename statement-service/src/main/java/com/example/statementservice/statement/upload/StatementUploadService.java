@@ -1,12 +1,9 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement.upload;
 
 import com.example.statementservice.audit.AuditAction;
 import com.example.statementservice.audit.AuditService;
-import com.example.statementservice.infrastructure.web.RequestInfoProvider;
-import com.example.statementservice.model.dto.UploadResponseDto;
 import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.statement.StatementService;
-import com.example.statementservice.util.ValidationUtil;
 import java.time.LocalDate;
 import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
@@ -19,13 +16,12 @@ public class StatementUploadService {
 
     public static final String ADMIN_USER = "admin";
     private final ValidationUtil validationUtil;
-    private final RequestInfoProvider requestInfoProvider;
     private final StatementService statementService;
     private final AuditService auditService;
 
-    public UploadResponseDto upload(String xMessageDigest, MultipartFile file, String accountNumber, String date) {
+    public UploadResponseDto upload(
+            String xMessageDigest, MultipartFile file, String accountNumber, String date, RequestInfo requestInfo) {
         this.validationUtil.validateFileUploadInputs(file, xMessageDigest, accountNumber, date);
-        var requestInfo = requestInfoProvider.get();
         var performedBy = requestInfo.getPerformedBy() != null ? requestInfo.getPerformedBy() : ADMIN_USER;
         var dto = this.statementService.uploadStatement(accountNumber, LocalDate.parse(date), file, performedBy);
         auditUpload(accountNumber, requestInfo, dto, performedBy);

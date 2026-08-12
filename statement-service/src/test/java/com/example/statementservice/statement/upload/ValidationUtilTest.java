@@ -1,40 +1,23 @@
-package com.example.statementservice.util;
+package com.example.statementservice.statement.upload;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.exception.DigestMismatchException;
-import com.example.statementservice.exception.InvalidAccountNumberException;
-import com.example.statementservice.exception.InvalidDateException;
-import com.example.statementservice.exception.InvalidMessageDigestException;
-import com.example.statementservice.exception.MissingFileException;
-import com.example.statementservice.exception.PdfValidationException;
-import com.example.statementservice.exception.UnsupportedContentTypeException;
-import com.example.statementservice.service.EncryptionService;
+import com.example.statementservice.shared.InvalidDateException;
+import com.example.statementservice.shared.Sha256Digest;
 import java.io.IOException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
-@ExtendWith(MockitoExtension.class)
 @DisplayName("ValidationUtil Unit Tests")
 class ValidationUtilTest {
 
-    @Mock
-    private EncryptionService encryptionService;
-
-    @InjectMocks
     private ValidationUtil validationUtil;
 
     private MultipartFile validPdfFile;
@@ -48,28 +31,25 @@ class ValidationUtilTest {
         validPdfFile = new MockMultipartFile("file", "test.pdf", MediaType.APPLICATION_PDF_VALUE, pdfContent);
         validAccountNumber = "123456789";
         validDate = "2024-01-15";
-        validMessageDigest = "a".repeat(64); // 64 hex characters
+        validMessageDigest = Sha256Digest.hexOf(pdfContent);
+        validationUtil = new ValidationUtil();
     }
 
     @Test
     @DisplayName("validateFileUploadInputs - should pass with all valid inputs")
     void validateFileUploadInputs_Success() {
 
-        when(encryptionService.computeSha256Hex(validPdfFile)).thenReturn(validMessageDigest);
         assertThatCode(() -> validationUtil.validateFileUploadInputs(
                         validPdfFile, validMessageDigest, validAccountNumber, validDate))
                 .doesNotThrowAnyException();
-        verify(encryptionService).computeSha256Hex(validPdfFile);
     }
 
     @Test
     @DisplayName("validateMessageDigest - should pass with valid digest")
     void validateMessageDigest_Valid() {
 
-        when(encryptionService.computeSha256Hex(validPdfFile)).thenReturn(validMessageDigest);
         assertThatCode(() -> validationUtil.validateMessageDigest(validPdfFile, validMessageDigest))
                 .doesNotThrowAnyException();
-        verify(encryptionService).computeSha256Hex(validPdfFile);
     }
 
     @Test
@@ -79,7 +59,6 @@ class ValidationUtilTest {
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, null))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
-        verifyNoInteractions(encryptionService);
     }
 
     @Test
@@ -89,7 +68,6 @@ class ValidationUtilTest {
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, ""))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
-        verifyNoInteractions(encryptionService);
     }
 
     @Test
@@ -99,7 +77,6 @@ class ValidationUtilTest {
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, "abc123"))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
-        verifyNoInteractions(encryptionService);
     }
 
     @Test
@@ -109,7 +86,6 @@ class ValidationUtilTest {
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, "a".repeat(65)))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
-        verifyNoInteractions(encryptionService);
     }
 
     @Test
@@ -119,31 +95,24 @@ class ValidationUtilTest {
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, "g".repeat(64)))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
-        verifyNoInteractions(encryptionService);
     }
 
     @Test
     @DisplayName("validateMessageDigest - should throw exception when digest does not match")
     void validateMessageDigest_Mismatch() {
 
-        var differentDigest = "b".repeat(64);
-        when(encryptionService.computeSha256Hex(validPdfFile)).thenReturn(differentDigest);
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, validMessageDigest))
+        var wrongDigest = "b".repeat(64);
+        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, wrongDigest))
                 .isInstanceOf(DigestMismatchException.class)
                 .hasMessageContaining("X-Message-Digest does not match file contents");
-        verify(encryptionService).computeSha256Hex(validPdfFile);
     }
 
     @Test
     @DisplayName("validateMessageDigest - should be case insensitive for hex comparison")
     void validateMessageDigest_CaseInsensitive() {
 
-        var upperCaseDigest = "ABCDEF0123456789".repeat(4);
-        var lowerCaseDigest = "abcdef0123456789".repeat(4);
-        when(encryptionService.computeSha256Hex(validPdfFile)).thenReturn(lowerCaseDigest);
-        assertThatCode(() -> validationUtil.validateMessageDigest(validPdfFile, upperCaseDigest))
+        assertThatCode(() -> validationUtil.validateMessageDigest(validPdfFile, validMessageDigest.toUpperCase()))
                 .doesNotThrowAnyException();
-        verify(encryptionService).computeSha256Hex(validPdfFile);
     }
 
     @Test

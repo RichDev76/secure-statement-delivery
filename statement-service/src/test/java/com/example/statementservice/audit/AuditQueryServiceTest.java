@@ -7,7 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.exception.InvalidDateException;
+import com.example.statementservice.shared.InvalidDateException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collections;

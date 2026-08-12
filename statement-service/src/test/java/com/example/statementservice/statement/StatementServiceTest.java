@@ -8,11 +8,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.model.dto.UploadResponseDto;
-import com.example.statementservice.service.EncryptionService;
-import com.example.statementservice.service.FileStorageService;
-import com.example.statementservice.statement.signedlink.SignedLinkService;
-import java.io.File;
+import com.example.statementservice.statement.upload.UploadResponseDto;
+import java.io.ByteArrayOutputStream;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -49,13 +46,10 @@ class StatementServiceTest {
     private StatementRepository statementRepository;
 
     @Mock
-    private SignedLinkService signedLinkService;
+    private StatementFileStore fileStore;
 
     @Mock
-    private FileStorageService fileStorageService;
-
-    @Mock
-    private EncryptionService encryptionService;
+    private FileCipher fileCipher;
 
     @Mock
     private StatementEntityMapper statementEntityMapper;
@@ -94,20 +88,27 @@ class StatementServiceTest {
         testStatementDto.setStatementDate(testStatementDate);
     }
 
+    private void stubSuccessfulEncryptAndStore(byte[] iv, byte[] content) throws Exception {
+        when(fileCipher.generateInitializationVector()).thenReturn(iv);
+        when(multipartFile.getInputStream()).thenReturn(new java.io.ByteArrayInputStream(content));
+        when(fileStore.store(any(UUID.class), eq(testAccountNumber), eq(testStatementDate), any()))
+                .thenAnswer(invocation -> {
+                    StatementFileStore.ContentWriter writer = invocation.getArgument(3);
+                    var out = new ByteArrayOutputStream();
+                    writer.writeTo(out);
+                    return "/data/files/statements/hash/2024/01/" + invocation.getArgument(0) + ".pdf.enc";
+                });
+    }
+
     @Test
     @DisplayName("uploadStatement - should successfully upload and persist statement")
-    void uploadStatement_Success() {
+    void uploadStatement_Success() throws Exception {
         String uploadedBy = "testUser";
-        File mockFile = new File("/test/path/file.pdf");
         byte[] mockIv = new byte[] {1, 2, 3, 4};
-        String mockHash = "sha256hash";
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        FileStorageService.FileStorageResult storageResult = new FileStorageService.FileStorageResult(mockFile, mockIv);
-        when(fileStorageService.storeEncrypted(
-                        any(UUID.class), eq(multipartFile), eq(testAccountNumber), eq(testStatementDate)))
-                .thenReturn(storageResult);
-        when(encryptionService.computeSha256Hex(multipartFile)).thenReturn(mockHash);
+        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
+        stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
         UploadResponseDto result =
                 statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, uploadedBy);
@@ -116,23 +117,18 @@ class StatementServiceTest {
         assertThat(result.getFileName()).isEqualTo("statement.pdf");
         assertThat(result.getFileSize()).isEqualTo(2048L);
         assertThat(result.getUploadedAt()).isNotNull();
-        verify(fileStorageService)
-                .storeEncrypted(any(UUID.class), eq(multipartFile), eq(testAccountNumber), eq(testStatementDate));
-        verify(encryptionService).computeSha256Hex(multipartFile);
+        verify(fileStore).store(any(UUID.class), eq(testAccountNumber), eq(testStatementDate), any());
         verify(statementRepository).saveAndFlush(any(Statement.class));
     }
 
     @Test
     @DisplayName("uploadStatement - should use default 'admin' when uploadedBy is null")
-    void uploadStatement_NullUploadedBy() {
-        File mockFile = new File("/test/path/file.pdf");
+    void uploadStatement_NullUploadedBy() throws Exception {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
-        String mockHash = "sha256hash";
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        FileStorageService.FileStorageResult storageResult = new FileStorageService.FileStorageResult(mockFile, mockIv);
-        when(fileStorageService.storeEncrypted(any(), any(), any(), any())).thenReturn(storageResult);
-        when(encryptionService.computeSha256Hex(any())).thenReturn(mockHash);
+        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
+        stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> {
             Statement stmt = i.getArgument(0);
             assertThat(stmt.getUploadedBy()).isEqualTo("admin");
@@ -144,15 +140,12 @@ class StatementServiceTest {
 
     @Test
     @DisplayName("uploadStatement - should throw StatementUploadException on repository failure")
-    void uploadStatement_RepositoryFailure() {
-        File mockFile = new File("/test/path/file.pdf");
+    void uploadStatement_RepositoryFailure() throws Exception {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
-        String mockHash = "sha256hash";
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        FileStorageService.FileStorageResult storageResult = new FileStorageService.FileStorageResult(mockFile, mockIv);
-        when(fileStorageService.storeEncrypted(any(), any(), any(), any())).thenReturn(storageResult);
-        when(encryptionService.computeSha256Hex(any())).thenReturn(mockHash);
+        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
+        stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any())).thenThrow(new RuntimeException("DB error"));
         assertThatThrownBy(() ->
                         statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user"))

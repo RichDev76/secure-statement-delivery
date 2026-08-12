@@ -1,23 +1,15 @@
-package com.example.statementservice.util;
+package com.example.statementservice.statement.upload;
 
-import com.example.statementservice.exception.DigestMismatchException;
-import com.example.statementservice.exception.InvalidAccountNumberException;
-import com.example.statementservice.exception.InvalidDateException;
-import com.example.statementservice.exception.InvalidMessageDigestException;
-import com.example.statementservice.exception.MissingFileException;
-import com.example.statementservice.exception.PdfValidationException;
-import com.example.statementservice.exception.UnsupportedContentTypeException;
-import com.example.statementservice.service.EncryptionService;
+import com.example.statementservice.shared.InvalidDateException;
+import com.example.statementservice.shared.Sha256Digest;
 import java.io.IOException;
 import java.io.InputStream;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
-@RequiredArgsConstructor
 public class ValidationUtil {
 
     // Message Digest Constants
@@ -47,8 +39,6 @@ public class ValidationUtil {
     private static final String INVALID_PDF_MSG = "File is not a valid PDF";
     private static final String PDF_READ_ERROR_MSG = "Failed to read file for magic number validation";
 
-    private final EncryptionService encryptionService;
-
     public void validateFileUploadInputs(MultipartFile file, String xMessageDigest, String accountNumber, String date) {
         validateFileName(file);
         validatePdfMagicNumber(file);
@@ -64,9 +54,17 @@ public class ValidationUtil {
             throw new InvalidMessageDigestException(INVALID_DIGEST_FORMAT_MSG);
         }
 
-        var computedDigest = this.encryptionService.computeSha256Hex(file);
+        var computedDigest = computeSha256Hex(file);
         if (!computedDigest.equalsIgnoreCase(xMessageDigest)) {
             throw new DigestMismatchException(DIGEST_MISMATCH_MSG);
+        }
+    }
+
+    private String computeSha256Hex(MultipartFile file) {
+        try {
+            return Sha256Digest.hexOf(file.getBytes());
+        } catch (IOException e) {
+            throw new DigestComputationException("Failed to compute file digest", e);
         }
     }
 

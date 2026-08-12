@@ -1,4 +1,4 @@
-package com.example.statementservice.model.dto;
+package com.example.statementservice.statement.upload;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;

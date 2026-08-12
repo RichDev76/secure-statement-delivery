@@ -6,10 +6,10 @@ import com.example.statementservice.model.DownloadFailureReason;
 import com.example.statementservice.model.DownloadOutcome;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementRepository;
+import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
-import java.io.File;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,7 +33,7 @@ public class DownloadService {
 
     private final SignedLinkService signedLinkService;
     private final StatementRepository statementRepository;
-    private final EncryptionService encryptionService;
+    private final StatementService statementService;
     private final AuditService auditService;
 
     public DownloadStreamResult validateAndStreamDetailed(
@@ -58,15 +58,13 @@ public class DownloadService {
 
         // Step 3: Verify file exists
         var statement = statementOpt.get();
-        var storedFile = new File(statement.getFilePath());
-        if (!storedFile.exists()) {
+        if (!statementService.fileExists(statement)) {
             handleMissingFile(statement, link, token, clientIp, userAgent, performedBy);
             return new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
         }
 
         // Step 4: Decrypt and stream
-        Optional<InputStream> streamResult =
-                decryptAndStream(statement, link, storedFile, token, clientIp, userAgent, performedBy);
+        Optional<InputStream> streamResult = decryptAndStream(statement, link, token, clientIp, userAgent, performedBy);
         if (streamResult.isPresent()) {
             return new DownloadStreamResult(DownloadOutcome.OK, streamResult);
         } else {
@@ -152,15 +150,9 @@ public class DownloadService {
     }
 
     private Optional<InputStream> decryptAndStream(
-            Statement statement,
-            SignedLink link,
-            File storedFile,
-            String token,
-            String clientIp,
-            String userAgent,
-            String performedBy) {
+            Statement statement, SignedLink link, String token, String clientIp, String userAgent, String performedBy) {
         try {
-            var decrypted = encryptionService.decryptFileToStream(storedFile);
+            var decrypted = statementService.openDecryptedFile(statement);
 
             log.info(
                     "Download successful - statementId: {}, account: {}",

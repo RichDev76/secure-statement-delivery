@@ -1,8 +1,8 @@
-package com.example.statementservice.mapper;
+package com.example.statementservice.statement.upload.infrastructure;
 
 import com.example.statementservice.model.api.UploadResponse;
-import com.example.statementservice.model.dto.UploadResponseDto;
 import com.example.statementservice.shared.DateMapper;
+import com.example.statementservice.statement.upload.UploadResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

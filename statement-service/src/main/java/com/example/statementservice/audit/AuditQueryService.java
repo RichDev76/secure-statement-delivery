@@ -1,6 +1,6 @@
 package com.example.statementservice.audit;
 
-import com.example.statementservice.exception.InvalidDateException;
+import com.example.statementservice.shared.InvalidDateException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;

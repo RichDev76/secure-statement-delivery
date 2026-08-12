@@ -8,9 +8,9 @@ import static org.mockito.Mockito.when;
 
 import com.example.statementservice.audit.AuditLogDto;
 import com.example.statementservice.audit.AuditQueryService;
-import com.example.statementservice.exception.InvalidDateException;
 import com.example.statementservice.model.api.AuditLogEntry;
 import com.example.statementservice.model.api.AuditLogPage;
+import com.example.statementservice.shared.InvalidDateException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;

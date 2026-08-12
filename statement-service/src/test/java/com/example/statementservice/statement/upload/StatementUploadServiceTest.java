@@ -1,4 +1,4 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement.upload;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -12,14 +12,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.statementservice.audit.AuditService;
-import com.example.statementservice.exception.InvalidAccountNumberException;
-import com.example.statementservice.exception.InvalidDateException;
-import com.example.statementservice.exception.InvalidMessageDigestException;
-import com.example.statementservice.infrastructure.web.RequestInfoProvider;
-import com.example.statementservice.model.dto.UploadResponseDto;
+import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.statement.StatementService;
-import com.example.statementservice.util.ValidationUtil;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -41,9 +36,6 @@ class StatementUploadServiceTest {
 
     @Mock
     private ValidationUtil validationUtil;
-
-    @Mock
-    private RequestInfoProvider requestInfoProvider;
 
     @Mock
     private StatementService statementService;
@@ -80,15 +72,13 @@ class StatementUploadServiceTest {
     @DisplayName("upload - should successfully upload and audit statement")
     void upload_Success() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
         doNothing().when(auditService).record(any(), any(), any(), any(), any(), any());
-        UploadResponseDto result =
-                statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        UploadResponseDto result = statementUploadService.upload(
+                testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         assertThat(result).isNotNull();
         assertThat(result).isEqualTo(testUploadResponse);
         verify(validationUtil).validateFileUploadInputs(testFile, testMessageDigest, testAccountNumber, testDate);
-        verify(requestInfoProvider).get();
         verify(statementService)
                 .uploadStatement(eq(testAccountNumber), eq(LocalDate.parse(testDate)), eq(testFile), eq("testUser"));
         verify(auditService).record(any(), any(), eq(testAccountNumber), isNull(), eq("testUser"), any(Map.class));
@@ -99,9 +89,8 @@ class StatementUploadServiceTest {
     void upload_NullPerformedBy() {
         RequestInfo infoWithNullUser = new RequestInfo("192.168.1.1", "Mozilla/5.0", null);
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(infoWithNullUser);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, infoWithNullUser);
         verify(statementService).uploadStatement(any(), any(), any(), eq("admin"));
         verify(auditService).record(any(), any(), any(), any(), eq("admin"), any());
     }
@@ -110,9 +99,8 @@ class StatementUploadServiceTest {
     @DisplayName("upload - should validate all inputs before processing")
     void upload_ValidatesInputs() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         verify(validationUtil).validateFileUploadInputs(testFile, testMessageDigest, testAccountNumber, testDate);
     }
 
@@ -122,8 +110,8 @@ class StatementUploadServiceTest {
         doThrow(new InvalidMessageDigestException("Invalid digest"))
                 .when(validationUtil)
                 .validateFileUploadInputs(any(), any(), any(), any());
-        assertThatThrownBy(
-                        () -> statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate))
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("Invalid digest");
         verify(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
@@ -137,8 +125,8 @@ class StatementUploadServiceTest {
         doThrow(new InvalidAccountNumberException("Invalid account"))
                 .when(validationUtil)
                 .validateFileUploadInputs(any(), any(), any(), any());
-        assertThatThrownBy(
-                        () -> statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate))
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
                 .isInstanceOf(InvalidAccountNumberException.class);
         verify(statementService, never()).uploadStatement(any(), any(), any(), any());
     }
@@ -149,8 +137,8 @@ class StatementUploadServiceTest {
         doThrow(new InvalidDateException("Invalid date"))
                 .when(validationUtil)
                 .validateFileUploadInputs(any(), any(), any(), any());
-        assertThatThrownBy(
-                        () -> statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate))
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
                 .isInstanceOf(InvalidDateException.class);
         verify(statementService, never()).uploadStatement(any(), any(), any(), any());
     }
@@ -159,9 +147,8 @@ class StatementUploadServiceTest {
     @DisplayName("upload - should include audit details with IP and user agent")
     void upload_AuditDetailsIncluded() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(auditService).record(any(), any(), any(), any(), any(), detailsCaptor.capture());
         Map<String, Object> details = detailsCaptor.getValue();
@@ -173,9 +160,8 @@ class StatementUploadServiceTest {
     @DisplayName("upload - should record UPLOAD_SUCCESS action")
     void upload_RecordsCorrectAction() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         verify(auditService)
                 .record(
                         eq("UPLOAD_SUCCESS"),
@@ -197,9 +183,8 @@ class StatementUploadServiceTest {
                 .uploadedAt(OffsetDateTime.now())
                 .build();
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(response);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         verify(auditService).record(any(), eq(statementId), any(), any(), any(), any());
     }
 
@@ -208,13 +193,12 @@ class StatementUploadServiceTest {
     void upload_AuditFailureDoesNotAffectUpload() {
 
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
         doThrow(new RuntimeException("Audit failure"))
                 .when(auditService)
                 .record(any(), any(), any(), any(), any(), any());
-        UploadResponseDto result =
-                statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        UploadResponseDto result = statementUploadService.upload(
+                testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         assertThat(result).isNotNull();
         assertThat(result).isEqualTo(testUploadResponse);
         verify(statementService).uploadStatement(any(), any(), any(), any());
@@ -224,9 +208,8 @@ class StatementUploadServiceTest {
     @DisplayName("upload - should parse date string to LocalDate")
     void upload_ParsesDateCorrectly() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, "2024-12-25");
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, "2024-12-25", testRequestInfo);
         verify(statementService).uploadStatement(any(), eq(LocalDate.of(2024, 12, 25)), any(), any());
     }
 
@@ -234,9 +217,8 @@ class StatementUploadServiceTest {
     @DisplayName("upload - should pass all parameters to statementService")
     void upload_PassesAllParameters() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         verify(statementService)
                 .uploadStatement(eq(testAccountNumber), eq(LocalDate.parse(testDate)), eq(testFile), eq("testUser"));
     }
@@ -246,9 +228,8 @@ class StatementUploadServiceTest {
     void upload_DifferentUserNames() {
         RequestInfo customUser = new RequestInfo("10.0.0.1", "Chrome", "customUser");
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(customUser);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, customUser);
         verify(statementService).uploadStatement(any(), any(), any(), eq("customUser"));
         verify(auditService).record(any(), any(), any(), any(), eq("customUser"), any());
     }
@@ -258,9 +239,8 @@ class StatementUploadServiceTest {
     void upload_DifferentIpAddresses() {
         RequestInfo customInfo = new RequestInfo("203.0.113.1", "Safari", "user");
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(customInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, customInfo);
         ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(auditService).record(any(), any(), any(), any(), any(), detailsCaptor.capture());
         Map<String, Object> details = detailsCaptor.getValue();
@@ -271,9 +251,8 @@ class StatementUploadServiceTest {
     @DisplayName("upload - should set signedLinkId to null in audit")
     void upload_SignedLinkIdIsNull() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
-        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementService.uploadStatement(any(), any(), any(), any())).thenReturn(testUploadResponse);
-        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate);
+        statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         verify(auditService).record(any(), any(), any(), isNull(), any(), any());
     }
 }

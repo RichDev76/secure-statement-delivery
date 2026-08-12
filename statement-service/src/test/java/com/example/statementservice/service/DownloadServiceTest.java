@@ -14,13 +14,11 @@ import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.model.DownloadOutcome;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementRepository;
+import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -30,7 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -46,16 +43,13 @@ class DownloadServiceTest {
     private StatementRepository statementRepository;
 
     @Mock
-    private EncryptionService encryptionService;
+    private StatementService statementService;
 
     @Mock
     private AuditService auditService;
 
     @InjectMocks
     private DownloadService downloadService;
-
-    @TempDir
-    Path tempDir;
 
     private SignedLink testLink;
     private Statement testStatement;
@@ -100,16 +94,13 @@ class DownloadServiceTest {
     @DisplayName("validateAndStreamDetailed - should successfully download when all validations pass")
     void validateAndStreamDetailed_Success() throws Exception {
 
-        var tempFile = tempDir.resolve("test-statement.pdf.enc").toFile();
-        Files.write(tempFile.toPath(), "encrypted content".getBytes());
-        testStatement.setFilePath(tempFile.getAbsolutePath());
-
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
         when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
 
         var mockStream = new ByteArrayInputStream("decrypted content".getBytes());
-        when(encryptionService.decryptFileToStream(any(File.class))).thenReturn(mockStream);
+        when(statementService.openDecryptedFile(testStatement)).thenReturn(mockStream);
 
         var result = downloadService.validateAndStreamDetailed(
                 testToken, testExpires, testClientIp, testUserAgent, testPerformedBy);
@@ -121,7 +112,7 @@ class DownloadServiceTest {
 
         verify(signedLinkService).validateAndConsume(testToken, testExpires);
         verify(statementRepository).findById(testStatementId);
-        verify(encryptionService).decryptFileToStream(any(File.class));
+        verify(statementService).openDecryptedFile(testStatement);
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_SUCCESS.getValue()),
@@ -156,7 +147,7 @@ class DownloadServiceTest {
                         isNull(),
                         eq(testPerformedBy),
                         any(Map.class));
-        verifyNoInteractions(statementRepository, encryptionService);
+        verifyNoInteractions(statementRepository, statementService);
     }
 
     @Test
@@ -261,17 +252,17 @@ class DownloadServiceTest {
                         eq(testLinkId),
                         eq(testPerformedBy),
                         any(Map.class));
-        verifyNoInteractions(encryptionService);
+        verifyNoInteractions(statementService);
     }
 
     @Test
     @DisplayName("validateAndStreamDetailed - should return FILE_MISSING when file does not exist")
     void validateAndStreamDetailed_FileMissing() {
 
-        testStatement.setFilePath("/non/existent/path/file.pdf");
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
         when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(false);
 
         var result = downloadService.validateAndStreamDetailed(
                 testToken, testExpires, testClientIp, testUserAgent, testPerformedBy);
@@ -290,22 +281,17 @@ class DownloadServiceTest {
                         eq(testLinkId),
                         eq(testPerformedBy),
                         any(Map.class));
-        verifyNoInteractions(encryptionService);
     }
 
     @Test
     @DisplayName("validateAndStreamDetailed - should return DECRYPTION_FAILED on decryption error")
     void validateAndStreamDetailed_DecryptionFailed() throws Exception {
 
-        var tempFile = tempDir.resolve("test-statement.pdf.enc").toFile();
-        Files.write(tempFile.toPath(), "encrypted content".getBytes());
-        testStatement.setFilePath(tempFile.getAbsolutePath());
-
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
         when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
-        when(encryptionService.decryptFileToStream(any(File.class)))
-                .thenThrow(new RuntimeException("Decryption error"));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
+        when(statementService.openDecryptedFile(testStatement)).thenThrow(new RuntimeException("Decryption error"));
 
         var result = downloadService.validateAndStreamDetailed(
                 testToken, testExpires, testClientIp, testUserAgent, testPerformedBy);
@@ -316,7 +302,7 @@ class DownloadServiceTest {
 
         verify(signedLinkService).validateAndConsume(testToken, testExpires);
         verify(statementRepository).findById(testStatementId);
-        verify(encryptionService).decryptFileToStream(any(File.class));
+        verify(statementService).openDecryptedFile(testStatement);
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -331,14 +317,12 @@ class DownloadServiceTest {
     @DisplayName("validateAndStreamDetailed - should still return stream even if audit recording fails")
     void validateAndStreamDetailed_AuditFailureDoesNotPreventDownload() throws Exception {
 
-        var tempFile = tempDir.resolve("test-statement.pdf.enc").toFile();
-        Files.write(tempFile.toPath(), "encrypted content".getBytes());
-        testStatement.setFilePath(tempFile.getAbsolutePath());
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
         when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
         var mockStream = new ByteArrayInputStream("decrypted content".getBytes());
-        when(encryptionService.decryptFileToStream(any(File.class))).thenReturn(mockStream);
+        when(statementService.openDecryptedFile(testStatement)).thenReturn(mockStream);
         doThrow(new RuntimeException("Audit failure"))
                 .when(auditService)
                 .record(any(), any(), any(), any(), any(), any());

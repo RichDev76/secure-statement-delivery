@@ -1,9 +1,9 @@
 package com.example.statementservice.statement;
 
-import com.example.statementservice.model.dto.UploadResponseDto;
-import com.example.statementservice.service.EncryptionService;
-import com.example.statementservice.service.FileStorageService;
-import java.io.File;
+import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.statement.upload.UploadResponseDto;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -24,33 +24,36 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class StatementService {
 
-    private final Clock clock;
-
     public static final String FILE_NAME_SANITIZATION_REGEX = "[^a-zA-Z0-9._-]";
+
     private final StatementRepository statementRepository;
-    private final FileStorageService fileStorageService;
-    private final EncryptionService encryptionService;
+    private final StatementFileStore fileStore;
+    private final FileCipher fileCipher;
     private final StatementEntityMapper statementEntityMapper;
+    private final Clock clock;
 
     @Transactional
     public UploadResponseDto uploadStatement(
-            String accountNumber, java.time.LocalDate statementDate, MultipartFile file, String uploadedBy) {
+            String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy) {
         var id = UUID.randomUUID();
+        var initializationVector = fileCipher.generateInitializationVector();
 
-        var stored = this.fileStorageService.storeEncrypted(id, file, accountNumber, statementDate);
+        String reference;
+        try {
+            reference = fileStore.store(
+                    id,
+                    accountNumber,
+                    statementDate,
+                    out -> fileCipher.encrypt(file.getInputStream(), out, initializationVector));
+        } catch (IOException e) {
+            throw new StatementUploadException("Failed to encrypt and store file", e);
+        }
 
-        var contentHash = this.encryptionService.computeSha256Hex(file);
+        var contentHash = Sha256Digest.hexOf(readBytes(file));
         log.info("Message Digest {}", contentHash);
 
         var statement = buildStatement(
-                accountNumber,
-                statementDate,
-                file,
-                uploadedBy,
-                id,
-                stored.file(),
-                stored.initializationVector(),
-                contentHash);
+                accountNumber, statementDate, file, uploadedBy, id, reference, initializationVector, contentHash);
         try {
             this.statementRepository.saveAndFlush(statement);
         } catch (RuntimeException e) {
@@ -104,13 +107,29 @@ public class StatementService {
         return statementRepository.findByAccountNumberAndDateRange(accountNumber, startDate, endDate, pageable);
     }
 
+    public boolean fileExists(Statement statement) {
+        return fileStore.exists(statement.getFilePath());
+    }
+
+    public InputStream openDecryptedFile(Statement statement) throws IOException {
+        return fileCipher.decrypt(fileStore.open(statement.getFilePath()));
+    }
+
+    private byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException e) {
+            throw new StatementUploadException("Failed to read file for digest computation", e);
+        }
+    }
+
     private Statement buildStatement(
             String accountNumber,
             LocalDate statementDate,
             MultipartFile file,
             String uploadedBy,
             UUID id,
-            File out,
+            String fileReference,
             byte[] iv,
             String contentHash) {
         var stmt = new Statement();
@@ -118,7 +137,7 @@ public class StatementService {
         stmt.setAccountNumber(accountNumber);
         stmt.setStatementDate(statementDate);
         stmt.setUploadFileName(sanitizeFileName(Objects.requireNonNull(file.getOriginalFilename())));
-        stmt.setFilePath(out.getAbsolutePath());
+        stmt.setFilePath(fileReference);
         stmt.setFileIv(iv);
         stmt.setContentHash(contentHash);
         stmt.setEncrypted(true);

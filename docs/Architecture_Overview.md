@@ -81,7 +81,7 @@ The **Statement Service Platform** implements a robust, production‑grade archi
     - Validates and **sanitises filename** (no path traversal, restricted characters, length limits)
     - Computes its own SHA‑256 digest and verifies it matches `X-Message-Digest`
     - Hashes the **account number** (for privacy) using SHA‑256
-    - Encrypts the PDF using **AES‑GCM** via `EncryptionService`
+    - Encrypts the PDF using **AES‑GCM** via the `FileCipher` port (`AesGcmFileCipher`)
     - Stores encrypted bytes on disk and saves metadata in Postgres
 4. `AuditService` records an `UPLOAD_SUCCESS` event with:
     - `statementId`, hashed `accountNumber`, `performedBy`, client IP, user agent, and extra details
@@ -118,7 +118,7 @@ The **Statement Service Platform** implements a robust, production‑grade archi
 3. If valid, `DownloadService`:
     - Retrieves associated statement metadata from Postgres
     - Streams the **encrypted file** from the storage location
-    - Uses `EncryptionService` to decrypt on the fly (AES‑GCM, streaming)
+    - Uses the `FileCipher` port to decrypt on the fly (AES‑GCM, streaming)
     - Writes decrypted bytes to the HTTP response as `application/pdf`
 4. `AuditService` records:
     - `DOWNLOAD_SUCCESS` with `statementId`, `signedLinkId`, `performedBy`, IP, UA, and timing
@@ -145,40 +145,24 @@ The **Statement Service Platform** implements a robust, production‑grade archi
 
 ### Application Architecture (Statement Service)
 
-#### Layered Structure
+#### Feature-First, Hexagonal Structure
 
-The `statement-service` module follows a traditional **layered architecture**:
+The `statement-service` module is organised by **business capability** (Screaming Architecture), with **ports & adapters** (Hexagonal Architecture) at each IO boundary. Package names state what the system does, not which technical layer a class belongs to; boundaries are enforced by an ArchUnit suite (`ArchitectureTest`) that fails the build on violations.
 
-- **API / Controller Layer** (`controller` package)
-    - Implements OpenAPI‑generated interfaces (e.g. `AuditApi`)
-    - Handles HTTP concerns: request mapping, validation annotations, response codes
-    - Delegates business logic to services
+- **`statement`** — statement lifecycle core (`Statement`, `StatementRepository`, `StatementService`), plus outbound ports owned by the domain: `StatementFileStore` and `FileCipher`.
+    - **`statement.upload`** — validation and upload orchestration (`StatementUploadService`, `ValidationUtil`), fronted by `statement.upload.infrastructure.AdminController`.
+    - **`statement.search`** — statement querying (`StatementQueryService`, `AuditHelper`).
+    - **`statement.download`** — signed-link download streaming (`DownloadService`), with response-building in `statement.download.infrastructure.DownloadResponseFactory`.
+    - **`statement.signedlink`** — signed-link lifecycle and cleanup (`SignedLinkService`, `SignedLinkCleanupService`), with ports `LinkSigner` and `DownloadUrlProvider`; the `@Scheduled`/`@SchedulerLock` trigger lives in `statement.signedlink.infrastructure.SignedLinkCleanupScheduler`.
+    - **`statement.infrastructure`** — `StatementsController` (search + download endpoints) and `StatementApiMapper`.
 
-- **Service Layer** (`service` package)
-    - Core business logic for:
-        - Uploading and encrypting statements (`StatementUploadService`)
-        - Generating, persisting, and validating signed links (`SignedLinkService`)
-        - Streaming decrypted downloads (`DownloadService`)
-        - Searching and retrieving statements with pagination (`StatementQueryService`)
-        - Querying audit logs (`AuditQueryService`)
-        - Cleaning up expired/used signed links (`SignedLinkCleanupService`)
-        - Managing encrypted file storage with structured directories (`FileStorageService`)
-    - Orchestrates repositories, encryption, auditing, and external integrations
+- **`audit`** — audit trail (`AuditLog`, `AuditLogRepository`, `AuditService`, `AuditQueryService`), fronted by `audit.infrastructure.AuditController`.
 
-- **Persistence Layer** (`repository` package)
-    - Spring Data JPA repositories for entities like `Statement`, `SignedLink`, and `AuditLog`
-    - Custom queries for efficient operations (e.g. batch deletion of signed links)
+- **`infrastructure`** — genuinely shared technical concerns only: `config` (Jackson, OpenAPI, `Clock` bean), `scheduler` (ShedLock wiring), `security` (`SecurityConfig`, Keycloak role conversion, JWT resource server), `web` (`CorrelationIdFilter`, `GlobalExceptionHandler`, `RequestInfoProvider`), `logging` (`LoggingAspect`), `crypto` (`MasterKeyProvider`, `AesGcmFileCipher` implementing `FileCipher`, `HmacSha256LinkSigner` implementing `LinkSigner`), `storage` (`LocalStatementFileStore` implementing `StatementFileStore`).
 
-- **Domain / Model Layer** (`model` packages)
-    - JPA entities representing persistent objects
-    - API DTOs and mappers connecting entities to OpenAPI interfaces
+- **`shared`** — cross-feature, dependency-free values only: `RequestInfo`, `DateMapper`.
 
-- **Cross‑Cutting Concerns**
-    - **Security**: `SecurityConfig`, `SecurityEndpointsProperties`, Keycloak role conversion, JWT resource server
-    - **Logging**: `LoggingAspect` for controllers and services
-    - **Auditing**: `AuditService`, `AuditHelper` (convenience methods for common audit events), and background executor
-    - **Request context**: `RequestInfoProvider` for IP, User-Agent, and user identity
-    - **Utilities**: `SignatureUtil` (HMAC‑SHA256 signing), `ValidationUtil`, `CommonUtil`
+Ports are swappable by design: `LocalStatementFileStore` can be replaced with an S3-backed adapter, and domain code (`StatementService`, `DownloadService`) is unchanged.
 
 ---
 
@@ -243,19 +227,19 @@ Unauthorized and forbidden errors are returned as **RFC 9457 ProblemDetail** JSO
 
 #### Statement Storage
 
-- PDFs are encrypted at rest using **AES‑GCM** (`AES/GCM/NoPadding`) via `EncryptionService`:
+- PDFs are encrypted at rest using **AES‑GCM** (`AES/GCM/NoPadding`) via the `FileCipher` port, implemented by `AesGcmFileCipher`:
     - Random **12‑byte IV** generated per file
     - IV stored as prefix in the encrypted file
     - 128‑bit authentication tag ensures integrity and authenticity
 - **Master key** is provided by `MasterKeyProvider`, backed by Vault.
-- On download, `EncryptionService`:
+- On download, `AesGcmFileCipher`:
     - Reads IV prefix
     - Initialises decryption cipher
     - Streams decrypted content using `CipherInputStream`
 
 #### File Storage Structure
 
-- `FileStorageService` manages encrypted file storage with a structured directory layout:
+- `LocalStatementFileStore` (implementing the `StatementFileStore` port) manages encrypted file storage with a structured directory layout:
     - Base directory: configured via `statement.storage.base-dir` (default: `/data/files`)
     - Directory structure: `{baseDir}/statements/{accountNumberHash}/{year}/{month}/{statementId}.pdf.enc`
     - Account numbers are hashed (SHA‑256) before use in paths for privacy
@@ -268,7 +252,7 @@ Unauthorized and forbidden errors are returned as **RFC 9457 ProblemDetail** JSO
 
 #### Digests and Verification
 
-- `EncryptionService` computes `SHA-256` digests of uploaded files.
+- `Sha256Digest` (a shared, pure hashing utility) computes `SHA-256` digests of uploaded files.
 - The computed digest is compared with the client‑provided `X-Message-Digest` header to ensure integrity.
 
 ---
@@ -341,11 +325,11 @@ A `SignedLink` entity typically contains:
 
 #### Logging Aspect
 
-- `LoggingAspect` applies cross‑cutting logging to controllers and services:
-    - **Controllers** (`com.example.statementservice.controller..*`):
+- `LoggingAspect` applies cross‑cutting logging by annotation, independent of package location (so advice survives package moves):
+    - **`@RestController`‑annotated beans**:
         - INFO: entry/exit with timing
         - DEBUG: optional detailed result summaries
-    - **Services** (`com.example.statementservice.service..*`):
+    - **`@Service`‑annotated beans**:
         - DEBUG: entry with arguments and exit with result + timing
 - `safeToString` prevents large or sensitive data from overwhelming logs:
     - Special handling for `MultipartFile`, `byte[]`, `Resource`, `Optional`, and long strings
@@ -417,7 +401,7 @@ In production, these components may be deployed as separate containers or on Kub
 
 #### Extensibility
 
-- Clear separation of concerns in layered architecture
+- Clear separation of concerns via feature-first, hexagonal architecture
 - Well‑defined service and repository interfaces
 - OpenAPI specification drives consistent APIs and generated interfaces
 - Config Server and Vault simplify environment‑specific overrides without code changes

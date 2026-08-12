@@ -1,10 +1,10 @@
-package com.example.statementservice.util;
+package com.example.statementservice.statement.download.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.statementservice.exception.DecryptionFailedException;
-import com.example.statementservice.model.DownloadOutcome;
-import com.example.statementservice.service.DownloadService;
+import com.example.statementservice.statement.download.DecryptionFailedException;
+import com.example.statementservice.statement.download.DownloadOutcome;
+import com.example.statementservice.statement.download.DownloadService;
 import java.io.ByteArrayInputStream;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,7 +62,7 @@ class DownloadResponseFactoryTest {
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.INVALID_SIGNATURE, Optional.empty());
         assertThrows(
-                com.example.statementservice.exception.DownloadInvalidSignatureException.class,
+                com.example.statementservice.statement.download.DownloadInvalidSignatureException.class,
                 () -> downloadResponseFactory.build(fileName, result));
     }
 
@@ -73,7 +73,7 @@ class DownloadResponseFactoryTest {
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.LINK_EXPIRED_OR_USED, Optional.empty());
         assertThrows(
-                com.example.statementservice.exception.DownloadLinkExpiredException.class,
+                com.example.statementservice.statement.download.DownloadLinkExpiredException.class,
                 () -> downloadResponseFactory.build(fileName, result));
     }
 
@@ -95,7 +95,7 @@ class DownloadResponseFactoryTest {
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
         assertThrows(
-                com.example.statementservice.exception.DownloadFileMissingException.class,
+                com.example.statementservice.statement.download.DownloadFileMissingException.class,
                 () -> downloadResponseFactory.build(fileName, result));
     }
 

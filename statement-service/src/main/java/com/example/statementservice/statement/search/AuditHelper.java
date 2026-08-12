@@ -1,4 +1,4 @@
-package com.example.statementservice.util;
+package com.example.statementservice.statement.search;
 
 import com.example.statementservice.audit.AuditAction;
 import com.example.statementservice.audit.AuditService;

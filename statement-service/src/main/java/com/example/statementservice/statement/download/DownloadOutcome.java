@@ -1,4 +1,4 @@
-package com.example.statementservice.model;
+package com.example.statementservice.statement.download;
 
 public enum DownloadOutcome {
     OK,

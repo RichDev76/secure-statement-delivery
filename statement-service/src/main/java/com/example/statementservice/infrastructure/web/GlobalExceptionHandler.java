@@ -2,13 +2,13 @@ package com.example.statementservice.infrastructure.web;
 
 import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
 
-import com.example.statementservice.exception.DecryptionFailedException;
-import com.example.statementservice.exception.DownloadFileMissingException;
-import com.example.statementservice.exception.DownloadInvalidSignatureException;
-import com.example.statementservice.exception.DownloadLinkExpiredException;
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.statement.StatementNotFoundException;
 import com.example.statementservice.statement.StatementUploadException;
+import com.example.statementservice.statement.download.DecryptionFailedException;
+import com.example.statementservice.statement.download.DownloadFileMissingException;
+import com.example.statementservice.statement.download.DownloadInvalidSignatureException;
+import com.example.statementservice.statement.download.DownloadLinkExpiredException;
 import com.example.statementservice.statement.signedlink.SignatureException;
 import com.example.statementservice.statement.upload.DigestComputationException;
 import com.example.statementservice.statement.upload.DigestMismatchException;

@@ -1,19 +1,18 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement.download;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.example.statementservice.audit.AuditAction;
 import com.example.statementservice.audit.AuditService;
-import com.example.statementservice.model.DownloadOutcome;
 import com.example.statementservice.statement.Statement;
-import com.example.statementservice.statement.StatementRepository;
 import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
@@ -38,9 +37,6 @@ class DownloadServiceTest {
 
     @Mock
     private SignedLinkService signedLinkService;
-
-    @Mock
-    private StatementRepository statementRepository;
 
     @Mock
     private StatementService statementService;
@@ -96,7 +92,7 @@ class DownloadServiceTest {
 
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
-        when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
         when(statementService.fileExists(testStatement)).thenReturn(true);
 
         var mockStream = new ByteArrayInputStream("decrypted content".getBytes());
@@ -111,7 +107,7 @@ class DownloadServiceTest {
         assertThat(result.stream().get()).isEqualTo(mockStream);
 
         verify(signedLinkService).validateAndConsume(testToken, testExpires);
-        verify(statementRepository).findById(testStatementId);
+        verify(statementService).findStatementById(testStatementId);
         verify(statementService).openDecryptedFile(testStatement);
         verify(auditService)
                 .record(
@@ -147,7 +143,7 @@ class DownloadServiceTest {
                         isNull(),
                         eq(testPerformedBy),
                         any(Map.class));
-        verifyNoInteractions(statementRepository, statementService);
+        verifyNoInteractions(statementService);
     }
 
     @Test
@@ -156,7 +152,7 @@ class DownloadServiceTest {
 
         var expiredResult = LinkValidationResult.expired(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(expiredResult);
-        when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
 
         var result = downloadService.validateAndStreamDetailed(
                 testToken, testExpires, testClientIp, testUserAgent, testPerformedBy);
@@ -182,7 +178,7 @@ class DownloadServiceTest {
 
         var usedResult = LinkValidationResult.used(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(usedResult);
-        when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
 
         var result = downloadService.validateAndStreamDetailed(
                 testToken, testExpires, testClientIp, testUserAgent, testPerformedBy);
@@ -229,11 +225,11 @@ class DownloadServiceTest {
 
     @Test
     @DisplayName("validateAndStreamDetailed - should return STATEMENT_NOT_FOUND when statement not in database")
-    void validateAndStreamDetailed_StatementNotFound() {
+    void validateAndStreamDetailed_StatementNotFound() throws Exception {
 
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
-        when(statementRepository.findById(testStatementId)).thenReturn(Optional.empty());
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.empty());
 
         var result = downloadService.validateAndStreamDetailed(
                 testToken, testExpires, testClientIp, testUserAgent, testPerformedBy);
@@ -243,7 +239,9 @@ class DownloadServiceTest {
         assertThat(result.stream()).isEmpty();
 
         verify(signedLinkService).validateAndConsume(testToken, testExpires);
-        verify(statementRepository).findById(testStatementId);
+        verify(statementService).findStatementById(testStatementId);
+        verify(statementService, never()).fileExists(any());
+        verify(statementService, never()).openDecryptedFile(any());
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -252,7 +250,6 @@ class DownloadServiceTest {
                         eq(testLinkId),
                         eq(testPerformedBy),
                         any(Map.class));
-        verifyNoInteractions(statementService);
     }
 
     @Test
@@ -261,7 +258,7 @@ class DownloadServiceTest {
 
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
-        when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
         when(statementService.fileExists(testStatement)).thenReturn(false);
 
         var result = downloadService.validateAndStreamDetailed(
@@ -272,7 +269,7 @@ class DownloadServiceTest {
         assertThat(result.stream()).isEmpty();
 
         verify(signedLinkService).validateAndConsume(testToken, testExpires);
-        verify(statementRepository).findById(testStatementId);
+        verify(statementService).findStatementById(testStatementId);
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -289,7 +286,7 @@ class DownloadServiceTest {
 
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
-        when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
         when(statementService.fileExists(testStatement)).thenReturn(true);
         when(statementService.openDecryptedFile(testStatement)).thenThrow(new RuntimeException("Decryption error"));
 
@@ -301,7 +298,7 @@ class DownloadServiceTest {
         assertThat(result.stream()).isEmpty();
 
         verify(signedLinkService).validateAndConsume(testToken, testExpires);
-        verify(statementRepository).findById(testStatementId);
+        verify(statementService).findStatementById(testStatementId);
         verify(statementService).openDecryptedFile(testStatement);
         verify(auditService)
                 .record(
@@ -319,7 +316,7 @@ class DownloadServiceTest {
 
         var validResult = LinkValidationResult.valid(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(validResult);
-        when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
         when(statementService.fileExists(testStatement)).thenReturn(true);
         var mockStream = new ByteArrayInputStream("decrypted content".getBytes());
         when(statementService.openDecryptedFile(testStatement)).thenReturn(mockStream);
@@ -365,9 +362,9 @@ class DownloadServiceTest {
 
         var expiredResult = LinkValidationResult.expired(testLink);
         when(signedLinkService.validateAndConsume(testToken, testExpires)).thenReturn(expiredResult);
-        when(statementRepository.findById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
         downloadService.validateAndStreamDetailed(testToken, testExpires, testClientIp, testUserAgent, testPerformedBy);
-        verify(statementRepository).findById(testStatementId);
+        verify(statementService).findStatementById(testStatementId);
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),

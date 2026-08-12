@@ -1,4 +1,4 @@
-package com.example.statementservice.controller;
+package com.example.statementservice.statement.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,16 +11,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.statementservice.infrastructure.web.RequestInfoProvider;
-import com.example.statementservice.model.DownloadOutcome;
 import com.example.statementservice.model.api.StatementSummary;
-import com.example.statementservice.model.api.StatementSummaryPage;
-import com.example.statementservice.service.DownloadService;
-import com.example.statementservice.service.StatementQueryService;
 import com.example.statementservice.shared.RequestInfo;
+import com.example.statementservice.statement.StatementDto;
 import com.example.statementservice.statement.StatementNotFoundException;
-import com.example.statementservice.util.DownloadResponseFactory;
+import com.example.statementservice.statement.download.DownloadOutcome;
+import com.example.statementservice.statement.download.DownloadService;
+import com.example.statementservice.statement.download.infrastructure.DownloadResponseFactory;
+import com.example.statementservice.statement.search.StatementQueryService;
 import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +32,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -46,6 +49,9 @@ class StatementsControllerTest {
     private StatementQueryService statementQueryService;
 
     @Mock
+    private StatementApiMapper statementApiMapper;
+
+    @Mock
     private RequestInfoProvider requestInfoProvider;
 
     @Mock
@@ -56,24 +62,21 @@ class StatementsControllerTest {
 
     private RequestInfo testRequestInfo;
     private UUID testStatementId;
+    private StatementDto testStatementDto;
     private StatementSummary testStatementSummary;
-    private StatementSummaryPage testStatementSummaryPage;
 
     @BeforeEach
     void setUp() {
         testRequestInfo = new RequestInfo("192.168.1.1", "Mozilla/5.0", "testUser");
         testStatementId = UUID.randomUUID();
 
+        testStatementDto = new StatementDto();
+        testStatementDto.setStatementId(testStatementId);
+        testStatementDto.setAccountNumber("123456789");
+
         testStatementSummary = new StatementSummary();
         testStatementSummary.setStatementId(testStatementId);
         testStatementSummary.setAccountNumber("123456789");
-
-        testStatementSummaryPage = new StatementSummaryPage();
-        testStatementSummaryPage.setContent(new ArrayList<>());
-        testStatementSummaryPage.setPage(0);
-        testStatementSummaryPage.setSize(50);
-        testStatementSummaryPage.setTotalElements(0L);
-        testStatementSummaryPage.setTotalPages(0);
     }
 
     @Test
@@ -230,8 +233,10 @@ class StatementsControllerTest {
     @DisplayName("getDownloadSignedLinkById - should return OK with statement summary when found")
     void getDownloadSignedLinkById_Found() {
 
-        when(statementQueryService.getStatementSummaryWithSignedDownloadLinkById(testStatementId))
-                .thenReturn(Optional.of(testStatementSummary));
+        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
+        when(statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo))
+                .thenReturn(Optional.of(testStatementDto));
+        when(statementApiMapper.toApi(testStatementDto)).thenReturn(testStatementSummary);
 
         ResponseEntity<StatementSummary> response =
                 statementsController.getDownloadSignedLinkById(testStatementId, null);
@@ -242,21 +247,22 @@ class StatementsControllerTest {
         assertThat(response.getBody().getStatementId()).isEqualTo(testStatementId);
         assertThat(response.getBody().getAccountNumber()).isEqualTo("123456789");
 
-        verify(statementQueryService).getStatementSummaryWithSignedDownloadLinkById(testStatementId);
+        verify(statementQueryService).getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
     }
 
     @Test
     @DisplayName("getDownloadSignedLinkById - should throw StatementNotFoundException when not found")
     void getDownloadSignedLinkById_NotFound() {
 
-        when(statementQueryService.getStatementSummaryWithSignedDownloadLinkById(testStatementId))
+        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
+        when(statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> statementsController.getDownloadSignedLinkById(testStatementId, null))
                 .isInstanceOf(StatementNotFoundException.class)
                 .hasMessageContaining("Statement(s) not found for Id: " + testStatementId);
 
-        verify(statementQueryService).getStatementSummaryWithSignedDownloadLinkById(testStatementId);
+        verify(statementQueryService).getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
     }
 
     @Test
@@ -264,31 +270,40 @@ class StatementsControllerTest {
     void getDownloadSignedLinkById_PassesCorrectId() {
 
         var specificId = UUID.randomUUID();
+        var dto = new StatementDto();
+        dto.setStatementId(specificId);
         var summary = new StatementSummary();
         summary.setStatementId(specificId);
 
-        when(statementQueryService.getStatementSummaryWithSignedDownloadLinkById(specificId))
-                .thenReturn(Optional.of(summary));
+        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
+        when(statementQueryService.getStatementWithSignedDownloadLinkById(specificId, testRequestInfo))
+                .thenReturn(Optional.of(dto));
+        when(statementApiMapper.toApi(dto)).thenReturn(summary);
 
         var response = statementsController.getDownloadSignedLinkById(specificId, null);
 
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getStatementId()).isEqualTo(specificId);
-        verify(statementQueryService).getStatementSummaryWithSignedDownloadLinkById(eq(specificId));
+        verify(statementQueryService).getStatementWithSignedDownloadLinkById(eq(specificId), eq(testRequestInfo));
     }
 
     @Test
     @DisplayName("getDownloadSignedLinkById - should propagate service exceptions")
     void getDownloadSignedLinkById_ServiceException() {
 
-        when(statementQueryService.getStatementSummaryWithSignedDownloadLinkById(any()))
+        when(requestInfoProvider.get()).thenReturn(testRequestInfo);
+        when(statementQueryService.getStatementWithSignedDownloadLinkById(any(), any()))
                 .thenThrow(new RuntimeException("Service error"));
 
         assertThatThrownBy(() -> statementsController.getDownloadSignedLinkById(testStatementId, null))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Service error");
 
-        verify(statementQueryService).getStatementSummaryWithSignedDownloadLinkById(testStatementId);
+        verify(statementQueryService).getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
+    }
+
+    private Page<StatementDto> emptyPage() {
+        return new PageImpl<>(List.of(), PageRequest.of(0, 50), 0);
     }
 
     @Test
@@ -299,7 +314,8 @@ class StatementsControllerTest {
         var startDate = "2024-01-01";
         var endDate = "2024-01-31";
         when(statementQueryService.searchPaged(accountNumber, startDate, endDate, null, null, null))
-                .thenReturn(testStatementSummaryPage);
+                .thenReturn(emptyPage());
+        when(statementApiMapper.toBases(List.of())).thenReturn(List.of());
 
         var response = statementsController.searchStatements(accountNumber, startDate, endDate, null, null, null, null);
 
@@ -318,7 +334,8 @@ class StatementsControllerTest {
         var page = 1;
         var size = 25;
         when(statementQueryService.searchPaged(accountNumber, startDate, endDate, page, size, null))
-                .thenReturn(testStatementSummaryPage);
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(page, size), 0));
+        when(statementApiMapper.toBases(List.of())).thenReturn(List.of());
 
         statementsController.searchStatements(accountNumber, startDate, endDate, null, page, size, null);
 
@@ -335,7 +352,8 @@ class StatementsControllerTest {
         var endDate = "2024-01-31";
         var sort = "uploadedAt:desc";
         when(statementQueryService.searchPaged(accountNumber, startDate, endDate, null, null, sort))
-                .thenReturn(testStatementSummaryPage);
+                .thenReturn(emptyPage());
+        when(statementApiMapper.toBases(List.of())).thenReturn(List.of());
 
         statementsController.searchStatements(accountNumber, startDate, endDate, null, null, null, sort);
 
@@ -355,7 +373,8 @@ class StatementsControllerTest {
         var sort = "statementDate:asc";
 
         when(statementQueryService.searchPaged(accountNumber, startDate, endDate, page, size, sort))
-                .thenReturn(testStatementSummaryPage);
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(page, size), 0));
+        when(statementApiMapper.toBases(List.of())).thenReturn(List.of());
 
         statementsController.searchStatements(accountNumber, startDate, endDate, null, page, size, sort);
 
@@ -388,12 +407,10 @@ class StatementsControllerTest {
         var accountNumber = "123456789";
         var startDate = "2024-01-01";
         var endDate = "2024-01-31";
-        var emptyPage = new StatementSummaryPage();
-        emptyPage.setContent(new ArrayList<>());
-        emptyPage.setTotalElements(0L);
 
         when(statementQueryService.searchPaged(accountNumber, startDate, endDate, null, null, null))
-                .thenReturn(emptyPage);
+                .thenReturn(emptyPage());
+        when(statementApiMapper.toBases(List.of())).thenReturn(List.of());
 
         var response = statementsController.searchStatements(accountNumber, startDate, endDate, null, null, null, null);
 
@@ -411,13 +428,11 @@ class StatementsControllerTest {
         var accountNumber = "123456789";
         var startDate = "2024-01-01";
         var endDate = "2024-01-31";
-        var largePage = new StatementSummaryPage();
-        largePage.setContent(new ArrayList<>());
-        largePage.setTotalElements(1000L);
-        largePage.setTotalPages(20);
+        var largePage = new PageImpl<StatementDto>(List.of(), PageRequest.of(0, 50), 1000L);
 
         when(statementQueryService.searchPaged(accountNumber, startDate, endDate, null, null, null))
                 .thenReturn(largePage);
+        when(statementApiMapper.toBases(List.of())).thenReturn(List.of());
 
         var response = statementsController.searchStatements(accountNumber, startDate, endDate, null, null, null, null);
 

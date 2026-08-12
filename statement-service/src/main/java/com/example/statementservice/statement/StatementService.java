@@ -68,6 +68,10 @@ public class StatementService {
                 .orElseThrow(() -> new StatementNotFoundException("Statement not found for id: " + id));
     }
 
+    public Optional<Statement> findStatementById(UUID id) {
+        return this.statementRepository.findStatementById(id);
+    }
+
     public Page<Statement> getStatementsByAccountNumber(String accountNumber, Pageable pageable) {
         return statementRepository.findByAccountNumber(accountNumber, pageable);
     }

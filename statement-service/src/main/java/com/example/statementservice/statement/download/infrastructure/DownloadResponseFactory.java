@@ -1,11 +1,11 @@
-package com.example.statementservice.util;
+package com.example.statementservice.statement.download.infrastructure;
 
-import com.example.statementservice.exception.DecryptionFailedException;
-import com.example.statementservice.exception.DownloadFileMissingException;
-import com.example.statementservice.exception.DownloadInvalidSignatureException;
-import com.example.statementservice.exception.DownloadLinkExpiredException;
-import com.example.statementservice.service.DownloadService;
 import com.example.statementservice.statement.StatementNotFoundException;
+import com.example.statementservice.statement.download.DecryptionFailedException;
+import com.example.statementservice.statement.download.DownloadFileMissingException;
+import com.example.statementservice.statement.download.DownloadInvalidSignatureException;
+import com.example.statementservice.statement.download.DownloadLinkExpiredException;
+import com.example.statementservice.statement.download.DownloadService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;

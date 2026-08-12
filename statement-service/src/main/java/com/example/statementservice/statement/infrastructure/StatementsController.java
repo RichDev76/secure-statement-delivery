@@ -1,13 +1,13 @@
-package com.example.statementservice.controller;
+package com.example.statementservice.statement.infrastructure;
 
 import com.example.statementservice.api.StatementsApi;
 import com.example.statementservice.infrastructure.web.RequestInfoProvider;
 import com.example.statementservice.model.api.StatementSummary;
 import com.example.statementservice.model.api.StatementSummaryPage;
-import com.example.statementservice.service.DownloadService;
-import com.example.statementservice.service.StatementQueryService;
 import com.example.statementservice.statement.StatementNotFoundException;
-import com.example.statementservice.util.DownloadResponseFactory;
+import com.example.statementservice.statement.download.DownloadService;
+import com.example.statementservice.statement.download.infrastructure.DownloadResponseFactory;
+import com.example.statementservice.statement.search.StatementQueryService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +26,7 @@ public class StatementsController implements StatementsApi {
 
     private final DownloadService downloadService;
     private final StatementQueryService statementQueryService;
+    private final StatementApiMapper statementApiMapper;
     private final RequestInfoProvider requestInfoProvider;
     private final DownloadResponseFactory downloadResponseFactory;
 
@@ -45,8 +46,10 @@ public class StatementsController implements StatementsApi {
 
     @Override
     public ResponseEntity<StatementSummary> getDownloadSignedLinkById(UUID statementId, String xCorrelationId) {
+        var requestInfo = requestInfoProvider.get();
         return statementQueryService
-                .getStatementSummaryWithSignedDownloadLinkById(statementId)
+                .getStatementWithSignedDownloadLinkById(statementId, requestInfo)
+                .map(statementApiMapper::toApi)
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new StatementNotFoundException(
                         String.format("Statement(s) not found for Id: %s", statementId)));
@@ -62,7 +65,13 @@ public class StatementsController implements StatementsApi {
             Integer size,
             String sort) {
 
-        var pageResult = statementQueryService.searchPaged(accountNumber, startDate, endDate, page, size, sort);
-        return ResponseEntity.ok(pageResult);
+        var dtoPage = statementQueryService.searchPaged(accountNumber, startDate, endDate, page, size, sort);
+        var apiPage = new StatementSummaryPage();
+        apiPage.page(dtoPage.getNumber());
+        apiPage.size(dtoPage.getSize());
+        apiPage.setContent(statementApiMapper.toBases(dtoPage.getContent()));
+        apiPage.totalElements(dtoPage.getTotalElements());
+        apiPage.totalPages(dtoPage.getTotalPages());
+        return ResponseEntity.ok(apiPage);
     }
 }

@@ -1,4 +1,4 @@
-package com.example.statementservice.mapper;
+package com.example.statementservice.statement.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

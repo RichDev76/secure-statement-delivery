@@ -1,16 +1,10 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement.search;
 
-import com.example.statementservice.exception.InvalidInputException;
-import com.example.statementservice.infrastructure.web.RequestInfoProvider;
-import com.example.statementservice.mapper.StatementApiMapper;
-import com.example.statementservice.model.api.StatementSummary;
-import com.example.statementservice.model.api.StatementSummaryPage;
 import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.statement.StatementDto;
 import com.example.statementservice.statement.StatementNotFoundException;
 import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
-import com.example.statementservice.util.AuditHelper;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +13,8 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -28,20 +24,16 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class StatementQueryService {
 
-    public static final String SYSTEM_USER = "system";
-    private final StatementService statementService;
-    private final StatementApiMapper statementApiMapper;
-    private final SignedLinkService signedLinkService;
-    private final AuditHelper auditHelper;
-    private final RequestInfoProvider requestInfoProvider;
-
     private static final int DEFAULT_LIMIT = 50;
     private static final int DEFAULT_OFFSET = 0;
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 50;
 
-    public Optional<StatementSummary> getStatementSummaryWithSignedDownloadLinkById(UUID statementId) {
-        var requestInfo = getRequestInfo();
+    private final StatementService statementService;
+    private final SignedLinkService signedLinkService;
+    private final AuditHelper auditHelper;
+
+    public Optional<StatementDto> getStatementWithSignedDownloadLinkById(UUID statementId, RequestInfo requestInfo) {
         var performedBy = requestInfo.getPerformedBy();
         var clientIp = requestInfo.getClientIp();
         var userAgent = requestInfo.getUserAgent();
@@ -64,7 +56,7 @@ public class StatementQueryService {
                         statementId, accountNumber, performedBy, linkException, clientIp, userAgent);
             }
 
-            return Optional.of(statementApiMapper.toApi(dto));
+            return Optional.of(dto);
 
         } catch (StatementNotFoundException e) {
             auditHelper.recordStatementNotFound(statementId, performedBy, clientIp, userAgent);
@@ -75,16 +67,7 @@ public class StatementQueryService {
         }
     }
 
-    private RequestInfo getRequestInfo() {
-        try {
-            return requestInfoProvider.get();
-        } catch (Exception e) {
-            log.warn("Failed to get request info from context", e);
-            return new RequestInfo(null, null, SYSTEM_USER);
-        }
-    }
-
-    public List<StatementSummary> searchByAccount(String accountNumber, Integer limit, Integer offset) {
+    public List<StatementDto> searchByAccount(String accountNumber, Integer limit, Integer offset) {
         int effectiveLimit = (limit != null) ? limit : DEFAULT_LIMIT;
         int effectiveOffset = (offset != null) ? offset : DEFAULT_OFFSET;
 
@@ -92,29 +75,25 @@ public class StatementQueryService {
             var statements = this.statementService.getStatementsDtoByAccountNumber(accountNumber);
             int fromIndex = Math.min(effectiveOffset, statements.size());
             int toIndex = Math.min(fromIndex + effectiveLimit, statements.size());
-            var page = statements.subList(fromIndex, toIndex);
-            return this.statementApiMapper.toApis(page);
+            return new ArrayList<>(statements.subList(fromIndex, toIndex));
         } catch (StatementNotFoundException e) {
             return new ArrayList<>();
         }
     }
 
-    public List<StatementSummary> searchByAccountAndDate(String accountNumber, String date) {
+    public List<StatementDto> searchByAccountAndDate(String accountNumber, String date) {
         var parsedDate = LocalDate.parse(date);
-        Optional<StatementDto> s =
-                this.statementService.getStatementDtoByAccountNumberAndStatementDate(accountNumber, parsedDate);
-        return s.map(v -> List.of(this.statementApiMapper.toApi(v))).orElseGet(List::of);
+        return this.statementService
+                .getStatementDtoByAccountNumberAndStatementDate(accountNumber, parsedDate)
+                .map(List::of)
+                .orElseGet(List::of);
     }
 
-    public StatementSummaryPage searchPaged(
+    public Page<StatementDto> searchPaged(
             String accountNumber, String startDate, String endDate, Integer page, Integer size, String sort) {
 
         int effectivePage = (page != null) ? page : DEFAULT_PAGE;
         int effectiveSize = (size != null) ? size : DEFAULT_SIZE;
-
-        var result = new StatementSummaryPage();
-        result.page(effectivePage);
-        result.size(effectiveSize);
 
         var sortOrder = parseSort(sort);
 
@@ -125,15 +104,11 @@ public class StatementQueryService {
             throw new InvalidInputException("startDate cannot be after endDate");
         }
 
+        var pageRequest = PageRequest.of(effectivePage, effectiveSize, sortOrder);
         var statements = this.statementService.getStatementsByAccountNumberAndDateRange(
-                accountNumber, parsedStartDate, parsedEndDate, PageRequest.of(effectivePage, effectiveSize, sortOrder));
-        var content = statements
-                .map(stmt -> statementApiMapper.toBase(statementService.toDto(stmt)))
-                .getContent();
-        result.setContent(content);
-        result.totalElements(statements.getTotalElements());
-        result.totalPages(statements.getTotalPages());
-        return result;
+                accountNumber, parsedStartDate, parsedEndDate, pageRequest);
+        var content = statements.map(statementService::toDto).getContent();
+        return new PageImpl<>(content, pageRequest, statements.getTotalElements());
     }
 
     private Sort parseSort(String sort) {

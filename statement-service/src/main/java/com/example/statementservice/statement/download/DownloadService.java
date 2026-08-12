@@ -1,11 +1,8 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement.download;
 
 import com.example.statementservice.audit.AuditAction;
 import com.example.statementservice.audit.AuditService;
-import com.example.statementservice.model.DownloadFailureReason;
-import com.example.statementservice.model.DownloadOutcome;
 import com.example.statementservice.statement.Statement;
-import com.example.statementservice.statement.StatementRepository;
 import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
@@ -32,7 +29,6 @@ public class DownloadService {
     private static final String AUDIT_UNKNOWN = "unknown";
 
     private final SignedLinkService signedLinkService;
-    private final StatementRepository statementRepository;
     private final StatementService statementService;
     private final AuditService auditService;
 
@@ -50,7 +46,7 @@ public class DownloadService {
 
         // Step 2: Fetch statement
         var link = result.getLink();
-        Optional<Statement> statementOpt = statementRepository.findById(link.getStatementId());
+        Optional<Statement> statementOpt = statementService.findStatementById(link.getStatementId());
         if (statementOpt.isEmpty()) {
             handleMissingStatement(link, token, clientIp, userAgent, performedBy);
             return new DownloadStreamResult(DownloadOutcome.STATEMENT_NOT_FOUND, Optional.empty());
@@ -192,8 +188,8 @@ public class DownloadService {
 
     private String fetchAccountNumber(UUID statementId) {
         if (statementId == null) return null;
-        return statementRepository
-                .findById(statementId)
+        return statementService
+                .findStatementById(statementId)
                 .map(Statement::getAccountNumber)
                 .orElse(null);
     }

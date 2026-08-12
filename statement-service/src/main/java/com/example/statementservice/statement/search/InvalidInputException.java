@@ -1,4 +1,4 @@
-package com.example.statementservice.exception;
+package com.example.statementservice.statement.search;
 
 /**
  * Thrown when the provided date is missing or not in the expected format.

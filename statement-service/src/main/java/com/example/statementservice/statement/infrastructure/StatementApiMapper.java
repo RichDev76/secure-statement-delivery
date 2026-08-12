@@ -1,4 +1,4 @@
-package com.example.statementservice.mapper;
+package com.example.statementservice.statement.infrastructure;
 
 import com.example.statementservice.model.api.BaseStatement;
 import com.example.statementservice.model.api.StatementSummary;

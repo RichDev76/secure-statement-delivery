@@ -1,6 +1,7 @@
 package com.example.statementservice.statement;
 
 import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.io.IOException;
 import java.io.InputStream;

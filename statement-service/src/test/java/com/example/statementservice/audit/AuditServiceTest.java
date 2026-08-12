@@ -7,6 +7,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -20,6 +24,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +32,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuditService Unit Tests")
@@ -46,6 +52,10 @@ class AuditServiceTest {
     private String testPerformedBy;
     private Map<String, Object> testDetails;
 
+    private ListAppender<ILoggingEvent> appender;
+    private Logger auditServiceLogger;
+    private Level originalLevel;
+
     @BeforeEach
     void setUp() {
         auditService = new AuditService(
@@ -61,6 +71,19 @@ class AuditServiceTest {
         testDetails = new HashMap<>();
         testDetails.put("ip", "192.168.1.1");
         testDetails.put("userAgent", "Mozilla/5.0");
+
+        auditServiceLogger = (Logger) LoggerFactory.getLogger(AuditService.class);
+        originalLevel = auditServiceLogger.getLevel();
+        auditServiceLogger.setLevel(Level.DEBUG);
+        appender = new ListAppender<>();
+        appender.start();
+        auditServiceLogger.addAppender(appender);
+    }
+
+    @AfterEach
+    void detachAppender() {
+        auditServiceLogger.detachAppender(appender);
+        auditServiceLogger.setLevel(originalLevel);
     }
 
     @Test
@@ -160,6 +183,28 @@ class AuditServiceTest {
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
             verify(auditLogRepository).save(any(AuditLog.class));
         });
+    }
+
+    @Test
+    void
+            GivenSaveFails_WhenRecording_ThenFailureLogDoesNotContainAccountNumberOrDetailsButDoesContainIdActionAndStatementId() {
+        // Given
+        when(auditLogRepository.save(any(AuditLog.class))).thenThrow(new RuntimeException("Database error"));
+
+        // When
+        auditService.record(
+                testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
+
+        // Then
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> assertThat(message)
+                        .contains("Failed to save audit log")
+                        .contains(testAction)
+                        .contains(testStatementId.toString())
+                        .doesNotContain(testAccountNumber)
+                        .doesNotContain("192.168.1.1")
+                        .doesNotContain("Mozilla/5.0")));
     }
 
     @Test

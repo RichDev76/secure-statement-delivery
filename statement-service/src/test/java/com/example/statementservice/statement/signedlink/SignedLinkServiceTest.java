@@ -1,6 +1,7 @@
 package com.example.statementservice.statement.signedlink;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -9,12 +10,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +30,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,6 +59,10 @@ class SignedLinkServiceTest {
     private String testCreatedBy;
     private String testBasePath;
 
+    private ListAppender<ILoggingEvent> appender;
+    private Logger signedLinkServiceLogger;
+    private Level originalLevel;
+
     @BeforeEach
     void setUp() {
         testStatementId = UUID.randomUUID();
@@ -60,6 +71,19 @@ class SignedLinkServiceTest {
         testBasePath = "/api/v1/statements/download/test.pdf";
 
         ReflectionTestUtils.setField(signedLinkService, "defaultExpirySeconds", 900L);
+
+        signedLinkServiceLogger = (Logger) LoggerFactory.getLogger(SignedLinkService.class);
+        originalLevel = signedLinkServiceLogger.getLevel();
+        signedLinkServiceLogger.setLevel(Level.DEBUG);
+        appender = new ListAppender<>();
+        appender.start();
+        signedLinkServiceLogger.addAppender(appender);
+    }
+
+    @AfterEach
+    void detachAppender() {
+        signedLinkServiceLogger.detachAppender(appender);
+        signedLinkServiceLogger.setLevel(originalLevel);
     }
 
     @Test
@@ -262,6 +286,22 @@ class SignedLinkServiceTest {
         var result = signedLinkService.validateAndConsume(testToken, null);
         assertThat(result.isValid()).isFalse();
         assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+    }
+
+    @Test
+    void GivenUriConstructionFails_WhenBuildingSignedDownloadLink_ThenExceptionPropagatesAndIsLoggedAtError() {
+        // Given: basePath alone is valid, but the assembled URI (basePath + signature) is not -
+        // this is what distinguishes "propagates" from the old silent-fallback-to-basePath behavior.
+        var link = createTestLink(true, false, OffsetDateTime.now().plusMinutes(10));
+        link.setToken("not a valid uri token");
+
+        // When / Then
+        assertThatThrownBy(() -> signedLinkService.buildSignedDownloadLink(link, testBasePath))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> assertThat(message).contains("Failed to build signed download link"));
     }
 
     private SignedLink createTestLink(boolean singleUse, boolean used, OffsetDateTime expiresAt) {

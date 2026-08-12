@@ -31,7 +31,12 @@ public class AuditService {
             try {
                 auditLogRepository.save(auditLog);
             } catch (Exception e) {
-                log.error("Failed to save audit log: {}", auditLog, e);
+                log.error(
+                        "Failed to save audit log: id={}, action={}, statementId={}",
+                        auditLog.getId(),
+                        auditLog.getAction(),
+                        auditLog.getStatementId(),
+                        e);
             }
         });
     }

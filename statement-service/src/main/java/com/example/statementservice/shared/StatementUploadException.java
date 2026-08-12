@@ -1,4 +1,4 @@
-package com.example.statementservice.statement;
+package com.example.statementservice.shared;
 
 /**
  * Thrown when the service fails to upload and persist a statement due to IO/crypto/persistence errors.

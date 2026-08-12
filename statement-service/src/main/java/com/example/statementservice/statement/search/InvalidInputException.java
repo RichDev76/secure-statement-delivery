@@ -1,7 +1,8 @@
 package com.example.statementservice.statement.search;
 
 /**
- * Thrown when the provided date is missing or not in the expected format.
+ * Thrown when search parameters are individually valid but mutually inconsistent (e.g. a date range
+ * where startDate is after endDate).
  */
 public class InvalidInputException extends RuntimeException {
     public InvalidInputException(String message) {

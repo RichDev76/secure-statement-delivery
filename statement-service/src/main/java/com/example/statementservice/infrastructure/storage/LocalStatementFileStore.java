@@ -1,8 +1,8 @@
 package com.example.statementservice.infrastructure.storage;
 
 import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.StatementFileStore;
-import com.example.statementservice.statement.StatementUploadException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -12,9 +12,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class LocalStatementFileStore implements StatementFileStore {
 
@@ -53,7 +55,8 @@ public class LocalStatementFileStore implements StatementFileStore {
                 new File(new File(new File(baseDir), STATEMENTS_FOLDER), accountNumberHash),
                 new File(year, month).getPath());
         if (!directory.exists() && !directory.mkdirs()) {
-            throw new StatementUploadException("Failed to create storage directory: " + directory.getAbsolutePath());
+            log.error("Failed to create storage directory: {}", directory.getAbsolutePath());
+            throw new StatementUploadException("Failed to create storage directory");
         }
         return directory;
     }

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementDto;
@@ -16,7 +17,6 @@ import com.example.statementservice.statement.signedlink.SignedLink;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -201,9 +201,9 @@ class StatementQueryServiceTest {
     }
 
     @Test
-    void GivenMalformedDate_WhenSearchingByAccountAndDate_ThenDateTimeParseExceptionIsThrown() {
+    void GivenMalformedDate_WhenSearchingByAccountAndDate_ThenInvalidDateExceptionIsThrown() {
         assertThatThrownBy(() -> statementQueryService.searchByAccountAndDate(testAccountNumber, "invalid-date"))
-                .isInstanceOf(DateTimeParseException.class);
+                .isInstanceOf(InvalidDateException.class);
     }
 
     @Test
@@ -274,17 +274,17 @@ class StatementQueryServiceTest {
     }
 
     @Test
-    void GivenMalformedStartDate_WhenSearchingPaged_ThenDateTimeParseExceptionIsThrown() {
+    void GivenMalformedStartDate_WhenSearchingPaged_ThenInvalidDateExceptionIsThrown() {
         assertThatThrownBy(() ->
                         statementQueryService.searchPaged(testAccountNumber, "invalid-date", "2024-01-31", 0, 50, null))
-                .isInstanceOf(DateTimeParseException.class);
+                .isInstanceOf(InvalidDateException.class);
     }
 
     @Test
-    void GivenMalformedEndDate_WhenSearchingPaged_ThenDateTimeParseExceptionIsThrown() {
+    void GivenMalformedEndDate_WhenSearchingPaged_ThenInvalidDateExceptionIsThrown() {
         assertThatThrownBy(() ->
                         statementQueryService.searchPaged(testAccountNumber, "2024-01-01", "invalid-date", 0, 50, null))
-                .isInstanceOf(DateTimeParseException.class);
+                .isInstanceOf(InvalidDateException.class);
     }
 
     @Test

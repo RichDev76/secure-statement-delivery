@@ -8,21 +8,13 @@ import com.example.statementservice.shared.DateMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("AuditApiMapper Tests")
 class AuditApiMapperTest {
 
-    private final AuditApiMapper auditApiMapper = Mappers.getMapper(AuditApiMapper.class);
-
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(auditApiMapper, "dateMapper", new DateMapper());
-    }
+    private final AuditApiMapper auditApiMapper = new AuditApiMapperImpl(new DateMapper());
 
     @Test
     @DisplayName("toApi - should map all fields from DTO to API model")

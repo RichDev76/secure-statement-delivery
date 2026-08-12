@@ -5,12 +5,14 @@ import com.example.statementservice.model.api.StatementSummary;
 import com.example.statementservice.shared.DateMapper;
 import com.example.statementservice.statement.StatementDto;
 import java.util.List;
+import org.mapstruct.InjectionStrategy;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
 
 @Mapper(
         componentModel = "spring",
+        injectionStrategy = InjectionStrategy.CONSTRUCTOR,
         uses = {DateMapper.class})
 public interface StatementApiMapper {
 

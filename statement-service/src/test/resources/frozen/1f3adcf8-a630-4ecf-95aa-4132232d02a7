@@ -1,3 +1,0 @@
-Field <com.example.statementservice.audit.infrastructure.AuditApiMapperImpl.dateMapper> is annotated with @Autowired in (AuditApiMapperImpl.java:0)
-Field <com.example.statementservice.statement.infrastructure.StatementApiMapperImpl.dateMapper> is annotated with @Autowired in (StatementApiMapperImpl.java:0)
-Field <com.example.statementservice.statement.upload.infrastructure.UploadResponseApiMapperImpl.dateMapper> is annotated with @Autowired in (UploadResponseApiMapperImpl.java:0)

@@ -1,9 +1,0 @@
-#
-#Tue Aug 11 16:53:47 SAST 2026
-classes\ that\ are\ annotated\ with\ @RestController\ should\ reside\ in\ a\ package\ '..infrastructure..'=b3eb3de9-a8d7-4114-81a0-1da05553c2a4
-no\ classes\ that\ reside\ in\ a\ package\ 'com.example.statementservice.shared..'\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ 'com.example.statementservice..'\ and\ not\ reside\ in\ a\ package\ 'com.example.statementservice.shared..'=8bcdb263-867d-454e-8d33-bd251540c7e9
-no\ classes\ that\ reside\ in\ any\ package\ ['com.example.statementservice.statement..',\ 'com.example.statementservice.audit..']\ and\ reside\ outside\ of\ package\ '..infrastructure..'\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ '..infrastructure..'=3088c79a-0a50-4789-a3a7-343a4b47fd0e
-no\ classes\ that\ reside\ outside\ of\ package\ 'com.example.statementservice.infrastructure..'\ should\ depend\ on\ classes\ that\ assignable\ to\ java.io.File\ or\ reside\ in\ any\ package\ ['javax.crypto..']=d09e8ade-ef1e-4639-9955-e9e125e1b964
-no\ classes\ that\ reside\ outside\ of\ packages\ ['com.example.statementservice.api..',\ 'com.example.statementservice.model.api..']\ and\ reside\ outside\ of\ package\ '..infrastructure..'\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['com.example.statementservice.api..',\ 'com.example.statementservice.model.api..']=ea28be4a-e158-4133-9066-715278923517
-no\ fields\ should\ be\ annotated\ with\ @Autowired=1f3adcf8-a630-4ecf-95aa-4132232d02a7
-slices\ matching\ 'com.example.statementservice.(*)..'\ should\ be\ free\ of\ cycles=f963b986-0255-4f3b-b1f7-1508d38f14d3

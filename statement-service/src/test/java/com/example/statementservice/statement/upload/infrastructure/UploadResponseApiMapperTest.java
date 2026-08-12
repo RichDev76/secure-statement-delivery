@@ -7,21 +7,13 @@ import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("UploadResponseApiMapper Tests")
 class UploadResponseApiMapperTest {
 
-    private final UploadResponseApiMapper uploadResponseApiMapper = Mappers.getMapper(UploadResponseApiMapper.class);
-
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(uploadResponseApiMapper, "dateMapper", new DateMapper());
-    }
+    private final UploadResponseApiMapper uploadResponseApiMapper = new UploadResponseApiMapperImpl(new DateMapper());
 
     @Test
     @DisplayName("toApi - should map all fields from DTO to API model")

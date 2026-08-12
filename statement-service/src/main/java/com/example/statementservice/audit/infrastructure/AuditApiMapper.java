@@ -6,12 +6,14 @@ import com.example.statementservice.model.api.AuditLogPage;
 import com.example.statementservice.shared.DateMapper;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.mapstruct.InjectionStrategy;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
 
 @Mapper(
         componentModel = "spring",
+        injectionStrategy = InjectionStrategy.CONSTRUCTOR,
         uses = {DateMapper.class})
 public interface AuditApiMapper {
 

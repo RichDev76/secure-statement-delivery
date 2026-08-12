@@ -14,21 +14,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("StatementApiMapper Tests")
 class StatementApiMapperTest {
 
-    private final StatementApiMapper statementApiMapper = Mappers.getMapper(StatementApiMapper.class);
-
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(statementApiMapper, "dateMapper", new DateMapper());
-    }
+    private final StatementApiMapper statementApiMapper = new StatementApiMapperImpl(new DateMapper());
 
     @Test
     @DisplayName("toApi - should map all fields from DTO to API model")

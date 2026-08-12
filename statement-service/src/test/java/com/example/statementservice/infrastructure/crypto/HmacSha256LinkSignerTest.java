@@ -2,27 +2,27 @@ package com.example.statementservice.infrastructure.crypto;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.statementservice.exception.SignatureException;
+import com.example.statementservice.statement.signedlink.SignatureException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("SignatureUtil Tests")
-class SignatureUtilTest {
+@DisplayName("HmacSha256LinkSigner Tests")
+class HmacSha256LinkSignerTest {
 
-    private SignatureUtil signatureUtil;
+    private HmacSha256LinkSigner hmacSha256LinkSigner;
     private String secretKey;
 
     @BeforeEach
     void setUp() {
         secretKey = "test-secret-key-12345";
-        signatureUtil = new SignatureUtil(secretKey);
+        hmacSha256LinkSigner = new HmacSha256LinkSigner(secretKey);
     }
 
     @Test
-    @DisplayName("Should create SignatureUtil with secret key")
+    @DisplayName("Should create HmacSha256LinkSigner with secret key")
     void testConstructor() {
-        var util = new SignatureUtil("my-secret");
+        var util = new HmacSha256LinkSigner("my-secret");
         assertNotNull(util);
     }
 
@@ -32,7 +32,7 @@ class SignatureUtilTest {
         var path = "/api/statements/123";
         var expires = 1234567890L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
         assertFalse(signature.endsWith("="));
@@ -44,8 +44,8 @@ class SignatureUtilTest {
         var path = "/download/file.pdf";
         var expires = 9876543210L;
         var method = "GET";
-        var signature1 = signatureUtil.signWithMethod(path, expires, method);
-        var signature2 = signatureUtil.signWithMethod(path, expires, method);
+        var signature1 = hmacSha256LinkSigner.sign(path, expires, method);
+        var signature2 = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature1);
         assertNotNull(signature2);
         assertEquals(signature1, signature2);
@@ -58,8 +58,8 @@ class SignatureUtilTest {
         var method = "GET";
         var path1 = "/api/statements/123";
         var path2 = "/api/statements/456";
-        var signature1 = signatureUtil.signWithMethod(path1, expires, method);
-        var signature2 = signatureUtil.signWithMethod(path2, expires, method);
+        var signature1 = hmacSha256LinkSigner.sign(path1, expires, method);
+        var signature2 = hmacSha256LinkSigner.sign(path2, expires, method);
         assertNotNull(signature1);
         assertNotNull(signature2);
         assertNotEquals(signature1, signature2);
@@ -72,8 +72,8 @@ class SignatureUtilTest {
         var method = "GET";
         var expires1 = 1234567890L;
         var expires2 = 9876543210L;
-        var signature1 = signatureUtil.signWithMethod(path, expires1, method);
-        var signature2 = signatureUtil.signWithMethod(path, expires2, method);
+        var signature1 = hmacSha256LinkSigner.sign(path, expires1, method);
+        var signature2 = hmacSha256LinkSigner.sign(path, expires2, method);
         assertNotNull(signature1);
         assertNotNull(signature2);
         assertNotEquals(signature1, signature2);
@@ -86,8 +86,8 @@ class SignatureUtilTest {
         var expires = 1234567890L;
         var method1 = "GET";
         var method2 = "POST";
-        var signature1 = signatureUtil.signWithMethod(path, expires, method1);
-        var signature2 = signatureUtil.signWithMethod(path, expires, method2);
+        var signature1 = hmacSha256LinkSigner.sign(path, expires, method1);
+        var signature2 = hmacSha256LinkSigner.sign(path, expires, method2);
         assertNotNull(signature1);
         assertNotNull(signature2);
         assertNotEquals(signature1, signature2);
@@ -96,13 +96,13 @@ class SignatureUtilTest {
     @Test
     @DisplayName("Should generate different signatures with different secret keys")
     void testSignWithMethod_DifferentSecrets() {
-        var util1 = new SignatureUtil("secret1");
-        var util2 = new SignatureUtil("secret2");
+        var util1 = new HmacSha256LinkSigner("secret1");
+        var util2 = new HmacSha256LinkSigner("secret2");
         var path = "/api/statements/123";
         var expires = 1234567890L;
         var method = "GET";
-        var signature1 = util1.signWithMethod(path, expires, method);
-        var signature2 = util2.signWithMethod(path, expires, method);
+        var signature1 = util1.sign(path, expires, method);
+        var signature2 = util2.sign(path, expires, method);
         assertNotNull(signature1);
         assertNotNull(signature2);
         assertNotEquals(signature1, signature2);
@@ -114,7 +114,7 @@ class SignatureUtilTest {
         var path = "";
         var expires = 1234567890L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -125,7 +125,7 @@ class SignatureUtilTest {
         var path = "/api/statements/123";
         var expires = 1234567890L;
         var method = "";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -136,7 +136,7 @@ class SignatureUtilTest {
         var path = "/api/statements/file%20name.pdf?param=value&other=123";
         var expires = 1234567890L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -147,7 +147,7 @@ class SignatureUtilTest {
         var path = "/api/statements/文件名.pdf";
         var expires = 1234567890L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -161,7 +161,7 @@ class SignatureUtilTest {
         }
         var expires = 1234567890L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(longPath.toString(), expires, method);
+        var signature = hmacSha256LinkSigner.sign(longPath.toString(), expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -172,7 +172,7 @@ class SignatureUtilTest {
         var path = "/api/statements/123";
         var expires = 0L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -183,7 +183,7 @@ class SignatureUtilTest {
         var path = "/api/statements/123";
         var expires = -1234567890L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -194,7 +194,7 @@ class SignatureUtilTest {
         var path = "/api/statements/123";
         var expires = Long.MAX_VALUE;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -205,7 +205,7 @@ class SignatureUtilTest {
         var path = "/api/statements/123";
         var expires = 1234567890L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.contains("+"));
         assertFalse(signature.contains("/"));
@@ -217,11 +217,11 @@ class SignatureUtilTest {
     void testSignWithMethod_VariousHttpMethods() {
         var path = "/api/statements/123";
         var expires = 1234567890L;
-        var getSignature = signatureUtil.signWithMethod(path, expires, "GET");
-        var postSignature = signatureUtil.signWithMethod(path, expires, "POST");
-        var putSignature = signatureUtil.signWithMethod(path, expires, "PUT");
-        var deleteSignature = signatureUtil.signWithMethod(path, expires, "DELETE");
-        var patchSignature = signatureUtil.signWithMethod(path, expires, "PATCH");
+        var getSignature = hmacSha256LinkSigner.sign(path, expires, "GET");
+        var postSignature = hmacSha256LinkSigner.sign(path, expires, "POST");
+        var putSignature = hmacSha256LinkSigner.sign(path, expires, "PUT");
+        var deleteSignature = hmacSha256LinkSigner.sign(path, expires, "DELETE");
+        var patchSignature = hmacSha256LinkSigner.sign(path, expires, "PATCH");
         assertNotNull(getSignature);
         assertNotNull(postSignature);
         assertNotNull(putSignature);
@@ -235,10 +235,10 @@ class SignatureUtilTest {
     @Test
     @DisplayName("Should throw exception when signing with empty secret key")
     void testConstructor_EmptySecret() {
-        var util = new SignatureUtil("");
+        var util = new HmacSha256LinkSigner("");
         assertNotNull(util);
         assertThrows(SignatureException.class, () -> {
-            util.signWithMethod("/path", 123L, "GET");
+            util.sign("/path", 123L, "GET");
         });
     }
 
@@ -248,7 +248,7 @@ class SignatureUtilTest {
         var path = "/api/statements/file|with|pipes.pdf";
         var expires = 1234567890L;
         var method = "GET";
-        var signature = signatureUtil.signWithMethod(path, expires, method);
+        var signature = hmacSha256LinkSigner.sign(path, expires, method);
         assertNotNull(signature);
         assertFalse(signature.isEmpty());
     }
@@ -260,8 +260,8 @@ class SignatureUtilTest {
         var path2 = "/very/long/path/with/many/segments/and/parameters";
         var expires = 1234567890L;
         var method = "GET";
-        var signature1 = signatureUtil.signWithMethod(path1, expires, method);
-        var signature2 = signatureUtil.signWithMethod(path2, expires, method);
+        var signature1 = hmacSha256LinkSigner.sign(path1, expires, method);
+        var signature2 = hmacSha256LinkSigner.sign(path2, expires, method);
         assertNotNull(signature1);
         assertNotNull(signature2);
         assertTrue(signature1.length() > 0);

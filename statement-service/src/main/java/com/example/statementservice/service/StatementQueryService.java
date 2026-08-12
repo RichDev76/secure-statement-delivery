@@ -1,13 +1,15 @@
 package com.example.statementservice.service;
 
 import com.example.statementservice.exception.InvalidInputException;
-import com.example.statementservice.exception.StatementNotFoundException;
 import com.example.statementservice.infrastructure.web.RequestInfoProvider;
 import com.example.statementservice.mapper.StatementApiMapper;
 import com.example.statementservice.model.api.StatementSummary;
 import com.example.statementservice.model.api.StatementSummaryPage;
-import com.example.statementservice.model.dto.StatementDto;
 import com.example.statementservice.shared.RequestInfo;
+import com.example.statementservice.statement.StatementDto;
+import com.example.statementservice.statement.StatementNotFoundException;
+import com.example.statementservice.statement.StatementService;
+import com.example.statementservice.statement.signedlink.SignedLinkService;
 import com.example.statementservice.util.AuditHelper;
 import java.time.LocalDate;
 import java.util.ArrayList;

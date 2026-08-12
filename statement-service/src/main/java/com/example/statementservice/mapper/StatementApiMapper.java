@@ -2,8 +2,8 @@ package com.example.statementservice.mapper;
 
 import com.example.statementservice.model.api.BaseStatement;
 import com.example.statementservice.model.api.StatementSummary;
-import com.example.statementservice.model.dto.StatementDto;
 import com.example.statementservice.shared.DateMapper;
+import com.example.statementservice.statement.StatementDto;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

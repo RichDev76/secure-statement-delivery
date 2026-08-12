@@ -1,4 +1,4 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,16 +8,16 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.exception.StatementNotFoundException;
-import com.example.statementservice.exception.StatementUploadException;
-import com.example.statementservice.mapper.StatementEntityMapper;
-import com.example.statementservice.model.dto.StatementDto;
 import com.example.statementservice.model.dto.UploadResponseDto;
-import com.example.statementservice.model.entity.Statement;
-import com.example.statementservice.repository.StatementRepository;
+import com.example.statementservice.service.EncryptionService;
+import com.example.statementservice.service.FileStorageService;
+import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.io.File;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -38,6 +39,11 @@ import org.springframework.web.multipart.MultipartFile;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("StatementService Unit Tests")
 class StatementServiceTest {
+
+    private static final Instant FIXED_INSTANT = Instant.parse("2026-08-11T12:00:00Z");
+
+    @Spy
+    private Clock clock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
 
     @Mock
     private StatementRepository statementRepository;

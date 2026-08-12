@@ -1,4 +1,4 @@
-package com.example.statementservice.model.dto;
+package com.example.statementservice.statement;
 
 import java.net.URI;
 import java.time.LocalDate;

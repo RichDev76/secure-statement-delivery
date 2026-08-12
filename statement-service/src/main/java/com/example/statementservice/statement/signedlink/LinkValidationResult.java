@@ -1,7 +1,5 @@
-package com.example.statementservice.util;
+package com.example.statementservice.statement.signedlink;
 
-import com.example.statementservice.model.ValidationFailureReason;
-import com.example.statementservice.model.entity.SignedLink;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;

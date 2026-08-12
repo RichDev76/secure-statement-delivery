@@ -28,7 +28,7 @@ public class FileStorageService {
         try {
             this.encryptionService.encryptToFile(file.getInputStream(), encryptedFileOutput, initializationVector);
         } catch (java.io.IOException e) {
-            throw new com.example.statementservice.exception.StatementUploadException(
+            throw new com.example.statementservice.statement.StatementUploadException(
                     "Failed to encrypt and store file", e);
         }
         return new FileStorageResult(encryptedFileOutput, initializationVector);
@@ -36,7 +36,7 @@ public class FileStorageService {
 
     private java.io.File getStorageDirectory(String accountNumberHash, java.time.LocalDate statementDate) {
         if (accountNumberHash == null || accountNumberHash.isBlank()) {
-            throw new com.example.statementservice.exception.StatementUploadException(
+            throw new com.example.statementservice.statement.StatementUploadException(
                     "accountNumberHash must be provided");
         }
 
@@ -45,7 +45,7 @@ public class FileStorageService {
         var fullFileStorageDirectory = buildFullFilePath(accountNumberHash, year, month);
 
         if (!fullFileStorageDirectory.exists() && !fullFileStorageDirectory.mkdirs()) {
-            throw new com.example.statementservice.exception.StatementUploadException(
+            throw new com.example.statementservice.statement.StatementUploadException(
                     "Failed to create storage directory: " + fullFileStorageDirectory.getAbsolutePath());
         }
         return fullFileStorageDirectory;

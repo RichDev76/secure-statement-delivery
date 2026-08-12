@@ -1,4 +1,4 @@
-package com.example.statementservice.model.entity;
+package com.example.statementservice.statement.signedlink;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

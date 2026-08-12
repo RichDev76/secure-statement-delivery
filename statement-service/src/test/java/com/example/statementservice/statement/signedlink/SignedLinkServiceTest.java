@@ -1,4 +1,4 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement.signedlink;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,11 +9,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.infrastructure.crypto.SignatureUtil;
-import com.example.statementservice.model.ValidationFailureReason;
-import com.example.statementservice.model.entity.SignedLink;
-import com.example.statementservice.repository.SignedLinkRepository;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -33,8 +33,16 @@ class SignedLinkServiceTest {
     @Mock
     private SignedLinkRepository signedLinkRepository;
 
+    private static final Instant FIXED_INSTANT = Instant.parse("2026-08-11T12:00:00Z");
+
     @Mock
-    private SignatureUtil signatureUtil;
+    private LinkSigner linkSigner;
+
+    @Mock
+    private DownloadUrlProvider downloadUrlProvider;
+
+    @Spy
+    private Clock clock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
 
     @InjectMocks
     private SignedLinkService signedLinkService;
@@ -52,14 +60,13 @@ class SignedLinkServiceTest {
         testBasePath = "/api/v1/statements/download/test.pdf";
 
         ReflectionTestUtils.setField(signedLinkService, "defaultExpirySeconds", 900L);
-        ReflectionTestUtils.setField(signedLinkService, "downloadPath", "/api/v1/statements/download/");
     }
 
     @Test
     @DisplayName("createSignedLink - should create and save single-use link")
     void createSignedLink_SingleUse() {
 
-        when(signatureUtil.signWithMethod(anyString(), anyLong(), anyString())).thenReturn(testToken);
+        when(linkSigner.sign(anyString(), anyLong(), anyString())).thenReturn(testToken);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
         var result = signedLinkService.createSignedLink(testStatementId, true, testCreatedBy, testBasePath);
         assertThat(result).isNotNull();
@@ -72,7 +79,7 @@ class SignedLinkServiceTest {
         assertThat(result.getCreatedAt()).isNotNull();
         assertThat(result.getExpiresAt()).isNotNull();
         assertThat(result.getExpiresAt()).isAfter(result.getCreatedAt());
-        verify(signatureUtil).signWithMethod(eq(testBasePath), anyLong(), eq("GET"));
+        verify(linkSigner).sign(eq(testBasePath), anyLong(), eq("GET"));
         verify(signedLinkRepository).save(any(SignedLink.class));
     }
 
@@ -80,7 +87,7 @@ class SignedLinkServiceTest {
     @DisplayName("createSignedLink - should create multi-use link")
     void createSignedLink_MultiUse() {
 
-        when(signatureUtil.signWithMethod(anyString(), anyLong(), anyString())).thenReturn(testToken);
+        when(linkSigner.sign(anyString(), anyLong(), anyString())).thenReturn(testToken);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
         var result = signedLinkService.createSignedLink(testStatementId, false, testCreatedBy, testBasePath);
         assertThat(result).isNotNull();
@@ -90,16 +97,16 @@ class SignedLinkServiceTest {
     }
 
     @Test
-    @DisplayName("createSignedLink - should use default expiry time")
-    void createSignedLink_DefaultExpiry() {
+    @DisplayName("createSignedLink - should expire exactly link-expiry-seconds after the clock instant")
+    void GivenFixedClock_WhenCreatingSignedLink_ThenExpiryIsExactlyDefaultExpiryAfterNow() {
 
-        when(signatureUtil.signWithMethod(anyString(), anyLong(), anyString())).thenReturn(testToken);
+        when(linkSigner.sign(anyString(), anyLong(), anyString())).thenReturn(testToken);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        var beforeCreation = OffsetDateTime.now();
         var result = signedLinkService.createSignedLink(testStatementId, true, testCreatedBy, testBasePath);
-        var expectedExpiry = beforeCreation.plusSeconds(900);
-        assertThat(result.getExpiresAt()).isAfterOrEqualTo(expectedExpiry.minusSeconds(2));
-        assertThat(result.getExpiresAt()).isBeforeOrEqualTo(expectedExpiry.plusSeconds(2));
+        assertThat(result.getExpiresAt())
+                .isEqualTo(
+                        OffsetDateTime.ofInstant(FIXED_INSTANT, ZoneOffset.UTC).plusSeconds(900));
+        assertThat(result.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(FIXED_INSTANT, ZoneOffset.UTC));
     }
 
     @Test
@@ -109,10 +116,10 @@ class SignedLinkServiceTest {
         ArgumentCaptor<String> pathCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Long> expiresCaptor = ArgumentCaptor.forClass(Long.class);
         ArgumentCaptor<String> methodCaptor = ArgumentCaptor.forClass(String.class);
-        when(signatureUtil.signWithMethod(anyString(), anyLong(), anyString())).thenReturn(testToken);
+        when(linkSigner.sign(anyString(), anyLong(), anyString())).thenReturn(testToken);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
         signedLinkService.createSignedLink(testStatementId, true, testCreatedBy, testBasePath);
-        verify(signatureUtil).signWithMethod(pathCaptor.capture(), expiresCaptor.capture(), methodCaptor.capture());
+        verify(linkSigner).sign(pathCaptor.capture(), expiresCaptor.capture(), methodCaptor.capture());
         assertThat(pathCaptor.getValue()).isEqualTo(testBasePath);
         assertThat(expiresCaptor.getValue()).isGreaterThan(0);
         assertThat(methodCaptor.getValue()).isEqualTo("GET");

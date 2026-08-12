@@ -18,6 +18,7 @@ import com.example.statementservice.exception.InvalidMessageDigestException;
 import com.example.statementservice.infrastructure.web.RequestInfoProvider;
 import com.example.statementservice.model.dto.UploadResponseDto;
 import com.example.statementservice.shared.RequestInfo;
+import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.util.ValidationUtil;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;

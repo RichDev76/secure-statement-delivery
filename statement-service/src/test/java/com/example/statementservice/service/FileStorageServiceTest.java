@@ -11,7 +11,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.exception.StatementUploadException;
+import com.example.statementservice.statement.StatementUploadException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;

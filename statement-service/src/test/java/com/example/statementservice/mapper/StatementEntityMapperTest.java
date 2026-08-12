@@ -2,7 +2,8 @@ package com.example.statementservice.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.statementservice.model.entity.Statement;
+import com.example.statementservice.statement.Statement;
+import com.example.statementservice.statement.StatementEntityMapper;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;

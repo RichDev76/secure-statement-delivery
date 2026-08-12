@@ -1,4 +1,4 @@
-package com.example.statementservice.config;
+package com.example.statementservice.statement.signedlink;
 
 import java.time.Duration;
 import lombok.Getter;

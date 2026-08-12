@@ -1,6 +1,5 @@
-package com.example.statementservice.repository;
+package com.example.statementservice.statement;
 
-import com.example.statementservice.model.entity.Statement;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;

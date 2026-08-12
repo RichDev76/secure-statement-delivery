@@ -1,9 +1,7 @@
-package com.example.statementservice.util;
+package com.example.statementservice.statement.signedlink;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.statementservice.model.ValidationFailureReason;
-import com.example.statementservice.model.entity.SignedLink;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;

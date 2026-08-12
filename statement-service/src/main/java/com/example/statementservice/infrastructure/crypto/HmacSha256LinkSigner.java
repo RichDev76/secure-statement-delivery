@@ -1,23 +1,25 @@
 package com.example.statementservice.infrastructure.crypto;
 
-import com.example.statementservice.exception.SignatureException;
+import com.example.statementservice.statement.signedlink.LinkSigner;
+import com.example.statementservice.statement.signedlink.SignatureException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-public class SignatureUtil {
+public class HmacSha256LinkSigner implements LinkSigner {
 
     private static final String HMAC = "HmacSHA256";
     private final byte[] secret;
 
-    public SignatureUtil(String secretKey) {
+    public HmacSha256LinkSigner(String secretKey) {
         this.secret = secretKey.getBytes(StandardCharsets.UTF_8);
     }
 
-    public String signWithMethod(String path, long expires, String method) {
+    @Override
+    public String sign(String path, long expiresEpochSeconds, String method) {
         try {
-            var data = method + "|" + path + "|" + expires;
+            var data = method + "|" + path + "|" + expiresEpochSeconds;
             var mac = Mac.getInstance(HMAC);
             mac.init(new SecretKeySpec(secret, HMAC));
             var raw = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));

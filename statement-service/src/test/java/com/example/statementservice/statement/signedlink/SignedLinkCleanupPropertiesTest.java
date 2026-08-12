@@ -1,4 +1,4 @@
-package com.example.statementservice.config;
+package com.example.statementservice.statement.signedlink;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

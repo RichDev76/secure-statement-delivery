@@ -3,8 +3,8 @@ package com.example.statementservice.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.statementservice.model.api.StatementSummary;
-import com.example.statementservice.model.dto.StatementDto;
 import com.example.statementservice.shared.DateMapper;
+import com.example.statementservice.statement.StatementDto;
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;

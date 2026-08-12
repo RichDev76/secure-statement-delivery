@@ -1,7 +1,5 @@
-package com.example.statementservice.mapper;
+package com.example.statementservice.statement;
 
-import com.example.statementservice.model.dto.StatementDto;
-import com.example.statementservice.model.entity.Statement;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

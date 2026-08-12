@@ -1,6 +1,5 @@
-package com.example.statementservice.repository;
+package com.example.statementservice.statement.signedlink;
 
-import com.example.statementservice.model.entity.SignedLink;
 import jakarta.transaction.Transactional;
 import java.time.OffsetDateTime;
 import java.util.Optional;

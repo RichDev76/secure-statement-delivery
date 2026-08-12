@@ -1,10 +1,7 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement.signedlink;
 
-import com.example.statementservice.infrastructure.crypto.SignatureUtil;
-import com.example.statementservice.model.entity.SignedLink;
-import com.example.statementservice.repository.SignedLinkRepository;
-import com.example.statementservice.util.LinkValidationResult;
 import java.net.URI;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @Slf4j
 @Service
@@ -24,17 +20,16 @@ public class SignedLinkService {
     public static final String SIGNATURE_PATH_VARIABLE = "&signature=";
 
     private final SignedLinkRepository signedLinkRepository;
-    private final SignatureUtil signatureUtil;
+    private final LinkSigner linkSigner;
+    private final DownloadUrlProvider downloadUrlProvider;
+    private final Clock clock;
 
     @Value("${statement.files.link-expiry-seconds:900}")
     private long defaultExpirySeconds;
 
-    @Value("${statement.api.download-path:/api/v1/statements/download/}")
-    private String downloadPath;
-
     @Transactional
     public SignedLink createSignedLink(UUID statementId, boolean singleUse, String createdBy, String basePath) {
-        var expires = OffsetDateTime.now().plusSeconds(defaultExpirySeconds);
+        var expires = OffsetDateTime.now(clock).plusSeconds(defaultExpirySeconds);
         var link = buildSignedDownloadLink(statementId, singleUse, createdBy, basePath, expires);
         signedLinkRepository.save(link);
         return link;
@@ -45,11 +40,11 @@ public class SignedLinkService {
         var link = new SignedLink();
         link.setId(UUID.randomUUID());
         link.setStatementId(statementId);
-        link.setToken(this.signatureUtil.signWithMethod(basePath, expires.toEpochSecond(), HttpMethod.GET.toString()));
+        link.setToken(linkSigner.sign(basePath, expires.toEpochSecond(), HttpMethod.GET.toString()));
         link.setExpiresAt(expires);
         link.setSingleUse(singleUse);
         link.setUsed(false);
-        link.setCreatedAt(OffsetDateTime.now());
+        link.setCreatedAt(OffsetDateTime.now(clock));
         link.setCreatedBy(createdBy);
         return link;
     }
@@ -88,7 +83,7 @@ public class SignedLinkService {
             return LinkValidationResult.used(link);
         }
 
-        if (link.getExpiresAt().isBefore(OffsetDateTime.now())) {
+        if (link.getExpiresAt().isBefore(OffsetDateTime.now(clock))) {
             log.info("Link expired at: {}", link.getExpiresAt());
             return LinkValidationResult.expired(link);
         }
@@ -103,13 +98,7 @@ public class SignedLinkService {
         return LinkValidationResult.valid(link);
     }
 
-    private String getServerBaseUrl() {
-        return ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-    }
-
     public String getFilesBaseUrl(String fileName) {
-        var filesBaseUrl = getServerBaseUrl();
-        var base = filesBaseUrl.endsWith("/") ? filesBaseUrl.substring(0, filesBaseUrl.length() - 1) : filesBaseUrl;
-        return URI.create(base + downloadPath + fileName).toString();
+        return downloadUrlProvider.downloadBaseUrl(fileName);
     }
 }

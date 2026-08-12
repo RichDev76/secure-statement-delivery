@@ -1,4 +1,4 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement.signedlink;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -6,9 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.model.entity.Statement;
-import com.example.statementservice.repository.SignedLinkRepository;
-import com.example.statementservice.repository.StatementRepository;
+import com.example.statementservice.statement.Statement;
+import com.example.statementservice.statement.StatementRepository;
 import com.jayway.jsonpath.JsonPath;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;

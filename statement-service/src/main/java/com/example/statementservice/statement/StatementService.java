@@ -1,13 +1,10 @@
-package com.example.statementservice.service;
+package com.example.statementservice.statement;
 
-import com.example.statementservice.exception.StatementNotFoundException;
-import com.example.statementservice.exception.StatementUploadException;
-import com.example.statementservice.mapper.StatementEntityMapper;
-import com.example.statementservice.model.dto.StatementDto;
 import com.example.statementservice.model.dto.UploadResponseDto;
-import com.example.statementservice.model.entity.Statement;
-import com.example.statementservice.repository.StatementRepository;
+import com.example.statementservice.service.EncryptionService;
+import com.example.statementservice.service.FileStorageService;
 import java.io.File;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -26,6 +23,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class StatementService {
+
+    private final Clock clock;
 
     public static final String FILE_NAME_SANITIZATION_REGEX = "[^a-zA-Z0-9._-]";
     private final StatementRepository statementRepository;
@@ -124,7 +123,7 @@ public class StatementService {
         stmt.setContentHash(contentHash);
         stmt.setEncrypted(true);
         stmt.setSizeBytes(file.getSize());
-        stmt.setUploadedAt(OffsetDateTime.now());
+        stmt.setUploadedAt(OffsetDateTime.now(clock));
         stmt.setUploadedBy(uploadedBy == null ? "admin" : uploadedBy);
         return stmt;
     }
@@ -132,7 +131,7 @@ public class StatementService {
     private UploadResponseDto getUploadResponse(MultipartFile file, UUID id) {
         return UploadResponseDto.builder()
                 .statementId(id)
-                .uploadedAt(OffsetDateTime.now())
+                .uploadedAt(OffsetDateTime.now(clock))
                 .fileSize(file.getSize())
                 .fileName(file.getOriginalFilename())
                 .build();

@@ -84,7 +84,7 @@ class DownloadResponseFactoryTest {
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.STATEMENT_NOT_FOUND, Optional.empty());
         assertThrows(
-                com.example.statementservice.exception.StatementNotFoundException.class,
+                com.example.statementservice.statement.StatementNotFoundException.class,
                 () -> downloadResponseFactory.build(fileName, result));
     }
 

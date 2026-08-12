@@ -1,5 +1,6 @@
 package com.example.statementservice.infrastructure.crypto;
 
+import com.example.statementservice.statement.signedlink.LinkSigner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -7,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 public class SignatureConfig {
 
     @Bean
-    public SignatureUtil signatureUtil(SignatureProperties properties) {
-        return new SignatureUtil(properties.getSecret());
+    public LinkSigner linkSigner(SignatureProperties properties) {
+        return new HmacSha256LinkSigner(properties.getSecret());
     }
 }

@@ -36,8 +36,8 @@ public class Statement {
     @Column(name = "upload_file_name")
     private String uploadFileName;
 
-    @Column(name = "file_path")
-    private String filePath;
+    @Column(name = "storage_key")
+    private String storageKey;
 
     @Column(name = "file_iv")
     private byte[] fileIv;

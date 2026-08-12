@@ -37,7 +37,11 @@ statement:
   api:
     download-path: /api/v1/statements/download/
   storage:
-    base-dir: ${STATEMENT_STORAGE_DIR}
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${AWS_S3_REGION}
+      endpoint: http://localhost:4566
+      path-style-access: true
   signed-link:
     cleanup:
       enabled: true

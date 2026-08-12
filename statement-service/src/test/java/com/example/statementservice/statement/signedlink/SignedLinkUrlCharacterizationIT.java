@@ -48,7 +48,7 @@ class SignedLinkUrlCharacterizationIT extends AbstractIntegrationTest {
                 .accountNumber("ACC-" + UUID.randomUUID())
                 .statementDate(LocalDate.of(2026, 7, 31))
                 .uploadFileName(fileName)
-                .filePath("/unused/in/this/test.pdf.enc")
+                .storageKey("/unused/in/this/test.pdf.enc")
                 .uploadedAt(OffsetDateTime.now())
                 .encrypted(true)
                 .build();

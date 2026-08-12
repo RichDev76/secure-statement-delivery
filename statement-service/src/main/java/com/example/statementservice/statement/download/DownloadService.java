@@ -135,7 +135,7 @@ public class DownloadService {
 
     private void handleMissingFile(
             Statement statement, SignedLink link, String token, String clientIp, String userAgent, String performedBy) {
-        log.error("File not found - path: {}, statementId: {}", statement.getFilePath(), statement.getId());
+        log.error("File not found - key: {}, statementId: {}", statement.getStorageKey(), statement.getId());
         auditService.record(
                 AuditAction.DOWNLOAD_FAILED.getValue(),
                 statement.getId(),

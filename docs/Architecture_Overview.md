@@ -158,11 +158,11 @@ The `statement-service` module is organised by **business capability** (Screamin
 
 - **`audit`** — audit trail (`AuditLog`, `AuditLogRepository`, `AuditService`, `AuditQueryService`), fronted by `audit.infrastructure.AuditController`.
 
-- **`infrastructure`** — genuinely shared technical concerns only: `config` (Jackson, OpenAPI, `Clock` bean), `scheduler` (ShedLock wiring), `security` (`SecurityConfig`, Keycloak role conversion, JWT resource server), `web` (`CorrelationIdFilter`, `GlobalExceptionHandler`, `RequestInfoProvider`), `logging` (`LoggingAspect`), `crypto` (`MasterKeyProvider`, `AesGcmFileCipher` implementing `FileCipher`, `HmacSha256LinkSigner` implementing `LinkSigner`), `storage` (`LocalStatementFileStore` implementing `StatementFileStore`).
+- **`infrastructure`** — genuinely shared technical concerns only: `config` (Jackson, OpenAPI, `Clock` bean), `scheduler` (ShedLock wiring), `security` (`SecurityConfig`, Keycloak role conversion, JWT resource server), `web` (`CorrelationIdFilter`, `GlobalExceptionHandler`, `RequestInfoProvider`), `logging` (`LoggingAspect`), `crypto` (`MasterKeyProvider`, `AesGcmFileCipher` implementing `FileCipher`, `HmacSha256LinkSigner` implementing `LinkSigner`), `storage.s3` (`S3StatementFileStore` implementing `StatementFileStore`, `S3ClientConfig`, `S3StorageProperties`, `S3HealthIndicator`).
 
 - **`shared`** — cross-feature, dependency-free values only: `RequestInfo`, `DateMapper`.
 
-Ports are swappable by design: `LocalStatementFileStore` can be replaced with an S3-backed adapter, and domain code (`StatementService`, `DownloadService`) is unchanged.
+Ports are swappable by design: the original `LocalStatementFileStore` (local disk) was replaced with `S3StatementFileStore` (S3-compatible object storage — Floci non-prod, real AWS S3 in production) without any change to domain code (`StatementService`, `DownloadService`). See ADR 0026.
 
 ---
 
@@ -239,11 +239,12 @@ Unauthorized and forbidden errors are returned as **RFC 9457 ProblemDetail** JSO
 
 #### File Storage Structure
 
-- `LocalStatementFileStore` (implementing the `StatementFileStore` port) manages encrypted file storage with a structured directory layout:
-    - Base directory: configured via `statement.storage.base-dir` (default: `/data/files`)
-    - Directory structure: `{baseDir}/statements/{accountNumberHash}/{year}/{month}/{statementId}.pdf.enc`
-    - Account numbers are hashed (SHA‑256) before use in paths for privacy
-    - Files are stored with `.pdf.enc` extension indicating encrypted PDF
+- `S3StatementFileStore` (implementing the `StatementFileStore` port) manages encrypted file storage in an S3-compatible object store, with a structured key layout:
+    - Bucket/region/endpoint/path-style-access: configured via `statement.storage.s3.*` (endpoint is blank in production, resolving to real AWS S3; set to the Floci endpoint in dev/test)
+    - Key structure: `statements/{accountNumberHash}/{year}/{month}/{statementId}.pdf.enc`
+    - Account numbers are hashed (SHA‑256) before use in keys for privacy
+    - Objects are stored with `.pdf.enc` key suffix indicating encrypted PDF
+    - `Statement.storageKey` (DB column `storage_key`) persists the returned object key
 
 #### Account Number Handling
 

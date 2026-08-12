@@ -113,11 +113,11 @@ public class StatementService {
     }
 
     public boolean fileExists(Statement statement) {
-        return fileStore.exists(statement.getFilePath());
+        return fileStore.exists(statement.getStorageKey());
     }
 
     public InputStream openDecryptedFile(Statement statement) throws IOException {
-        return fileCipher.decrypt(fileStore.open(statement.getFilePath()));
+        return fileCipher.decrypt(fileStore.open(statement.getStorageKey()));
     }
 
     private byte[] readBytes(MultipartFile file) {
@@ -142,7 +142,7 @@ public class StatementService {
         stmt.setAccountNumber(accountNumber);
         stmt.setStatementDate(statementDate);
         stmt.setUploadFileName(sanitizeFileName(Objects.requireNonNull(file.getOriginalFilename())));
-        stmt.setFilePath(fileReference);
+        stmt.setStorageKey(fileReference);
         stmt.setFileIv(iv);
         stmt.setContentHash(contentHash);
         stmt.setEncrypted(true);

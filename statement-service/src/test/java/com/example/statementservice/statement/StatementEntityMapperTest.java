@@ -226,7 +226,7 @@ class StatementEntityMapperTest {
         entity.setUploadedBy("testUser");
         entity.setEncrypted(true);
         entity.setContentHash("hash123");
-        entity.setFilePath("/path/to/file.pdf.enc");
+        entity.setStorageKey("statements/hash/2026/07/file.pdf.enc");
         return entity;
     }
 }

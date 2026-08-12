@@ -73,9 +73,10 @@ class ArchitectureTest {
     static final ArchRule constructorInjectionOnly = noFields().should().beAnnotatedWith(Autowired.class);
 
     @ArchTest
-    static final ArchRule fileAndCryptoAccessIsConfinedToInfrastructure = noClasses()
+    static final ArchRule fileCryptoAndObjectStorageAccessIsConfinedToInfrastructure = noClasses()
             .that()
             .resideOutsideOfPackage(SHARED_INFRASTRUCTURE)
             .should()
-            .dependOnClassesThat(assignableTo(File.class).or(resideInAnyPackage("javax.crypto..")));
+            .dependOnClassesThat(
+                    assignableTo(File.class).or(resideInAnyPackage("javax.crypto..", "software.amazon.awssdk..")));
 }

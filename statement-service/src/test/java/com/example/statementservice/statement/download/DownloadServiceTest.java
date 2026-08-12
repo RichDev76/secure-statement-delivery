@@ -81,7 +81,7 @@ class DownloadServiceTest {
         testStatement.setAccountNumber("123456789");
         testStatement.setStatementDate(LocalDate.of(2024, 1, 1));
         testStatement.setUploadFileName("statement.pdf");
-        testStatement.setFilePath("/test/path/statement.pdf");
+        testStatement.setStorageKey("statements/hash/2026/07/statement.pdf.enc");
         testStatement.setSizeBytes(1024L);
         testStatement.setEncrypted(true);
     }

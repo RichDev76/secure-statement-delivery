@@ -2,11 +2,23 @@ package com.example.statementservice.infrastructure.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 
 public class CommonUtil {
 
     public static final String HTTP = "http";
     public static final String HTTPS = "https";
+
+    // Shared by every feature-owned @RestControllerAdvice so each builds the same RFC 9457 shape.
+    public static ProblemDetail createProblemDetail(
+            HttpStatus status, URI type, String title, String detail, String errorCode) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail != null ? detail : title);
+        problemDetail.setType(type);
+        problemDetail.setTitle(title);
+        problemDetail.setProperty("errorCode", errorCode);
+        return problemDetail;
+    }
 
     public static URI buildProblemDetailTypeURI(HttpServletRequest request, String contextPath) {
         var scheme = request.getScheme();

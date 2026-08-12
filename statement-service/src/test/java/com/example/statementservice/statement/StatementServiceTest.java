@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.io.ByteArrayOutputStream;
 import java.time.Clock;

@@ -1,11 +1,13 @@
 package com.example.statementservice.statement.search;
 
+import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.statement.StatementDto;
 import com.example.statementservice.statement.StatementNotFoundException;
 import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +30,7 @@ public class StatementQueryService {
     private static final int DEFAULT_OFFSET = 0;
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 50;
+    private static final String INVALID_DATE_FORMAT_MSG = "date must be in YYYY-MM-DD format";
 
     private final StatementService statementService;
     private final SignedLinkService signedLinkService;
@@ -82,7 +85,7 @@ public class StatementQueryService {
     }
 
     public List<StatementDto> searchByAccountAndDate(String accountNumber, String date) {
-        var parsedDate = LocalDate.parse(date);
+        var parsedDate = parseDate(date);
         return this.statementService
                 .getStatementDtoByAccountNumberAndStatementDate(accountNumber, parsedDate)
                 .map(List::of)
@@ -97,8 +100,8 @@ public class StatementQueryService {
 
         var sortOrder = parseSort(sort);
 
-        var parsedStartDate = LocalDate.parse(startDate);
-        var parsedEndDate = LocalDate.parse(endDate);
+        var parsedStartDate = parseDate(startDate);
+        var parsedEndDate = parseDate(endDate);
 
         if (parsedStartDate.isAfter(parsedEndDate)) {
             throw new InvalidInputException("startDate cannot be after endDate");
@@ -139,6 +142,14 @@ public class StatementQueryService {
         } catch (Exception e) {
             log.warn("Failed to parse sort parameter '{}', using default sort: {}", sort, e.getMessage());
             return defaultSort;
+        }
+    }
+
+    private LocalDate parseDate(String date) {
+        try {
+            return LocalDate.parse(date);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDateException(INVALID_DATE_FORMAT_MSG, e);
         }
     }
 

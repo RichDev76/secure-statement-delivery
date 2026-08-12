@@ -52,12 +52,13 @@ public class SignedLinkService {
     @Transactional
     public URI buildSignedDownloadLink(SignedLink signedLink, String basePath) {
         var expires = signedLink.getExpiresAt().toEpochSecond();
+        var signature = signedLink.getToken();
+        var url = basePath + EXPIRES_PATH_VARIABLE + expires + SIGNATURE_PATH_VARIABLE + signature;
         try {
-            var signature = signedLink.getToken();
-            var url = basePath + EXPIRES_PATH_VARIABLE + expires + SIGNATURE_PATH_VARIABLE + signature;
             return URI.create(url);
-        } catch (Exception e) {
-            return URI.create(basePath);
+        } catch (IllegalArgumentException e) {
+            log.error("Failed to build signed download link for statementId={}", signedLink.getStatementId(), e);
+            throw e;
         }
     }
 

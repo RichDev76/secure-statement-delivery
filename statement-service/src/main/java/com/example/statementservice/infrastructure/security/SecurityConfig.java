@@ -3,16 +3,22 @@ package com.example.statementservice.infrastructure.security;
 import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -38,20 +44,34 @@ public class SecurityConfig {
             throws Exception {
 
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .csrf(csrf ->
-                        csrf.ignoringRequestMatchers(endpoints.getCsrfIgnored().toArray(String[]::new)))
+                // Stateless, bearer-token-only API with no cookie/session auth anywhere - CSRF
+                // protection has nothing to protect. See ADR 0024.
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
-                    if (!endpoints.getWhitelist().isEmpty()) {
-                        auth.requestMatchers(endpoints.getWhitelist().toArray(String[]::new))
+                    var registry = auth;
+
+                    for (var group : groupByMethod(endpoints.getWhitelist()).entrySet()) {
+                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
                                 .permitAll();
                     }
+                    for (var group : groupByMethod(endpoints.getAdmin()).entrySet()) {
+                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
+                                .hasRole(AppRole.UPLOAD.getRoleName());
+                    }
+                    for (var group : groupByMethod(endpoints.getAudit()).entrySet()) {
+                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
+                                .hasRole(AppRole.AUDIT_LOGS_SEARCH.getRoleName());
+                    }
+                    for (var group : groupByMethod(endpoints.getSearch()).entrySet()) {
+                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
+                                .hasRole(AppRole.SEARCH.getRoleName());
+                    }
+                    for (var group : groupByMethod(endpoints.getLink()).entrySet()) {
+                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
+                                .hasRole(AppRole.GENERATE_SIGNED_LINK.getRoleName());
+                    }
 
-                    auth.requestMatchers("/api/v1/statements/upload").hasRole("Upload");
-                    auth.requestMatchers("/api/v1/statements/audit/logs").hasRole("AuditLogsSearch");
-                    auth.requestMatchers("/api/v1/statements/search").hasRole("Search");
-                    auth.requestMatchers("/api/v1/statements/link/*").hasRole("GenerateSignedLink");
-
-                    auth.anyRequest().authenticated();
+                    registry.anyRequest().authenticated();
                 })
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(problemDetailAuthEntryPoint)
                         .accessDeniedHandler(problemDetailAccessDeniedHandler))
@@ -59,6 +79,17 @@ public class SecurityConfig {
                         oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
 
         return http.build();
+    }
+
+    private static Map<HttpMethod, List<String>> groupByMethod(List<SecurityEndpointsProperties.EndpointRule> rules) {
+        return rules.stream()
+                .collect(Collectors.groupingBy(
+                        rule -> HttpMethod.valueOf(rule.getMethod().toUpperCase(Locale.ROOT)),
+                        Collectors.mapping(SecurityEndpointsProperties.EndpointRule::getPattern, Collectors.toList())));
+    }
+
+    private static String[] toArray(List<String> patterns) {
+        return patterns.toArray(String[]::new);
     }
 
     @Bean

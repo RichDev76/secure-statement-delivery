@@ -38,12 +38,28 @@ statement:
 
 security:
   endpoints:
-    csrfIgnored:
-      - /api/v1/statements/**
+    admin:
+      - method: POST
+        pattern: /api/v1/statements/upload
+    audit:
+      - method: GET
+        pattern: /api/v1/statements/audit/logs
+    search:
+      - method: GET
+        pattern: /api/v1/statements/search
+    link:
+      - method: GET
+        pattern: /api/v1/statements/link/**
     whitelist:
-      - /api/v1/statements/download/**
-      - /api/v1/statements/actuator/health/**
-      - /api/v1/statements/actuator/info
-      - /api/v1/statements/v3/api-docs/**
-      - /api/v1/statements/swagger-ui/**
-      - /api/v1/statements/swagger-ui.html
+      - method: GET
+        pattern: /api/v1/statements/download/**
+      - method: GET
+        pattern: /api/v1/statements/actuator/health/**
+      - method: GET
+        pattern: /api/v1/statements/actuator/info
+      - method: GET
+        pattern: /api/v1/statements/v3/api-docs/**
+      - method: GET
+        pattern: /api/v1/statements/swagger-ui/**
+      - method: GET
+        pattern: /api/v1/statements/swagger-ui.html

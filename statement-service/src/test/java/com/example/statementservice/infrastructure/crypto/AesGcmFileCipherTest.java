@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.statement.FileCipherException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -48,11 +49,12 @@ class AesGcmFileCipherTest {
         // Given
         var plaintext = "the quick brown fox jumps over the lazy dog".getBytes();
         var iv = cipher.generateInitializationVector();
+        var dek = cipher.generateDek();
         var ciphertextBytes = new ByteArrayOutputStream();
 
         // When
-        cipher.encrypt(new ByteArrayInputStream(plaintext), ciphertextBytes, iv);
-        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()))
+        cipher.encrypt(new ByteArrayInputStream(plaintext), ciphertextBytes, iv, dek);
+        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()), dek)
                 .readAllBytes();
 
         // Then
@@ -63,11 +65,12 @@ class AesGcmFileCipherTest {
     void GivenEmptyPlaintext_WhenEncryptedThenDecrypted_ThenEmptyContentIsRecovered() throws IOException {
         // Given
         var iv = cipher.generateInitializationVector();
+        var dek = cipher.generateDek();
         var ciphertextBytes = new ByteArrayOutputStream();
 
         // When
-        cipher.encrypt(new ByteArrayInputStream(new byte[0]), ciphertextBytes, iv);
-        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()))
+        cipher.encrypt(new ByteArrayInputStream(new byte[0]), ciphertextBytes, iv, dek);
+        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()), dek)
                 .readAllBytes();
 
         // Then
@@ -80,11 +83,12 @@ class AesGcmFileCipherTest {
         var plaintext = new byte[500_000];
         new SecureRandom().nextBytes(plaintext);
         var iv = cipher.generateInitializationVector();
+        var dek = cipher.generateDek();
         var ciphertextBytes = new ByteArrayOutputStream();
 
         // When
-        cipher.encrypt(new ByteArrayInputStream(plaintext), ciphertextBytes, iv);
-        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()))
+        cipher.encrypt(new ByteArrayInputStream(plaintext), ciphertextBytes, iv, dek);
+        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()), dek)
                 .readAllBytes();
 
         // Then
@@ -94,7 +98,7 @@ class AesGcmFileCipherTest {
     @Test
     void GivenCiphertextShorterThanInitializationVector_WhenDecrypting_ThenIOExceptionIsThrown() {
         var tooShort = new ByteArrayInputStream(new byte[] {1, 2, 3});
-        assertThatThrownBy(() -> cipher.decrypt(tooShort))
+        assertThatThrownBy(() -> cipher.decrypt(tooShort, cipher.generateDek()))
                 .isInstanceOf(IOException.class)
                 .hasMessageContaining("initialization vector");
     }
@@ -103,15 +107,116 @@ class AesGcmFileCipherTest {
     void GivenCorruptedCiphertext_WhenDecryptingAndReading_ThenIOExceptionIsThrown() throws IOException {
         // Given
         var iv = cipher.generateInitializationVector();
+        var dek = cipher.generateDek();
         var ciphertextBytes = new ByteArrayOutputStream();
-        cipher.encrypt(new ByteArrayInputStream("some data".getBytes()), ciphertextBytes, iv);
+        cipher.encrypt(new ByteArrayInputStream("some data".getBytes()), ciphertextBytes, iv, dek);
         var corrupted = ciphertextBytes.toByteArray();
         corrupted[corrupted.length - 1] ^= 0xFF;
 
         // When
-        var decryptStream = cipher.decrypt(new ByteArrayInputStream(corrupted));
+        var decryptStream = cipher.decrypt(new ByteArrayInputStream(corrupted), dek);
 
         // Then
         assertThatThrownBy(decryptStream::readAllBytes).isInstanceOf(IOException.class);
+    }
+
+    @Test
+    void GivenFileEncryptedWithOneDek_WhenDecryptingWithDifferentDek_ThenIOExceptionIsThrown() throws IOException {
+        // Given
+        var iv = cipher.generateInitializationVector();
+        var dek = cipher.generateDek();
+        var otherDek = cipher.generateDek();
+        var ciphertextBytes = new ByteArrayOutputStream();
+        cipher.encrypt(new ByteArrayInputStream("some data".getBytes()), ciphertextBytes, iv, dek);
+
+        // When
+        var decryptStream = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()), otherDek);
+
+        // Then
+        assertThatThrownBy(decryptStream::readAllBytes).isInstanceOf(IOException.class);
+    }
+
+    @Test
+    void GivenCipher_WhenGeneratingDek_ThenReturnsThirtyTwoBytes() {
+        assertThat(cipher.generateDek()).hasSize(32);
+    }
+
+    @Test
+    void GivenCipher_WhenGeneratingDekTwice_ThenValuesDiffer() {
+        assertThat(cipher.generateDek()).isNotEqualTo(cipher.generateDek());
+    }
+
+    @Test
+    void GivenDek_WhenWrapThenUnwrap_ThenOriginalDekIsRecovered() {
+        // Given
+        var dek = cipher.generateDek();
+
+        // When
+        var wrapped = cipher.wrapDek(dek);
+        var unwrapped = cipher.unwrapDek(wrapped);
+
+        // Then
+        assertThat(unwrapped).isEqualTo(dek);
+    }
+
+    @Test
+    void GivenDek_WhenWrapped_ThenWrappedFormIsNotTheRawDek() {
+        // Given
+        var dek = cipher.generateDek();
+
+        // When
+        var wrapped = cipher.wrapDek(dek);
+
+        // Then
+        assertThat(wrapped).isNotEqualTo(dek);
+    }
+
+    @Test
+    void GivenSameDekWrappedTwice_WhenWrapDek_ThenProducesDifferentCiphertext() {
+        // Given
+        var dek = cipher.generateDek();
+
+        // When
+        var wrappedFirst = cipher.wrapDek(dek);
+        var wrappedSecond = cipher.wrapDek(dek);
+
+        // Then
+        assertThat(wrappedFirst).isNotEqualTo(wrappedSecond);
+        assertThat(cipher.unwrapDek(wrappedFirst)).isEqualTo(dek);
+        assertThat(cipher.unwrapDek(wrappedSecond)).isEqualTo(dek);
+    }
+
+    @Test
+    void GivenWrappedDekTamperedWithBitFlip_WhenUnwrapDek_ThenThrows() {
+        // Given
+        var wrapped = cipher.wrapDek(cipher.generateDek());
+        wrapped[wrapped.length - 1] ^= 0xFF;
+
+        // When / Then
+        assertThatThrownBy(() -> cipher.unwrapDek(wrapped)).isInstanceOf(FileCipherException.class);
+    }
+
+    @Test
+    void GivenUnrecognisedWrapFormat_WhenUnwrapDek_ThenThrows() {
+        // Given
+        var garbage = new byte[61];
+        new SecureRandom().nextBytes(garbage);
+        garbage[0] = 0x02;
+
+        // When / Then
+        assertThatThrownBy(() -> cipher.unwrapDek(garbage))
+                .isInstanceOf(FileCipherException.class)
+                .hasMessageContaining("Unrecognised DEK wrap format");
+    }
+
+    @Test
+    void GivenTruncatedWrappedDek_WhenUnwrapDek_ThenThrows() {
+        // Given
+        var tooShort = new byte[] {0x01, 1, 2, 3};
+
+        // When / Then
+        assertThatThrownBy(() -> cipher.unwrapDek(tooShort))
+                .isInstanceOf(FileCipherException.class)
+                .hasMessageContaining("Unrecognised DEK wrap format");
     }
 }

@@ -8,39 +8,37 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
+import com.example.statementservice.shared.Sha256Digest;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.LoggerFactory;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SignedLinkService Unit Tests")
 class SignedLinkServiceTest {
 
+    private static final Instant FIXED_INSTANT = Instant.parse("2026-08-11T12:00:00Z");
+    private static final String FILE_NAME = "statement.pdf";
+    private static final String DOWNLOAD_PATH = "/api/v1/statements/download/" + FILE_NAME;
+    private static final String RAW_TOKEN = "test-signature-token";
+
     @Mock
     private SignedLinkRepository signedLinkRepository;
-
-    private static final Instant FIXED_INSTANT = Instant.parse("2026-08-11T12:00:00Z");
 
     @Mock
     private LinkSigner linkSigner;
@@ -48,272 +46,265 @@ class SignedLinkServiceTest {
     @Mock
     private DownloadUrlProvider downloadUrlProvider;
 
+    private SignedLinkProperties properties;
+
     @Spy
     private Clock clock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
 
-    @InjectMocks
     private SignedLinkService signedLinkService;
 
     private UUID testStatementId;
-    private String testToken;
     private String testCreatedBy;
-    private String testBasePath;
-
-    private ListAppender<ILoggingEvent> appender;
-    private Logger signedLinkServiceLogger;
-    private Level originalLevel;
 
     @BeforeEach
     void setUp() {
         testStatementId = UUID.randomUUID();
-        testToken = "test-signature-token";
         testCreatedBy = "testUser";
-        testBasePath = "/api/v1/statements/download/test.pdf";
 
-        ReflectionTestUtils.setField(signedLinkService, "defaultExpirySeconds", 900L);
-
-        signedLinkServiceLogger = (Logger) LoggerFactory.getLogger(SignedLinkService.class);
-        originalLevel = signedLinkServiceLogger.getLevel();
-        signedLinkServiceLogger.setLevel(Level.DEBUG);
-        appender = new ListAppender<>();
-        appender.start();
-        signedLinkServiceLogger.addAppender(appender);
-    }
-
-    @AfterEach
-    void detachAppender() {
-        signedLinkServiceLogger.detachAppender(appender);
-        signedLinkServiceLogger.setLevel(originalLevel);
+        properties = new SignedLinkProperties();
+        properties.setExpiry(Duration.ofMinutes(15));
+        properties.setDownloadPath("/api/v1/statements/download/");
+        signedLinkService =
+                new SignedLinkService(signedLinkRepository, linkSigner, downloadUrlProvider, properties, clock);
     }
 
     @Test
-    @DisplayName("createSignedLink - should create and save single-use link")
-    void createSignedLink_SingleUse() {
-
-        when(linkSigner.sign(anyString(), anyLong(), anyString())).thenReturn(testToken);
+    void GivenValidRequest_WhenCreateSignedLink_ThenPersistsTokenHashNotRawToken() {
+        // Given
+        when(linkSigner.sign(eq(DOWNLOAD_PATH), anyLong(), anyString(), anyString()))
+                .thenReturn(RAW_TOKEN);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        var result = signedLinkService.createSignedLink(testStatementId, true, testCreatedBy, testBasePath);
-        assertThat(result).isNotNull();
+
+        // When
+        var result = signedLinkService.createSignedLink(testStatementId, testCreatedBy, FILE_NAME);
+
+        // Then
         assertThat(result.getId()).isNotNull();
         assertThat(result.getStatementId()).isEqualTo(testStatementId);
-        assertThat(result.getToken()).isEqualTo(testToken);
-        assertThat(result.isSingleUse()).isTrue();
-        assertThat(result.isUsed()).isFalse();
+        assertThat(result.getToken()).isEqualTo(RAW_TOKEN);
+        assertThat(result.getTokenHash())
+                .isEqualTo(Sha256Digest.hexOf(RAW_TOKEN.getBytes(StandardCharsets.UTF_8)))
+                .isNotEqualTo(RAW_TOKEN);
         assertThat(result.getCreatedBy()).isEqualTo(testCreatedBy);
         assertThat(result.getCreatedAt()).isNotNull();
-        assertThat(result.getExpiresAt()).isNotNull();
-        assertThat(result.getExpiresAt()).isAfter(result.getCreatedAt());
-        verify(linkSigner).sign(eq(testBasePath), anyLong(), eq("GET"));
         verify(signedLinkRepository).save(any(SignedLink.class));
     }
 
     @Test
-    @DisplayName("createSignedLink - should create multi-use link")
-    void createSignedLink_MultiUse() {
-
-        when(linkSigner.sign(anyString(), anyLong(), anyString())).thenReturn(testToken);
+    void GivenFixedClock_WhenCreateSignedLink_ThenExpiryIsExactlyConfiguredDurationAfterNow() {
+        // Given
+        when(linkSigner.sign(anyString(), anyLong(), anyString(), anyString())).thenReturn(RAW_TOKEN);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        var result = signedLinkService.createSignedLink(testStatementId, false, testCreatedBy, testBasePath);
-        assertThat(result).isNotNull();
-        assertThat(result.isSingleUse()).isFalse();
-        assertThat(result.isUsed()).isFalse();
-        verify(signedLinkRepository).save(any(SignedLink.class));
-    }
 
-    @Test
-    @DisplayName("createSignedLink - should expire exactly link-expiry-seconds after the clock instant")
-    void GivenFixedClock_WhenCreatingSignedLink_ThenExpiryIsExactlyDefaultExpiryAfterNow() {
+        // When
+        var result = signedLinkService.createSignedLink(testStatementId, testCreatedBy, FILE_NAME);
 
-        when(linkSigner.sign(anyString(), anyLong(), anyString())).thenReturn(testToken);
-        when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        var result = signedLinkService.createSignedLink(testStatementId, true, testCreatedBy, testBasePath);
+        // Then
         assertThat(result.getExpiresAt())
                 .isEqualTo(
-                        OffsetDateTime.ofInstant(FIXED_INSTANT, ZoneOffset.UTC).plusSeconds(900));
+                        OffsetDateTime.ofInstant(FIXED_INSTANT, ZoneOffset.UTC).plusMinutes(15));
         assertThat(result.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(FIXED_INSTANT, ZoneOffset.UTC));
     }
 
     @Test
-    @DisplayName("createSignedLink - should generate signature with correct parameters")
-    void createSignedLink_SignatureParameters() {
-
-        ArgumentCaptor<String> pathCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Long> expiresCaptor = ArgumentCaptor.forClass(Long.class);
-        ArgumentCaptor<String> methodCaptor = ArgumentCaptor.forClass(String.class);
-        when(linkSigner.sign(anyString(), anyLong(), anyString())).thenReturn(testToken);
+    void GivenValidRequest_WhenCreateSignedLink_ThenSignsWithFilesDownloadPathAndLinkIdAsNonce() {
+        // Given
+        when(linkSigner.sign(anyString(), anyLong(), anyString(), anyString())).thenReturn(RAW_TOKEN);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        signedLinkService.createSignedLink(testStatementId, true, testCreatedBy, testBasePath);
-        verify(linkSigner).sign(pathCaptor.capture(), expiresCaptor.capture(), methodCaptor.capture());
-        assertThat(pathCaptor.getValue()).isEqualTo(testBasePath);
-        assertThat(expiresCaptor.getValue()).isGreaterThan(0);
-        assertThat(methodCaptor.getValue()).isEqualTo("GET");
+
+        // When
+        var result = signedLinkService.createSignedLink(testStatementId, testCreatedBy, FILE_NAME);
+
+        // Then
+        verify(linkSigner)
+                .sign(
+                        eq(DOWNLOAD_PATH),
+                        eq(result.getExpiresAt().toEpochSecond()),
+                        eq("GET"),
+                        eq(result.getId().toString()));
     }
 
     @Test
-    @DisplayName("validateAndConsume - should return valid result for valid single-use link")
-    void validateAndConsume_ValidSingleUse() {
+    void GivenValidLinkAndMatchingSignature_WhenValidate_ThenReturnsValid() {
+        // Given
+        var link = createTestLink(OffsetDateTime.now(clock).plusMinutes(10));
+        var linkId = link.getId();
+        when(linkSigner.verify(RAW_TOKEN, DOWNLOAD_PATH, link.getExpiresAt().toEpochSecond(), "GET", linkId.toString()))
+                .thenReturn(true);
+        when(signedLinkRepository.findByTokenHash(link.getTokenHash())).thenReturn(Optional.of(link));
 
-        var link = createTestLink(true, false, OffsetDateTime.now().plusMinutes(10));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        when(signedLinkRepository.consumeSingleUse(testToken)).thenAnswer(invocation -> 1);
-        var result = signedLinkService.validateAndConsume(
-                testToken, link.getExpiresAt().toEpochSecond());
+        // When
+        var result = signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), linkId, FILE_NAME);
+
+        // Then
         assertThat(result.isValid()).isTrue();
         assertThat(result.getLink()).isEqualTo(link);
         assertThat(result.getFailureReason()).isNull();
-        verify(signedLinkRepository).findByToken(testToken);
     }
 
     @Test
-    @DisplayName("validateAndConsume - should return valid result for valid multi-use link without marking as used")
-    void validateAndConsume_ValidMultiUse() {
+    void GivenTamperedSignature_WhenValidate_ThenReturnsInvalidSignatureWithoutQueryingRepository() {
+        // Given
+        var linkId = UUID.randomUUID();
+        when(linkSigner.verify(anyString(), anyString(), anyLong(), anyString(), anyString()))
+                .thenReturn(false);
 
-        var link = createTestLink(false, false, OffsetDateTime.now().plusMinutes(10));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        var result = signedLinkService.validateAndConsume(
-                testToken, link.getExpiresAt().toEpochSecond());
-        assertThat(result.isValid()).isTrue();
-        assertThat(result.getLink()).isEqualTo(link);
-        verify(signedLinkRepository, never()).save(any());
+        // When
+        var result = signedLinkService.validate("tampered-token", 1234567890L, linkId, FILE_NAME);
+
+        // Then
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        verifyNoInteractions(signedLinkRepository);
     }
 
     @Test
-    @DisplayName("validateAndConsume - should return not found for non-existent token")
-    void validateAndConsume_NotFound() {
+    void GivenValidSignatureButNoMatchingTokenHash_WhenValidate_ThenReturnsNotFound() {
+        // Given
+        var linkId = UUID.randomUUID();
+        when(linkSigner.verify(anyString(), anyString(), anyLong(), anyString(), anyString()))
+                .thenReturn(true);
+        when(signedLinkRepository.findByTokenHash(anyString())).thenReturn(Optional.empty());
 
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.empty());
-        var result = signedLinkService.validateAndConsume(testToken, 1234567890L);
+        // When
+        var result = signedLinkService.validate(RAW_TOKEN, 1234567890L, linkId, FILE_NAME);
+
+        // Then
         assertThat(result.isValid()).isFalse();
         assertThat(result.getLink()).isNull();
-        assertThat(result.getFailureReason()).isNotNull();
-        verify(signedLinkRepository, never()).save(any());
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.NOT_FOUND);
     }
 
     @Test
-    @DisplayName("validateAndConsume - should return used result for already used link")
-    void validateAndConsume_AlreadyUsed() {
+    void GivenValidSignatureButLinkIdMismatch_WhenValidate_ThenReturnsInvalidSignature() {
+        // Given
+        var link = createTestLink(OffsetDateTime.now(clock).plusMinutes(10));
+        var unrelatedLinkId = UUID.randomUUID();
+        when(linkSigner.verify(anyString(), anyString(), anyLong(), anyString(), anyString()))
+                .thenReturn(true);
+        when(signedLinkRepository.findByTokenHash(anyString())).thenReturn(Optional.of(link));
 
-        var link = createTestLink(true, true, OffsetDateTime.now().plusMinutes(10));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        var result = signedLinkService.validateAndConsume(
-                testToken, link.getExpiresAt().toEpochSecond());
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getLink()).isEqualTo(link);
-        assertThat(result.getFailureReason()).isNotNull();
-        verify(signedLinkRepository, never()).save(any());
-    }
+        // When
+        var result =
+                signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), unrelatedLinkId, FILE_NAME);
 
-    @Test
-    @DisplayName("validateAndConsume - should return expired result for expired link")
-    void validateAndConsume_Expired() {
-
-        var link = createTestLink(true, false, OffsetDateTime.now().minusMinutes(10));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        var result = signedLinkService.validateAndConsume(
-                testToken, link.getExpiresAt().toEpochSecond());
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getLink()).isEqualTo(link);
-        assertThat(result.getFailureReason()).isNotNull();
-        verify(signedLinkRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("validateAndConsume - should handle link expiring exactly now")
-    void validateAndConsume_ExpiringNow() {
-
-        var link = createTestLink(true, false, OffsetDateTime.now().minusSeconds(1));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        var result = signedLinkService.validateAndConsume(
-                testToken, link.getExpiresAt().toEpochSecond());
-        assertThat(result.isValid()).isFalse();
-        verify(signedLinkRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("validateAndConsume - should mark only single-use links as used")
-    void validateAndConsume_OnlySingleUseMarked() {
-
-        var multiUseLink = createTestLink(false, false, OffsetDateTime.now().plusMinutes(10));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(multiUseLink));
-        var result = signedLinkService.validateAndConsume(
-                testToken, multiUseLink.getExpiresAt().toEpochSecond());
-        assertThat(result.isValid()).isTrue();
-        verify(signedLinkRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("validateAndConsume - should not mark expired single-use link as used")
-    void validateAndConsume_ExpiredNotMarkedUsed() {
-
-        var link = createTestLink(true, false, OffsetDateTime.now().minusHours(1));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        var result = signedLinkService.validateAndConsume(
-                testToken, link.getExpiresAt().toEpochSecond());
-        assertThat(result.isValid()).isFalse();
-        verify(signedLinkRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("validateAndConsume - should use pessimistic locking via findByTokenForUpdate")
-    void validateAndConsume_UsesPessimisticLocking() {
-
-        var link = createTestLink(true, false, OffsetDateTime.now().plusMinutes(10));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        when(signedLinkRepository.consumeSingleUse(testToken)).thenReturn(1);
-        signedLinkService.validateAndConsume(testToken, link.getExpiresAt().toEpochSecond());
-        verify(signedLinkRepository).findByToken(testToken);
-    }
-
-    @Test
-    @DisplayName("validateAndConsume - should return invalid signature when expires mismatch")
-    void validateAndConsume_ExpiresMismatch() {
-
-        var link = createTestLink(true, false, OffsetDateTime.now().plusMinutes(10));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        var result = signedLinkService.validateAndConsume(
-                testToken, link.getExpiresAt().toEpochSecond() + 3600);
+        // Then
         assertThat(result.isValid()).isFalse();
         assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+    }
+
+    @Test
+    void GivenValidSignatureButExpiresMismatch_WhenValidate_ThenReturnsInvalidSignature() {
+        // Given
+        var link = createTestLink(OffsetDateTime.now(clock).plusMinutes(10));
+        when(linkSigner.verify(anyString(), anyString(), anyLong(), anyString(), anyString()))
+                .thenReturn(true);
+        when(signedLinkRepository.findByTokenHash(anyString())).thenReturn(Optional.of(link));
+
+        // When
+        var result = signedLinkService.validate(
+                RAW_TOKEN, link.getExpiresAt().toEpochSecond() + 3600, link.getId(), FILE_NAME);
+
+        // Then
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+    }
+
+    @Test
+    void GivenExpiredLink_WhenValidate_ThenReturnsExpired() {
+        // Given
+        var link = createTestLink(OffsetDateTime.now(clock).minusMinutes(10));
+        when(linkSigner.verify(anyString(), anyString(), anyLong(), anyString(), anyString()))
+                .thenReturn(true);
+        when(signedLinkRepository.findByTokenHash(anyString())).thenReturn(Optional.of(link));
+
+        // When
+        var result =
+                signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), link.getId(), FILE_NAME);
+
+        // Then
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
+    }
+
+    @Test
+    void GivenValidLink_WhenValidatedTwice_ThenBothCallsReturnValid() {
+        // Given
+        var link = createTestLink(OffsetDateTime.now(clock).plusMinutes(10));
+        when(linkSigner.verify(anyString(), anyString(), anyLong(), anyString(), anyString()))
+                .thenReturn(true);
+        when(signedLinkRepository.findByTokenHash(anyString())).thenReturn(Optional.of(link));
+
+        // When
+        var first = signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), link.getId(), FILE_NAME);
+        var second =
+                signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), link.getId(), FILE_NAME);
+
+        // Then
+        assertThat(first.isValid()).isTrue();
+        assertThat(second.isValid()).isTrue();
         verify(signedLinkRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("validateAndConsume - should return invalid signature when expires is null")
-    void validateAndConsume_ExpiresNull() {
+    void GivenNullExpiresFromUrl_WhenValidate_ThenReturnsInvalidSignatureWithoutCallingVerify() {
+        // When
+        var result = signedLinkService.validate(RAW_TOKEN, null, UUID.randomUUID(), FILE_NAME);
 
-        var link = createTestLink(true, false, OffsetDateTime.now().plusMinutes(10));
-        when(signedLinkRepository.findByToken(testToken)).thenReturn(Optional.of(link));
-        var result = signedLinkService.validateAndConsume(testToken, null);
+        // Then
         assertThat(result.isValid()).isFalse();
         assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        verifyNoInteractions(linkSigner);
+    }
+
+    @Test
+    void GivenNullLinkId_WhenValidate_ThenReturnsInvalidSignatureWithoutCallingVerify() {
+        // When
+        var result = signedLinkService.validate(RAW_TOKEN, 1234567890L, null, FILE_NAME);
+
+        // Then
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        verifyNoInteractions(linkSigner);
+    }
+
+    @Test
+    void GivenValidLink_WhenBuildingSignedDownloadLink_ThenUrlContainsExpiresLinkIdAndSignature() {
+        // Given
+        var link = createTestLink(OffsetDateTime.now(clock).plusMinutes(10));
+        when(downloadUrlProvider.toAbsoluteUrl(DOWNLOAD_PATH)).thenReturn("https://host" + DOWNLOAD_PATH);
+
+        // When
+        var uri = signedLinkService.buildSignedDownloadLink(link, FILE_NAME);
+
+        // Then
+        assertThat(uri.toString())
+                .startsWith("https://host" + DOWNLOAD_PATH)
+                .contains("?expires=" + link.getExpiresAt().toEpochSecond())
+                .contains("&linkId=" + link.getId())
+                .contains("&signature=" + RAW_TOKEN);
     }
 
     @Test
     void GivenUriConstructionFails_WhenBuildingSignedDownloadLink_ThenExceptionPropagatesAndIsLoggedAtError() {
-        // Given: basePath alone is valid, but the assembled URI (basePath + signature) is not -
-        // this is what distinguishes "propagates" from the old silent-fallback-to-basePath behavior.
-        var link = createTestLink(true, false, OffsetDateTime.now().plusMinutes(10));
+        // Given: an absolute base alone is valid, but the assembled URI (base + signature) is not.
+        var link = createTestLink(OffsetDateTime.now(clock).plusMinutes(10));
         link.setToken("not a valid uri token");
+        when(downloadUrlProvider.toAbsoluteUrl(DOWNLOAD_PATH)).thenReturn("https://host" + DOWNLOAD_PATH);
 
         // When / Then
-        assertThatThrownBy(() -> signedLinkService.buildSignedDownloadLink(link, testBasePath))
+        assertThatThrownBy(() -> signedLinkService.buildSignedDownloadLink(link, FILE_NAME))
                 .isInstanceOf(IllegalArgumentException.class);
-
-        assertThat(appender.list)
-                .extracting(ILoggingEvent::getFormattedMessage)
-                .anySatisfy(message -> assertThat(message).contains("Failed to build signed download link"));
     }
 
-    private SignedLink createTestLink(boolean singleUse, boolean used, OffsetDateTime expiresAt) {
-
+    private SignedLink createTestLink(OffsetDateTime expiresAt) {
         var link = new SignedLink();
         link.setId(UUID.randomUUID());
         link.setStatementId(testStatementId);
-        link.setToken(testToken);
-        link.setSingleUse(singleUse);
-        link.setUsed(used);
+        link.setToken(RAW_TOKEN);
+        link.setTokenHash(Sha256Digest.hexOf(RAW_TOKEN.getBytes(StandardCharsets.UTF_8)));
         link.setExpiresAt(expiresAt);
-        link.setCreatedAt(OffsetDateTime.now().minusMinutes(5));
+        link.setCreatedAt(OffsetDateTime.now(clock).minusMinutes(5));
         link.setCreatedBy(testCreatedBy);
         return link;
     }

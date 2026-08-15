@@ -39,9 +39,9 @@ public class DownloadResponseFactory {
                 throw new DownloadInvalidSignatureException(
                         "The download link signature is invalid or has been tampered with.");
             }
-            case LINK_EXPIRED_OR_USED -> {
-                log.warn("Download link expired or used - fileName: {}", fileName);
-                throw new DownloadLinkExpiredException("The download link has expired or has already been used.");
+            case LINK_EXPIRED -> {
+                log.warn("Download link expired - fileName: {}", fileName);
+                throw new DownloadLinkExpiredException("The download link has expired.");
             }
             case STATEMENT_NOT_FOUND -> {
                 log.warn("Statement not found - fileName: {}", fileName);

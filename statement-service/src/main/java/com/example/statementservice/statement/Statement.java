@@ -42,6 +42,9 @@ public class Statement {
     @Column(name = "file_iv")
     private byte[] fileIv;
 
+    @Column(name = "encrypted_dek")
+    private byte[] encryptedDek;
+
     @Column(name = "content_hash")
     private String contentHash;
 

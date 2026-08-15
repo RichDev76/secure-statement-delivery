@@ -39,13 +39,9 @@ spring:
 statement:
   encryption:
     algorithm: AES/GCM/NoPadding
-    files:
-      link-expiry-seconds: 900
     master-key: ${STATEMENT_MASTER_KEY}
     signature:
       secret: ${STATEMENT_SIGNATURE_SECRET}
-  api:
-    download-path: /api/v1/statements/download/
   storage:
     s3:
       bucket: ${S3_BUCKET}
@@ -53,6 +49,8 @@ statement:
       endpoint: http://floci:4566
       path-style-access: true
   signed-link:
+    expiry: 15m
+    download-path: /api/v1/statements/download/
     cleanup:
       enabled: true
       cron: "0 0/5 * * * *"          # every 5 minutes

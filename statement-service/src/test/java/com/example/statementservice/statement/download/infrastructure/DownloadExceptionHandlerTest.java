@@ -30,8 +30,8 @@ class DownloadExceptionHandlerTest {
                 Arguments.of(
                         new DownloadLinkExpiredException("link expired"),
                         HttpStatus.NOT_FOUND,
-                        "Link Expired or Used",
-                        "LINK_EXPIRED_OR_USED"),
+                        "Link Expired",
+                        "LINK_EXPIRED"),
                 Arguments.of(
                         new DownloadFileMissingException("file missing"),
                         HttpStatus.NOT_FOUND,

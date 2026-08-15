@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Statement Upload & Search API
-  version: 1.8.0
+  version: 1.9.0
   description: >
     Upload a PDF account statement with metadata and strict validation rules.
     Also provides search endpoints to retrieve statements by statementId,
@@ -243,6 +243,14 @@ paths:
             type: integer
             format: int64
             example: 1763460031
+        - name: linkId
+          in: query
+          required: true
+          description: Identifier of the signed link; folded into the HMAC signature as a nonce.
+          schema:
+            type: string
+            format: uuid
+            example: "0198f2b0-7a1e-7c33-8b1a-3fd41e9c2b77"
         - name: signature
           in: query
           required: true
@@ -514,7 +522,7 @@ components:
               type: string
               format: uri
               description: "Time-limited signed URL for downloading the PDF statement"
-              example: "https://files.example.com/statements/statement_2025-11.pdf?expires=1723859200&signature=1a8f3bc..."
+              example: "https://files.example.com/statements/statement_2025-11.pdf?expires=1723859200&linkId=0198f2b0-7a1e-7c33-8b1a-3fd41e9c2b77&signature=1a8f3bc..."
 
     StatementSummaryPage:
       type: object

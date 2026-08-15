@@ -67,6 +67,7 @@ class StatementUploadDownloadIT extends AbstractIntegrationTest {
         // When: download via the whitelisted signed link (no auth)
         var downloadResult = mockMvc.perform(get(uri.getPath())
                         .queryParam("expires", uri.getQueryParams().getFirst("expires"))
+                        .queryParam("linkId", uri.getQueryParams().getFirst("linkId"))
                         .queryParam("signature", uri.getQueryParams().getFirst("signature")))
                 .andExpect(status().isOk())
                 .andReturn();

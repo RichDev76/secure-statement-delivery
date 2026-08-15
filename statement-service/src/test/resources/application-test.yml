@@ -25,10 +25,12 @@ statement:
     master-key: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
     signature:
       secret: test-signature-secret
-  files:
-    link-expiry-seconds: 900
-  api:
+  signed-link:
+    expiry: 15m
     download-path: /api/v1/statements/download/
+    cleanup:
+      # "-" disables the @Scheduled cron trigger while keeping the bean graph intact.
+      cron: "-"
   storage:
     s3:
       # Overridden per-IT by AbstractIntegrationTest's @DynamicPropertySource against a real
@@ -38,10 +40,6 @@ statement:
       region: us-east-1
       endpoint: http://localhost:4566
       path-style-access: true
-  signed-link:
-    cleanup:
-      # "-" disables the @Scheduled cron trigger while keeping the bean graph intact.
-      cron: "-"
 
 security:
   endpoints:

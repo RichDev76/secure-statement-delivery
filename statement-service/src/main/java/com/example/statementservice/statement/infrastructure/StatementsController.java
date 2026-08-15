@@ -32,12 +32,14 @@ public class StatementsController implements StatementsApi {
 
     @Override
     public ResponseEntity<Resource> downloadStatementByFileName(
-            String fileName, Long expires, String signature, String xCorrelationId) {
+            String fileName, Long expires, UUID linkId, String signature, String xCorrelationId) {
         log.info("downloadStatementByFileName - fileName: {}", fileName);
         var requestInfo = requestInfoProvider.get();
         var result = downloadService.validateAndStreamDetailed(
                 signature,
                 expires,
+                linkId,
+                fileName,
                 requestInfo.getClientIp(),
                 requestInfo.getUserAgent(),
                 requestInfo.getPerformedBy());

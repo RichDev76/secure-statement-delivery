@@ -1,12 +1,13 @@
 package com.example.statementservice.statement.signedlink;
 
+import com.example.statementservice.shared.Sha256Digest;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,43 +18,45 @@ import org.springframework.transaction.annotation.Transactional;
 public class SignedLinkService {
 
     public static final String EXPIRES_PATH_VARIABLE = "?expires=";
+    public static final String LINK_ID_PATH_VARIABLE = "&linkId=";
     public static final String SIGNATURE_PATH_VARIABLE = "&signature=";
+    private static final String HTTP_METHOD = HttpMethod.GET.toString();
 
     private final SignedLinkRepository signedLinkRepository;
     private final LinkSigner linkSigner;
     private final DownloadUrlProvider downloadUrlProvider;
+    private final SignedLinkProperties properties;
     private final Clock clock;
 
-    @Value("${statement.files.link-expiry-seconds:900}")
-    private long defaultExpirySeconds;
-
     @Transactional
-    public SignedLink createSignedLink(UUID statementId, boolean singleUse, String createdBy, String basePath) {
-        var expires = OffsetDateTime.now(clock).plusSeconds(defaultExpirySeconds);
-        var link = buildSignedDownloadLink(statementId, singleUse, createdBy, basePath, expires);
+    public SignedLink createSignedLink(UUID statementId, String createdBy, String fileName) {
+        var id = UUID.randomUUID();
+        var expires = OffsetDateTime.now(clock).plus(properties.getExpiry());
+        var path = getFilesDownloadPath(fileName);
+        var rawToken = linkSigner.sign(path, expires.toEpochSecond(), HTTP_METHOD, id.toString());
+
+        var link = new SignedLink();
+        link.setId(id);
+        link.setStatementId(statementId);
+        link.setToken(rawToken);
+        link.setTokenHash(Sha256Digest.hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
+        link.setExpiresAt(expires);
+        link.setCreatedAt(OffsetDateTime.now(clock));
+        link.setCreatedBy(createdBy);
+
         signedLinkRepository.save(link);
         return link;
     }
 
-    private SignedLink buildSignedDownloadLink(
-            UUID statementId, boolean singleUse, String createdBy, String basePath, OffsetDateTime expires) {
-        var link = new SignedLink();
-        link.setId(UUID.randomUUID());
-        link.setStatementId(statementId);
-        link.setToken(linkSigner.sign(basePath, expires.toEpochSecond(), HttpMethod.GET.toString()));
-        link.setExpiresAt(expires);
-        link.setSingleUse(singleUse);
-        link.setUsed(false);
-        link.setCreatedAt(OffsetDateTime.now(clock));
-        link.setCreatedBy(createdBy);
-        return link;
-    }
-
-    @Transactional
-    public URI buildSignedDownloadLink(SignedLink signedLink, String basePath) {
-        var expires = signedLink.getExpiresAt().toEpochSecond();
-        var signature = signedLink.getToken();
-        var url = basePath + EXPIRES_PATH_VARIABLE + expires + SIGNATURE_PATH_VARIABLE + signature;
+    public URI buildSignedDownloadLink(SignedLink signedLink, String fileName) {
+        var absoluteBase = downloadUrlProvider.toAbsoluteUrl(getFilesDownloadPath(fileName));
+        var url = absoluteBase
+                + EXPIRES_PATH_VARIABLE
+                + signedLink.getExpiresAt().toEpochSecond()
+                + LINK_ID_PATH_VARIABLE
+                + signedLink.getId()
+                + SIGNATURE_PATH_VARIABLE
+                + signedLink.getToken();
         try {
             return URI.create(url);
         } catch (IllegalArgumentException e) {
@@ -63,25 +66,26 @@ public class SignedLinkService {
     }
 
     @Transactional
-    public LinkValidationResult validateAndConsume(String token, Long expiresFromUrl) {
-        var optionalSignedLink = signedLinkRepository.findByToken(token);
+    public LinkValidationResult validate(String token, Long expiresFromUrl, UUID linkId, String fileName) {
+        if (expiresFromUrl == null || linkId == null) {
+            return LinkValidationResult.invalidSignature(null);
+        }
 
-        if (optionalSignedLink.isEmpty()) {
+        var path = getFilesDownloadPath(fileName);
+        if (!linkSigner.verify(token, path, expiresFromUrl, HTTP_METHOD, linkId.toString())) {
+            return LinkValidationResult.invalidSignature(null);
+        }
+
+        var tokenHash = Sha256Digest.hexOf(token.getBytes(StandardCharsets.UTF_8));
+        var optionalLink = signedLinkRepository.findByTokenHash(tokenHash);
+        if (optionalLink.isEmpty()) {
             return LinkValidationResult.notFound();
         }
 
-        var link = optionalSignedLink.get();
-
-        if (expiresFromUrl == null || link.getExpiresAt().toEpochSecond() != expiresFromUrl) {
-            log.warn(
-                    "Expires mismatch - URL: {}, stored: {}",
-                    expiresFromUrl,
-                    link.getExpiresAt().toEpochSecond());
+        var link = optionalLink.get();
+        if (!link.getId().equals(linkId) || link.getExpiresAt().toEpochSecond() != expiresFromUrl) {
+            log.warn("Link cross-check failed - linkId: {}, statementId: {}", linkId, link.getStatementId());
             return LinkValidationResult.invalidSignature(link);
-        }
-
-        if (link.isUsed()) {
-            return LinkValidationResult.used(link);
         }
 
         if (link.getExpiresAt().isBefore(OffsetDateTime.now(clock))) {
@@ -89,17 +93,10 @@ public class SignedLinkService {
             return LinkValidationResult.expired(link);
         }
 
-        if (link.isSingleUse()) {
-            int updated = signedLinkRepository.consumeSingleUse(token);
-            if (updated == 0) {
-                return LinkValidationResult.used(link);
-            }
-        }
-
         return LinkValidationResult.valid(link);
     }
 
-    public String getFilesBaseUrl(String fileName) {
-        return downloadUrlProvider.downloadBaseUrl(fileName);
+    public String getFilesDownloadPath(String fileName) {
+        return properties.getDownloadPath() + fileName;
     }
 }

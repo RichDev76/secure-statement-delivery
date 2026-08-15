@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.shared.IdGeneratorPort;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.io.ByteArrayOutputStream;
@@ -58,6 +59,9 @@ class StatementServiceTest {
     @Mock
     private MultipartFile multipartFile;
 
+    @Mock
+    private IdGeneratorPort idGenerator;
+
     @InjectMocks
     private StatementService statementService;
 
@@ -90,6 +94,7 @@ class StatementServiceTest {
     }
 
     private void stubSuccessfulEncryptAndStore(byte[] iv, byte[] content) throws Exception {
+        when(idGenerator.newId()).thenReturn(testId);
         when(fileCipher.generateInitializationVector()).thenReturn(iv);
         when(multipartFile.getInputStream()).thenReturn(new java.io.ByteArrayInputStream(content));
         when(fileStore.store(any(UUID.class), eq(testAccountNumber), eq(testStatementDate), any()))

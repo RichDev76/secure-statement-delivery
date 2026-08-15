@@ -58,6 +58,13 @@ statement:
       batch-size: 500                 # max rows to delete per run
       lock-at-most-for: "PT5M"       # ShedLock max lock time
       lock-at-least-for: "PT10S"     # ShedLock min lock time
+  audit:
+    partition-maintenance:
+      enabled: true
+      cron: "0 0 0 1 * *"            # 00:00 on the 1st of every month
+      months-ahead: 2
+      lock-at-most-for: "PT5M"
+      lock-at-least-for: "PT10S"
 
 logging:
   level:

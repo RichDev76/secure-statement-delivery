@@ -24,6 +24,7 @@
         <testcontainers.version>1.21.4</testcontainers.version>
         <archunit.version>1.5.0</archunit.version>
         <awssdk.version>2.46.7</awssdk.version>
+        <uuid-creator.version>6.1.1</uuid-creator.version>
         <jackson-databind-nullable.version>0.2.4</jackson-databind-nullable.version>
         <spotless.version>3.0.0</spotless.version>
         <openapi-generator.version>7.0.1</openapi-generator.version>
@@ -93,6 +94,11 @@
                 <groupId>com.tngtech.archunit</groupId>
                 <artifactId>archunit-junit5</artifactId>
                 <version>${archunit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.f4b6a3</groupId>
+                <artifactId>uuid-creator</artifactId>
+                <version>${uuid-creator.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

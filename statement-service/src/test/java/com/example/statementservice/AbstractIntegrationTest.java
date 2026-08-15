@@ -23,7 +23,7 @@ public abstract class AbstractIntegrationTest {
     protected static final String STATEMENTS_BUCKET = "statements";
 
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15");
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:18-alpine");
 
     private static final int FLOCI_PORT = 4566;
     private static final String FLOCI_ACCESS_KEY = "test";

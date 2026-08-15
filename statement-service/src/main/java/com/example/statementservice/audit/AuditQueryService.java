@@ -45,8 +45,9 @@ public class AuditQueryService {
 
         var pageable = PageRequest.of(pageNum, pageSize, Sort.by(Sort.Direction.DESC, "performedAt"));
 
-        var auditLogPage = auditLogRepository.findFilteredAuditLogs(
-                normalizeAccountNumber(accountNumber), startDateTime, endDateTime, pageable);
+        var specification =
+                AuditLogSpecifications.filter(normalizeAccountNumber(accountNumber), startDateTime, endDateTime);
+        var auditLogPage = auditLogRepository.findAll(specification, pageable);
 
         var auditLogDtos = auditLogEntityMapper.toDtos(auditLogPage.getContent());
 

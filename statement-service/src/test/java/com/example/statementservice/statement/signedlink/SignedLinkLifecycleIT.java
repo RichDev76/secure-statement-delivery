@@ -85,7 +85,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
         var originalBytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
         var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, originalBytes);
         var digest = Sha256Digest.hexOf(originalBytes);
-        var accountNumber = "1" + System.currentTimeMillis() % 100000000L;
+        var accountNumber = String.format("1%08d", System.currentTimeMillis() % 100000000L);
         var uploadResponseBody = mockMvc.perform(multipart("/api/v1/statements/upload")
                         .file(file)
                         .param("accountNumber", accountNumber)

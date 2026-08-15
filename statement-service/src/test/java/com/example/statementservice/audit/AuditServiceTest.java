@@ -3,6 +3,7 @@ package com.example.statementservice.audit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.example.statementservice.shared.IdGeneratorPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -43,6 +45,9 @@ class AuditServiceTest {
     @Mock
     private AuditLogRepository auditLogRepository;
 
+    @Mock
+    private IdGeneratorPort idGenerator;
+
     private AuditService auditService;
 
     private UUID testStatementId;
@@ -61,7 +66,9 @@ class AuditServiceTest {
         auditService = new AuditService(
                 auditLogRepository,
                 Executors.newVirtualThreadPerTaskExecutor(),
+                idGenerator,
                 Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
+        lenient().when(idGenerator.newId()).thenAnswer(invocation -> UUID.randomUUID());
 
         testStatementId = UUID.randomUUID();
         testSignedLinkId = UUID.randomUUID();

@@ -1,5 +1,6 @@
 package com.example.statementservice.statement;
 
+import com.example.statementservice.shared.IdGeneratorPort;
 import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
@@ -31,12 +32,13 @@ public class StatementService {
     private final StatementFileStore fileStore;
     private final FileCipher fileCipher;
     private final StatementEntityMapper statementEntityMapper;
+    private final IdGeneratorPort idGenerator;
     private final Clock clock;
 
     @Transactional
     public UploadResponseDto uploadStatement(
             String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy) {
-        var id = UUID.randomUUID();
+        var id = idGenerator.newId();
         var initializationVector = fileCipher.generateInitializationVector();
         var dek = fileCipher.generateDek();
         var wrappedDek = fileCipher.wrapDek(dek);

@@ -59,8 +59,8 @@ class EnvelopeEncryptionIT extends AbstractIntegrationTest {
                     throws Exception {
         // Given: byte-for-byte identical plaintext, uploaded twice under different accounts.
         var content = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
-        var accountOne = "1" + System.currentTimeMillis() % 100000000L;
-        var accountTwo = "2" + System.currentTimeMillis() % 100000000L;
+        var accountOne = String.format("1%08d", System.currentTimeMillis() % 100000000L);
+        var accountTwo = String.format("2%08d", System.currentTimeMillis() % 100000000L);
 
         // When
         var firstStatementId = upload(content, accountOne);

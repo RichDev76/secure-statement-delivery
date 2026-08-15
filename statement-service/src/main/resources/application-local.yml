@@ -41,6 +41,13 @@ statement:
   signed-link:
     expiry: 15m
     download-path: /api/v1/statements/download/
+  audit:
+    partition-maintenance:
+      enabled: true
+      cron: "0 0 0 1 * *"
+      months-ahead: 2
+      lock-at-most-for: "PT5M"
+      lock-at-least-for: "PT10S"
     cleanup:
       enabled: true
       cron: "0 0/5 * * * *"

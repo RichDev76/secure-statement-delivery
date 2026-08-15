@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.shared.IdGeneratorPort;
 import com.example.statementservice.shared.Sha256Digest;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -46,6 +47,9 @@ class SignedLinkServiceTest {
     @Mock
     private DownloadUrlProvider downloadUrlProvider;
 
+    @Mock
+    private IdGeneratorPort idGenerator;
+
     private SignedLinkProperties properties;
 
     @Spy
@@ -64,13 +68,14 @@ class SignedLinkServiceTest {
         properties = new SignedLinkProperties();
         properties.setExpiry(Duration.ofMinutes(15));
         properties.setDownloadPath("/api/v1/statements/download/");
-        signedLinkService =
-                new SignedLinkService(signedLinkRepository, linkSigner, downloadUrlProvider, properties, clock);
+        signedLinkService = new SignedLinkService(
+                signedLinkRepository, linkSigner, downloadUrlProvider, properties, idGenerator, clock);
     }
 
     @Test
     void GivenValidRequest_WhenCreateSignedLink_ThenPersistsTokenHashNotRawToken() {
         // Given
+        when(idGenerator.newId()).thenReturn(UUID.randomUUID());
         when(linkSigner.sign(eq(DOWNLOAD_PATH), anyLong(), anyString(), anyString()))
                 .thenReturn(RAW_TOKEN);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -93,6 +98,7 @@ class SignedLinkServiceTest {
     @Test
     void GivenFixedClock_WhenCreateSignedLink_ThenExpiryIsExactlyConfiguredDurationAfterNow() {
         // Given
+        when(idGenerator.newId()).thenReturn(UUID.randomUUID());
         when(linkSigner.sign(anyString(), anyLong(), anyString(), anyString())).thenReturn(RAW_TOKEN);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -109,6 +115,7 @@ class SignedLinkServiceTest {
     @Test
     void GivenValidRequest_WhenCreateSignedLink_ThenSignsWithFilesDownloadPathAndLinkIdAsNonce() {
         // Given
+        when(idGenerator.newId()).thenReturn(UUID.randomUUID());
         when(linkSigner.sign(anyString(), anyLong(), anyString(), anyString())).thenReturn(RAW_TOKEN);
         when(signedLinkRepository.save(any(SignedLink.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

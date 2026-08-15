@@ -31,6 +31,14 @@ statement:
     cleanup:
       # "-" disables the @Scheduled cron trigger while keeping the bean graph intact.
       cron: "-"
+  audit:
+    partition-maintenance:
+      enabled: true
+      # "-" disables the @Scheduled cron trigger while keeping the bean graph intact.
+      cron: "-"
+      months-ahead: 2
+      lock-at-most-for: "PT5M"
+      lock-at-least-for: "PT10S"
   storage:
     s3:
       # Overridden per-IT by AbstractIntegrationTest's @DynamicPropertySource against a real

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,14 +19,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class AuditQueryServiceTest {
@@ -57,8 +62,8 @@ class AuditQueryServiceTest {
     }
 
     private void stubRepositoryPage(List<AuditLog> auditLogs, List<AuditLogDto> dtos, long totalElements) {
-        when(auditLogRepository.findFilteredAuditLogs(any(), any(), any(), any()))
-                .thenAnswer(invocation -> new PageImpl<>(auditLogs, invocation.getArgument(3), totalElements));
+        when(auditLogRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenAnswer(invocation -> new PageImpl<>(auditLogs, invocation.getArgument(1), totalElements));
         when(auditLogEntityMapper.toDtos(auditLogs)).thenReturn(dtos);
     }
 
@@ -68,7 +73,7 @@ class AuditQueryServiceTest {
 
     private Pageable capturedPageable() {
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(auditLogRepository).findFilteredAuditLogs(any(), any(), any(), captor.capture());
+        verify(auditLogRepository).findAll(any(Specification.class), captor.capture());
         return captor.getValue();
     }
 
@@ -87,51 +92,57 @@ class AuditQueryServiceTest {
         assertThat(result.getSize()).isEqualTo(50);
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getTotalPages()).isEqualTo(1);
-        verify(auditLogRepository)
-                .findFilteredAuditLogs(
-                        eq("123456789"), any(OffsetDateTime.class), any(OffsetDateTime.class), any(Pageable.class));
+        verify(auditLogRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
-    void GivenNullAccountNumber_WhenQueryingAuditLogs_ThenRepositoryReceivesNullFilter() {
-        // Given
-        stubEmptyRepositoryPage();
+    void GivenNullAccountNumber_WhenQueryingAuditLogs_ThenSpecificationBuiltWithNullFilter() {
+        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
+            // Given
+            specs.when(() -> AuditLogSpecifications.filter(isNull(), any(), any()))
+                    .thenReturn(null);
+            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
+            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
-        // When
-        auditQueryService.getFilteredAuditLogs(null, null, null, null, null);
+            // When
+            auditQueryService.getFilteredAuditLogs(null, null, null, null, null);
 
-        // Then
-        ArgumentCaptor<String> accountCaptor = ArgumentCaptor.forClass(String.class);
-        verify(auditLogRepository).findFilteredAuditLogs(accountCaptor.capture(), any(), any(), any(Pageable.class));
-        assertThat(accountCaptor.getValue()).isNull();
+            // Then
+            specs.verify(() -> AuditLogSpecifications.filter(isNull(), isNull(), isNull()));
+        }
     }
 
     @Test
-    void GivenBlankAccountNumber_WhenQueryingAuditLogs_ThenRepositoryReceivesNullFilter() {
-        // Given
-        stubEmptyRepositoryPage();
+    void GivenBlankAccountNumber_WhenQueryingAuditLogs_ThenSpecificationBuiltWithNullFilter() {
+        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
+            // Given
+            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
+            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
-        // When
-        auditQueryService.getFilteredAuditLogs("   ", null, null, null, null);
+            // When
+            auditQueryService.getFilteredAuditLogs("   ", null, null, null, null);
 
-        // Then
-        ArgumentCaptor<String> accountCaptor = ArgumentCaptor.forClass(String.class);
-        verify(auditLogRepository).findFilteredAuditLogs(accountCaptor.capture(), any(), any(), any(Pageable.class));
-        assertThat(accountCaptor.getValue()).isNull();
+            // Then
+            specs.verify(() -> AuditLogSpecifications.filter(isNull(), isNull(), isNull()));
+        }
     }
 
     @Test
-    void GivenPaddedAccountNumber_WhenQueryingAuditLogs_ThenRepositoryReceivesTrimmedFilter() {
-        // Given
-        stubEmptyRepositoryPage();
+    void GivenPaddedAccountNumber_WhenQueryingAuditLogs_ThenSpecificationBuiltWithTrimmedFilter() {
+        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
+            // Given
+            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
+            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
-        // When
-        auditQueryService.getFilteredAuditLogs("  ACC123  ", null, null, null, null);
+            // When
+            auditQueryService.getFilteredAuditLogs("  ACC123  ", null, null, null, null);
 
-        // Then
-        ArgumentCaptor<String> accountCaptor = ArgumentCaptor.forClass(String.class);
-        verify(auditLogRepository).findFilteredAuditLogs(accountCaptor.capture(), any(), any(), any(Pageable.class));
-        assertThat(accountCaptor.getValue()).isEqualTo("ACC123");
+            // Then
+            specs.verify(() -> AuditLogSpecifications.filter(eq("ACC123"), isNull(), isNull()));
+        }
     }
 
     @Test
@@ -184,38 +195,46 @@ class AuditQueryServiceTest {
     }
 
     @Test
-    void GivenValidStartDate_WhenQueryingAuditLogs_ThenRepositoryReceivesStartOfDay() {
-        // Given
-        stubEmptyRepositoryPage();
+    void GivenValidStartDate_WhenQueryingAuditLogs_ThenSpecificationReceivesStartOfDay() {
+        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
+            // Given
+            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
+            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
-        // When
-        auditQueryService.getFilteredAuditLogs(null, "2024-01-15", null, null, null);
+            // When
+            auditQueryService.getFilteredAuditLogs(null, "2024-01-15", null, null, null);
 
-        // Then
-        ArgumentCaptor<OffsetDateTime> startCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-        verify(auditLogRepository).findFilteredAuditLogs(any(), startCaptor.capture(), any(), any(Pageable.class));
-        var capturedStart = startCaptor.getValue();
-        assertThat(capturedStart.toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 15));
-        assertThat(capturedStart.getHour()).isZero();
-        assertThat(capturedStart.getMinute()).isZero();
+            // Then
+            ArgumentCaptor<OffsetDateTime> startCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
+            specs.verify(() -> AuditLogSpecifications.filter(isNull(), startCaptor.capture(), isNull()));
+            var capturedStart = startCaptor.getValue();
+            assertThat(capturedStart.toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 15));
+            assertThat(capturedStart.getHour()).isZero();
+            assertThat(capturedStart.getMinute()).isZero();
+        }
     }
 
     @Test
-    void GivenValidEndDate_WhenQueryingAuditLogs_ThenRepositoryReceivesEndOfDay() {
-        // Given
-        stubEmptyRepositoryPage();
+    void GivenValidEndDate_WhenQueryingAuditLogs_ThenSpecificationReceivesEndOfDay() {
+        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
+            // Given
+            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
+            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
-        // When
-        auditQueryService.getFilteredAuditLogs(null, null, "2024-01-31", null, null);
+            // When
+            auditQueryService.getFilteredAuditLogs(null, null, "2024-01-31", null, null);
 
-        // Then
-        ArgumentCaptor<OffsetDateTime> endCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-        verify(auditLogRepository).findFilteredAuditLogs(any(), any(), endCaptor.capture(), any(Pageable.class));
-        var capturedEnd = endCaptor.getValue();
-        assertThat(capturedEnd.toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 31));
-        assertThat(capturedEnd.getHour()).isEqualTo(23);
-        assertThat(capturedEnd.getMinute()).isEqualTo(59);
-        assertThat(capturedEnd.getSecond()).isEqualTo(59);
+            // Then
+            ArgumentCaptor<OffsetDateTime> endCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
+            specs.verify(() -> AuditLogSpecifications.filter(isNull(), isNull(), endCaptor.capture()));
+            var capturedEnd = endCaptor.getValue();
+            assertThat(capturedEnd.toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 31));
+            assertThat(capturedEnd.getHour()).isEqualTo(23);
+            assertThat(capturedEnd.getMinute()).isEqualTo(59);
+            assertThat(capturedEnd.getSecond()).isEqualTo(59);
+        }
     }
 
     @Test
@@ -240,37 +259,39 @@ class AuditQueryServiceTest {
     }
 
     @Test
-    void GivenBlankDates_WhenQueryingAuditLogs_ThenRepositoryReceivesNullBounds() {
-        // Given
-        stubEmptyRepositoryPage();
+    void GivenBlankDates_WhenQueryingAuditLogs_ThenSpecificationReceivesNullBounds() {
+        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
+            // Given
+            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
+            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
-        // When
-        auditQueryService.getFilteredAuditLogs(null, "   ", "   ", null, null);
+            // When
+            auditQueryService.getFilteredAuditLogs(null, "   ", "   ", null, null);
 
-        // Then
-        ArgumentCaptor<OffsetDateTime> startCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-        ArgumentCaptor<OffsetDateTime> endCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-        verify(auditLogRepository)
-                .findFilteredAuditLogs(any(), startCaptor.capture(), endCaptor.capture(), any(Pageable.class));
-        assertThat(startCaptor.getValue()).isNull();
-        assertThat(endCaptor.getValue()).isNull();
+            // Then
+            specs.verify(() -> AuditLogSpecifications.filter(isNull(), isNull(), isNull()));
+        }
     }
 
     @Test
     void GivenPaddedDateStrings_WhenQueryingAuditLogs_ThenDatesAreTrimmedBeforeParsing() {
-        // Given
-        stubEmptyRepositoryPage();
+        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
+            // Given
+            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
+            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
-        // When
-        auditQueryService.getFilteredAuditLogs(null, "  2024-01-01  ", "  2024-01-31  ", null, null);
+            // When
+            auditQueryService.getFilteredAuditLogs(null, "  2024-01-01  ", "  2024-01-31  ", null, null);
 
-        // Then
-        ArgumentCaptor<OffsetDateTime> startCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-        ArgumentCaptor<OffsetDateTime> endCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-        verify(auditLogRepository)
-                .findFilteredAuditLogs(any(), startCaptor.capture(), endCaptor.capture(), any(Pageable.class));
-        assertThat(startCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 1));
-        assertThat(endCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 31));
+            // Then
+            ArgumentCaptor<OffsetDateTime> startCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
+            ArgumentCaptor<OffsetDateTime> endCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
+            specs.verify(() -> AuditLogSpecifications.filter(isNull(), startCaptor.capture(), endCaptor.capture()));
+            assertThat(startCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 1));
+            assertThat(endCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 31));
+        }
     }
 
     @Test
@@ -283,7 +304,7 @@ class AuditQueryServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        verify(auditLogRepository).findFilteredAuditLogs(any(), any(), any(), any(Pageable.class));
+        verify(auditLogRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test

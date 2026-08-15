@@ -1,5 +1,6 @@
 package com.example.statementservice.statement.signedlink;
 
+import com.example.statementservice.shared.IdGeneratorPort;
 import com.example.statementservice.shared.Sha256Digest;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -26,11 +27,12 @@ public class SignedLinkService {
     private final LinkSigner linkSigner;
     private final DownloadUrlProvider downloadUrlProvider;
     private final SignedLinkProperties properties;
+    private final IdGeneratorPort idGenerator;
     private final Clock clock;
 
     @Transactional
     public SignedLink createSignedLink(UUID statementId, String createdBy, String fileName) {
-        var id = UUID.randomUUID();
+        var id = idGenerator.newId();
         var expires = OffsetDateTime.now(clock).plus(properties.getExpiry());
         var path = getFilesDownloadPath(fileName);
         var rawToken = linkSigner.sign(path, expires.toEpochSecond(), HTTP_METHOD, id.toString());

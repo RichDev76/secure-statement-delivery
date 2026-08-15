@@ -1,5 +1,6 @@
 package com.example.statementservice.audit;
 
+import com.example.statementservice.shared.IdGeneratorPort;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -17,6 +18,7 @@ public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
     private final ExecutorService auditExecutor;
+    private final IdGeneratorPort idGenerator;
     private final Clock clock;
 
     public void record(
@@ -53,7 +55,7 @@ public class AuditService {
             String performedBy,
             Map<String, Object> details) {
         var auditLog = new AuditLog();
-        auditLog.setId(UUID.randomUUID());
+        auditLog.setId(idGenerator.newId());
         auditLog.setAction(action);
         auditLog.setStatementId(statementId);
         auditLog.setAccountNumber(accountNumber);

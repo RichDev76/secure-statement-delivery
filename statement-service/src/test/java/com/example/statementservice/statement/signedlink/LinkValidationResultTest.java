@@ -1,6 +1,6 @@
 package com.example.statementservice.statement.signedlink;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -24,146 +24,98 @@ class LinkValidationResultTest {
         mockLink.setStatementId(statementId);
         mockLink.setToken("test-token-123");
         mockLink.setExpiresAt(OffsetDateTime.now().plusHours(1));
-        mockLink.setUsed(false);
     }
 
     @Test
-    @DisplayName("Should create notFound result with null link and NOT_FOUND reason")
-    void testNotFound() {
+    void GivenNoArguments_WhenNotFound_ThenReturnsInvalidResultWithNullLinkAndNotFoundReason() {
+        // When
         var result = LinkValidationResult.notFound();
-        assertNotNull(result);
-        assertNull(result.getLink());
-        assertFalse(result.isValid());
-        assertEquals(ValidationFailureReason.NOT_FOUND, result.getFailureReason());
+
+        // Then
+        assertThat(result.getLink()).isNull();
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.NOT_FOUND);
     }
 
     @Test
-    @DisplayName("Should create used result with link and USED reason")
-    void testUsed() {
-        var result = LinkValidationResult.used(mockLink);
-        assertNotNull(result);
-        assertNotNull(result.getLink());
-        assertEquals(mockLink, result.getLink());
-        assertEquals(linkId, result.getLink().getId());
-        assertEquals(statementId, result.getLink().getStatementId());
-        assertFalse(result.isValid());
-        assertEquals(ValidationFailureReason.USED, result.getFailureReason());
-    }
-
-    @Test
-    @DisplayName("Should create expired result with link and EXPIRED reason")
-    void testExpired() {
+    void GivenLink_WhenExpired_ThenReturnsInvalidResultWithLinkAndExpiredReason() {
+        // When
         var result = LinkValidationResult.expired(mockLink);
-        assertNotNull(result);
-        assertNotNull(result.getLink());
-        assertEquals(mockLink, result.getLink());
-        assertEquals(linkId, result.getLink().getId());
-        assertEquals(statementId, result.getLink().getStatementId());
-        assertFalse(result.isValid());
-        assertEquals(ValidationFailureReason.EXPIRED, result.getFailureReason());
+
+        // Then
+        assertThat(result.getLink()).isEqualTo(mockLink);
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
     }
 
     @Test
-    @DisplayName("Should create valid result with link and null failure reason")
-    void testValid() {
-        var result = LinkValidationResult.valid(mockLink);
-        assertNotNull(result);
-        assertNotNull(result.getLink());
-        assertEquals(mockLink, result.getLink());
-        assertEquals(linkId, result.getLink().getId());
-        assertEquals(statementId, result.getLink().getStatementId());
-        assertTrue(result.isValid());
-        assertNull(result.getFailureReason());
-    }
-
-    @Test
-    @DisplayName("Should handle null link in used method")
-    void testUsed_NullLink() {
-        var result = LinkValidationResult.used(null);
-        assertNotNull(result);
-        assertNull(result.getLink());
-        assertFalse(result.isValid());
-        assertEquals(ValidationFailureReason.USED, result.getFailureReason());
-    }
-
-    @Test
-    @DisplayName("Should handle null link in expired method")
-    void testExpired_NullLink() {
+    void GivenNullLink_WhenExpired_ThenReturnsInvalidResultWithNullLink() {
+        // When
         var result = LinkValidationResult.expired(null);
-        assertNotNull(result);
-        assertNull(result.getLink());
-        assertFalse(result.isValid());
-        assertEquals(ValidationFailureReason.EXPIRED, result.getFailureReason());
+
+        // Then
+        assertThat(result.getLink()).isNull();
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
     }
 
     @Test
-    @DisplayName("Should handle null link in valid method")
-    void testValid_NullLink() {
+    void GivenLink_WhenValid_ThenReturnsValidResultWithNullFailureReason() {
+        // When
+        var result = LinkValidationResult.valid(mockLink);
+
+        // Then
+        assertThat(result.getLink()).isEqualTo(mockLink);
+        assertThat(result.isValid()).isTrue();
+        assertThat(result.getFailureReason()).isNull();
+    }
+
+    @Test
+    void GivenNullLink_WhenValid_ThenReturnsValidResultWithNullLink() {
+        // When
         var result = LinkValidationResult.valid(null);
-        assertNotNull(result);
-        assertNull(result.getLink());
-        assertTrue(result.isValid());
-        assertNull(result.getFailureReason());
+
+        // Then
+        assertThat(result.getLink()).isNull();
+        assertThat(result.isValid()).isTrue();
+        assertThat(result.getFailureReason()).isNull();
     }
 
     @Test
-    @DisplayName("Should create result with constructor")
-    void testConstructor() {
-        var result = new LinkValidationResult(mockLink, true, null);
-        assertNotNull(result);
-        assertEquals(mockLink, result.getLink());
-        assertTrue(result.isValid());
-        assertNull(result.getFailureReason());
+    void GivenLinkOrNull_WhenInvalidSignature_ThenReturnsInvalidResultWithInvalidSignatureReason() {
+        // When
+        var withLink = LinkValidationResult.invalidSignature(mockLink);
+        var withoutLink = LinkValidationResult.invalidSignature(null);
+
+        // Then
+        assertThat(withLink.isValid()).isFalse();
+        assertThat(withLink.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        assertThat(withoutLink.getLink()).isNull();
+        assertThat(withoutLink.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
     }
 
     @Test
-    @DisplayName("Should create invalid result with constructor")
-    void testConstructor_Invalid() {
-        var result = new LinkValidationResult(mockLink, false, ValidationFailureReason.USED);
-        assertNotNull(result);
-        assertEquals(mockLink, result.getLink());
-        assertFalse(result.isValid());
-        assertEquals(ValidationFailureReason.USED, result.getFailureReason());
+    void GivenLinkAndValidity_WhenConstructed_ThenFieldsAreSetAsGiven() {
+        // When
+        var result = new LinkValidationResult(mockLink, false, ValidationFailureReason.EXPIRED);
+
+        // Then
+        assertThat(result.getLink()).isEqualTo(mockLink);
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
     }
 
     @Test
-    @DisplayName("Should maintain immutability of link reference")
-    void testLinkReference() {
-        var result = LinkValidationResult.valid(mockLink);
-        var originalToken = mockLink.getToken();
-        var retrievedLink = result.getLink();
-        retrievedLink.setToken("modified-token");
-        assertEquals("modified-token", mockLink.getToken());
-        assertEquals("modified-token", result.getLink().getToken());
-        assertNotEquals(originalToken, result.getLink().getToken());
-    }
-
-    @Test
-    @DisplayName("Should distinguish between different validation failure reasons")
-    void testDifferentFailureReasons() {
+    void GivenDifferentFactoryMethods_WhenComparingFailureReasons_ThenEachIsDistinct() {
+        // When
         var notFoundResult = LinkValidationResult.notFound();
-        var usedResult = LinkValidationResult.used(mockLink);
         var expiredResult = LinkValidationResult.expired(mockLink);
-        assertNotEquals(notFoundResult.getFailureReason(), usedResult.getFailureReason());
-        assertNotEquals(usedResult.getFailureReason(), expiredResult.getFailureReason());
-        assertNotEquals(expiredResult.getFailureReason(), notFoundResult.getFailureReason());
-    }
+        var invalidSignatureResult = LinkValidationResult.invalidSignature(mockLink);
 
-    @Test
-    @DisplayName("Should indicate all invalid results have isValid as false")
-    void testAllInvalidResultsAreFalse() {
-        var notFoundResult = LinkValidationResult.notFound();
-        var usedResult = LinkValidationResult.used(mockLink);
-        var expiredResult = LinkValidationResult.expired(mockLink);
-        assertFalse(notFoundResult.isValid());
-        assertFalse(usedResult.isValid());
-        assertFalse(expiredResult.isValid());
-    }
-
-    @Test
-    @DisplayName("Should indicate valid result has isValid as true")
-    void testValidResultIsTrue() {
-        var result = LinkValidationResult.valid(mockLink);
-        assertTrue(result.isValid());
+        // Then
+        assertThat(notFoundResult.getFailureReason())
+                .isNotEqualTo(expiredResult.getFailureReason())
+                .isNotEqualTo(invalidSignatureResult.getFailureReason());
+        assertThat(expiredResult.getFailureReason()).isNotEqualTo(invalidSignatureResult.getFailureReason());
     }
 }

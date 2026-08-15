@@ -16,10 +16,6 @@ public class LinkValidationResult {
         return new LinkValidationResult(null, false, ValidationFailureReason.NOT_FOUND);
     }
 
-    public static LinkValidationResult used(SignedLink link) {
-        return new LinkValidationResult(link, false, ValidationFailureReason.USED);
-    }
-
     public static LinkValidationResult expired(SignedLink link) {
         return new LinkValidationResult(link, false, ValidationFailureReason.EXPIRED);
     }

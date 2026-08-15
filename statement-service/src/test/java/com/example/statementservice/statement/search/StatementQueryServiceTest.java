@@ -81,15 +81,14 @@ class StatementQueryServiceTest {
     void GivenExistingStatement_WhenGettingSignedDownloadLink_ThenDtoWithDownloadLinkIsReturned() {
         when(statementService.getStatementDtoById(testStatementId)).thenReturn(testStatementDto);
 
-        String basePath = "http://localhost/files/" + testStatementDto.getFileName();
+        String fileName = testStatementDto.getFileName();
         SignedLink signedLink = new SignedLink();
         signedLink.setId(UUID.randomUUID());
         signedLink.setStatementId(testStatementId);
 
-        when(signedLinkService.getFilesBaseUrl(testStatementDto.getFileName())).thenReturn(basePath);
-        when(signedLinkService.createSignedLink(testStatementId, true, "test-user", basePath))
+        when(signedLinkService.createSignedLink(testStatementId, "test-user", fileName))
                 .thenReturn(signedLink);
-        when(signedLinkService.buildSignedDownloadLink(signedLink, basePath))
+        when(signedLinkService.buildSignedDownloadLink(signedLink, fileName))
                 .thenReturn(java.net.URI.create("http://localhost/download/statement.pdf"));
 
         Optional<StatementDto> result =

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -21,7 +20,6 @@ class ServletDownloadUrlProviderTest {
         request.setServerName("statements.example.com");
         request.setServerPort(8443);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-        ReflectionTestUtils.setField(provider, "downloadPath", "/api/v1/statements/download/");
     }
 
     @AfterEach
@@ -30,11 +28,9 @@ class ServletDownloadUrlProviderTest {
     }
 
     @Test
-    void GivenBoundServletRequest_WhenResolvingDownloadBaseUrl_ThenSchemeHostPortAndPathAreCombined() {
-        // Given
-
+    void GivenBoundServletRequest_WhenResolvingAbsoluteUrl_ThenSchemeHostPortAndRelativePathAreCombined() {
         // When
-        var url = provider.downloadBaseUrl("statement-2026-07.pdf");
+        var url = provider.toAbsoluteUrl("/api/v1/statements/download/statement-2026-07.pdf");
 
         // Then
         assertThat(url)
@@ -42,7 +38,7 @@ class ServletDownloadUrlProviderTest {
     }
 
     @Test
-    void GivenDefaultPortRequest_WhenResolvingDownloadBaseUrl_ThenPortIsOmitted() {
+    void GivenDefaultPortRequest_WhenResolvingAbsoluteUrl_ThenPortIsOmitted() {
         // Given
         var request = new MockHttpServletRequest();
         request.setScheme("http");
@@ -51,7 +47,7 @@ class ServletDownloadUrlProviderTest {
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
         // When
-        var url = provider.downloadBaseUrl("file.pdf");
+        var url = provider.toAbsoluteUrl("/api/v1/statements/download/file.pdf");
 
         // Then
         assertThat(url).isEqualTo("http://localhost/api/v1/statements/download/file.pdf");

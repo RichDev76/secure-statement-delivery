@@ -155,6 +155,50 @@ class StatementServiceTest {
     }
 
     @Test
+    void GivenValidUpload_WhenUploadStatement_ThenGeneratesDekAndPersistsItsWrappedFormNotTheRawDek() throws Exception {
+        // Given
+        var dek = new byte[] {9, 9, 9, 9};
+        var wrappedDek = new byte[] {8, 8, 8, 8, 8};
+        when(fileCipher.generateDek()).thenReturn(dek);
+        when(fileCipher.wrapDek(dek)).thenReturn(wrappedDek);
+        when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
+        when(multipartFile.getSize()).thenReturn(2048L);
+        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
+        stubSuccessfulEncryptAndStore(new byte[] {1, 2, 3, 4}, "file-content".getBytes());
+        when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
+
+        // When
+        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user");
+
+        // Then
+        var captor = org.mockito.ArgumentCaptor.forClass(Statement.class);
+        verify(statementRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getEncryptedDek()).isEqualTo(wrappedDek).isNotEqualTo(dek);
+        verify(fileCipher).encrypt(any(), any(), eq(new byte[] {1, 2, 3, 4}), eq(dek));
+    }
+
+    @Test
+    void GivenStatementWithWrappedDek_WhenOpenDecryptedFile_ThenUnwrapsDekBeforeDecrypting() throws Exception {
+        // Given
+        var wrappedDek = new byte[] {8, 8, 8, 8, 8};
+        var dek = new byte[] {9, 9, 9, 9};
+        testStatement.setEncryptedDek(wrappedDek);
+        var ciphertextStream = new java.io.ByteArrayInputStream("ciphertext".getBytes());
+        var decryptedStream = new java.io.ByteArrayInputStream("plaintext".getBytes());
+        when(fileCipher.unwrapDek(wrappedDek)).thenReturn(dek);
+        when(fileStore.open(testStatement.getStorageKey())).thenReturn(ciphertextStream);
+        when(fileCipher.decrypt(ciphertextStream, dek)).thenReturn(decryptedStream);
+
+        // When
+        var result = statementService.openDecryptedFile(testStatement);
+
+        // Then
+        assertThat(result).isEqualTo(decryptedStream);
+        verify(fileCipher).unwrapDek(wrappedDek);
+        verify(fileCipher).decrypt(ciphertextStream, dek);
+    }
+
+    @Test
     @DisplayName("getStatementById - should return statement when found")
     void getStatementById_Found() {
         when(statementRepository.findStatementById(testId)).thenReturn(Optional.of(testStatement));

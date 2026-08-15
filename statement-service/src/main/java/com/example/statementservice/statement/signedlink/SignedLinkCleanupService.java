@@ -29,7 +29,7 @@ public class SignedLinkCleanupService {
         int deleted;
 
         do {
-            deleted = repository.deleteExpiredOrUsed(cutoff, properties.getBatchSize());
+            deleted = repository.deleteExpired(cutoff, properties.getBatchSize());
             totalDeleted += deleted;
         } while (deleted == properties.getBatchSize());
 

@@ -33,11 +33,17 @@ public class DownloadService {
     private final AuditService auditService;
 
     public DownloadStreamResult validateAndStreamDetailed(
-            String token, Long expires, String clientIp, String userAgent, String performedBy) {
+            String token,
+            Long expires,
+            UUID linkId,
+            String fileName,
+            String clientIp,
+            String userAgent,
+            String performedBy) {
         log.debug("Download request (detailed) - token: {}, ip: {}, user: {}", maskToken(token), clientIp, performedBy);
 
         // Step 1: Validate link
-        var result = signedLinkService.validateAndConsume(token, expires);
+        var result = signedLinkService.validate(token, expires, linkId, fileName);
         if (!result.isValid()) {
             handleInvalidLink(result, token, clientIp, userAgent, performedBy);
             var outcome = getDownloadOutcome(result);
@@ -70,7 +76,7 @@ public class DownloadService {
 
     private DownloadOutcome getDownloadOutcome(LinkValidationResult result) {
         return switch (result.getFailureReason()) {
-            case USED, EXPIRED -> DownloadOutcome.LINK_EXPIRED_OR_USED;
+            case EXPIRED -> DownloadOutcome.LINK_EXPIRED;
             case NOT_FOUND -> DownloadOutcome.STATEMENT_NOT_FOUND;
             default -> DownloadOutcome.INVALID_SIGNATURE;
         };
@@ -80,7 +86,6 @@ public class DownloadService {
 
     private String getReason(LinkValidationResult result) {
         return switch (result.getFailureReason()) {
-            case USED -> DownloadFailureReason.USED.getValue();
             case EXPIRED -> DownloadFailureReason.EXPIRED.getValue();
             case NOT_FOUND -> DownloadFailureReason.STATEMENT_NOT_FOUND.getValue();
             default -> DownloadFailureReason.INVALID.getValue();

@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -29,15 +30,15 @@ public class SignedLink {
     @Column(name = "statement_id")
     private UUID statementId;
 
+    @Transient
+    @ToString.Exclude
     private String token;
+
+    @Column(name = "token_hash")
+    private String tokenHash;
 
     @Column(name = "expires_at")
     private OffsetDateTime expiresAt;
-
-    @Column(name = "single_use")
-    private boolean singleUse;
-
-    private boolean used;
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;

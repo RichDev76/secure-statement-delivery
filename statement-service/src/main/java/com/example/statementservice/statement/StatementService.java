@@ -38,6 +38,8 @@ public class StatementService {
             String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy) {
         var id = UUID.randomUUID();
         var initializationVector = fileCipher.generateInitializationVector();
+        var dek = fileCipher.generateDek();
+        var wrappedDek = fileCipher.wrapDek(dek);
 
         String reference;
         try {
@@ -45,7 +47,7 @@ public class StatementService {
                     id,
                     accountNumber,
                     statementDate,
-                    out -> fileCipher.encrypt(file.getInputStream(), out, initializationVector));
+                    out -> fileCipher.encrypt(file.getInputStream(), out, initializationVector, dek));
         } catch (IOException e) {
             throw new StatementUploadException("Failed to encrypt and store file", e);
         }
@@ -54,7 +56,15 @@ public class StatementService {
         log.info("Message Digest {}", contentHash);
 
         var statement = buildStatement(
-                accountNumber, statementDate, file, uploadedBy, id, reference, initializationVector, contentHash);
+                accountNumber,
+                statementDate,
+                file,
+                uploadedBy,
+                id,
+                reference,
+                initializationVector,
+                wrappedDek,
+                contentHash);
         try {
             this.statementRepository.saveAndFlush(statement);
         } catch (RuntimeException e) {
@@ -117,7 +127,8 @@ public class StatementService {
     }
 
     public InputStream openDecryptedFile(Statement statement) throws IOException {
-        return fileCipher.decrypt(fileStore.open(statement.getStorageKey()));
+        var dek = fileCipher.unwrapDek(statement.getEncryptedDek());
+        return fileCipher.decrypt(fileStore.open(statement.getStorageKey()), dek);
     }
 
     private byte[] readBytes(MultipartFile file) {
@@ -136,6 +147,7 @@ public class StatementService {
             UUID id,
             String fileReference,
             byte[] iv,
+            byte[] wrappedDek,
             String contentHash) {
         var stmt = new Statement();
         stmt.setId(id);
@@ -144,6 +156,7 @@ public class StatementService {
         stmt.setUploadFileName(sanitizeFileName(Objects.requireNonNull(file.getOriginalFilename())));
         stmt.setStorageKey(fileReference);
         stmt.setFileIv(iv);
+        stmt.setEncryptedDek(wrappedDek);
         stmt.setContentHash(contentHash);
         stmt.setEncrypted(true);
         stmt.setSizeBytes(file.getSize());

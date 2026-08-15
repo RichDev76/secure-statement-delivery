@@ -8,7 +8,14 @@ public interface FileCipher {
 
     byte[] generateInitializationVector();
 
-    void encrypt(InputStream plaintext, OutputStream ciphertext, byte[] initializationVector) throws IOException;
+    byte[] generateDek();
 
-    InputStream decrypt(InputStream ciphertext) throws IOException;
+    byte[] wrapDek(byte[] dek);
+
+    byte[] unwrapDek(byte[] wrappedDek);
+
+    void encrypt(InputStream plaintext, OutputStream ciphertext, byte[] initializationVector, byte[] dek)
+            throws IOException;
+
+    InputStream decrypt(InputStream ciphertext, byte[] dek) throws IOException;
 }

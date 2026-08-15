@@ -26,12 +26,12 @@ public class DownloadExceptionHandler {
     private static final String TYPE_DOWNLOAD = "/errors/download";
 
     private static final String TITLE_DESCRIPTION_INVALID_SIGNATURE = "Invalid Signature";
-    private static final String TITLE_DESCRIPTION_LINK_EXPIRED_OR_USED = "Link Expired or Used";
+    private static final String TITLE_DESCRIPTION_LINK_EXPIRED = "Link Expired";
     private static final String TITLE_DESCRIPTION_FILE_MISSING = "File Missing";
     private static final String TITLE_DESCRIPTION_DECRYPTION_FAILED = "Decryption Failed";
 
     private static final String ERROR_CODE_INVALID_SIGNATURE = "INVALID_SIGNATURE";
-    private static final String ERROR_CODE_LINK_EXPIRED = "LINK_EXPIRED_OR_USED";
+    private static final String ERROR_CODE_LINK_EXPIRED = "LINK_EXPIRED";
     private static final String ERROR_CODE_FILE_MISSING = "FILE_MISSING";
     private static final String ERROR_CODE_DECRYPTION_FAILED = "DECRYPTION_FAILED";
 
@@ -40,8 +40,7 @@ public class DownloadExceptionHandler {
             new ExceptionMetadata(
                     TITLE_DESCRIPTION_INVALID_SIGNATURE, ERROR_CODE_INVALID_SIGNATURE, HttpStatus.FORBIDDEN),
             DownloadLinkExpiredException.class,
-            new ExceptionMetadata(
-                    TITLE_DESCRIPTION_LINK_EXPIRED_OR_USED, ERROR_CODE_LINK_EXPIRED, HttpStatus.NOT_FOUND),
+            new ExceptionMetadata(TITLE_DESCRIPTION_LINK_EXPIRED, ERROR_CODE_LINK_EXPIRED, HttpStatus.NOT_FOUND),
             DownloadFileMissingException.class,
             new ExceptionMetadata(TITLE_DESCRIPTION_FILE_MISSING, ERROR_CODE_FILE_MISSING, HttpStatus.NOT_FOUND),
             DecryptionFailedException.class,

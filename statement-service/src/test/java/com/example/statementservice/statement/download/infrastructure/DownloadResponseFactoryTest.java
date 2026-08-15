@@ -67,11 +67,11 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw DownloadLinkExpiredException for LINK_EXPIRED_OR_USED outcome")
-    void testBuild_LinkExpiredOrUsedOutcome() {
+    @DisplayName("Should throw DownloadLinkExpiredException for LINK_EXPIRED outcome")
+    void testBuild_LinkExpiredOutcome() {
 
         DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.LINK_EXPIRED_OR_USED, Optional.empty());
+                new DownloadService.DownloadStreamResult(DownloadOutcome.LINK_EXPIRED, Optional.empty());
         assertThrows(
                 com.example.statementservice.statement.download.DownloadLinkExpiredException.class,
                 () -> downloadResponseFactory.build(fileName, result));

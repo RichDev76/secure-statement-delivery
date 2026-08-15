@@ -42,14 +42,14 @@ class SignedLinkCleanupServiceTest {
     void GivenRetentionPeriod_WhenCleaningUp_ThenCutoffIsClockNowMinusRetention() {
         // Given
         properties.setRetentionPeriod(Duration.ofHours(2));
-        when(repository.deleteExpiredOrUsed(any(), anyInt())).thenReturn(0);
+        when(repository.deleteExpired(any(), anyInt())).thenReturn(0);
 
         // When
         cleanupService.cleanup();
 
         // Then
         ArgumentCaptor<OffsetDateTime> cutoffCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-        verify(repository).deleteExpiredOrUsed(cutoffCaptor.capture(), anyInt());
+        verify(repository).deleteExpired(cutoffCaptor.capture(), anyInt());
         assertThat(cutoffCaptor.getValue())
                 .isEqualTo(
                         OffsetDateTime.ofInstant(FIXED_INSTANT, ZoneOffset.UTC).minusHours(2));
@@ -59,13 +59,13 @@ class SignedLinkCleanupServiceTest {
     void GivenFullBatches_WhenCleaningUp_ThenDeletionRepeatsUntilPartialBatch() {
         // Given
         properties.setBatchSize(500);
-        when(repository.deleteExpiredOrUsed(any(), anyInt())).thenReturn(500, 500, 120);
+        when(repository.deleteExpired(any(), anyInt())).thenReturn(500, 500, 120);
 
         // When
         cleanupService.cleanup();
 
         // Then
-        verify(repository, times(3)).deleteExpiredOrUsed(any(), anyInt());
+        verify(repository, times(3)).deleteExpired(any(), anyInt());
     }
 
     @Test
@@ -77,6 +77,6 @@ class SignedLinkCleanupServiceTest {
         cleanupService.cleanup();
 
         // Then
-        verify(repository, never()).deleteExpiredOrUsed(any(), anyInt());
+        verify(repository, never()).deleteExpired(any(), anyInt());
     }
 }

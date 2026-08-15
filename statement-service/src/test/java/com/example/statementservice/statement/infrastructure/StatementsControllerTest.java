@@ -85,6 +85,7 @@ class StatementsControllerTest {
 
         var fileName = "statement-2024-01.pdf";
         var expires = 1234567890L;
+        var linkId = UUID.randomUUID();
         var signature = "test-signature";
 
         var testStream = new ByteArrayInputStream("test content".getBytes());
@@ -95,18 +96,21 @@ class StatementsControllerTest {
         ResponseEntity<Resource> expectedResponse = ResponseEntity.ok(resource);
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(downloadService.validateAndStreamDetailed(signature, expires, "192.168.1.1", "Mozilla/5.0", "testUser"))
+        when(downloadService.validateAndStreamDetailed(
+                        signature, expires, linkId, fileName, "192.168.1.1", "Mozilla/5.0", "testUser"))
                 .thenReturn(successResult);
         when(downloadResponseFactory.build(fileName, successResult)).thenReturn(expectedResponse);
 
-        var response = statementsController.downloadStatementByFileName(fileName, expires, signature, null);
+        var response = statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
 
         verify(requestInfoProvider).get();
-        verify(downloadService).validateAndStreamDetailed(signature, expires, "192.168.1.1", "Mozilla/5.0", "testUser");
+        verify(downloadService)
+                .validateAndStreamDetailed(
+                        signature, expires, linkId, fileName, "192.168.1.1", "Mozilla/5.0", "testUser");
         verify(downloadResponseFactory).build(fileName, successResult);
     }
 
@@ -116,6 +120,7 @@ class StatementsControllerTest {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
+        var linkId = UUID.randomUUID();
         var signature = "invalid-signature";
 
         DownloadService.DownloadStreamResult failureResult =
@@ -124,11 +129,12 @@ class StatementsControllerTest {
                 ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(downloadService.validateAndStreamDetailed(anyString(), anyLong(), anyString(), anyString(), anyString()))
+        when(downloadService.validateAndStreamDetailed(
+                        anyString(), anyLong(), any(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(failureResult);
         when(downloadResponseFactory.build(fileName, failureResult)).thenReturn(forbiddenResponse);
 
-        var response = statementsController.downloadStatementByFileName(fileName, expires, signature, null);
+        var response = statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -141,19 +147,21 @@ class StatementsControllerTest {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
+        var linkId = UUID.randomUUID();
         var signature = "expired-signature";
 
         DownloadService.DownloadStreamResult expiredResult =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.LINK_EXPIRED_OR_USED, Optional.empty());
+                new DownloadService.DownloadStreamResult(DownloadOutcome.LINK_EXPIRED, Optional.empty());
         ResponseEntity<Resource> notFoundResponse =
                 ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(downloadService.validateAndStreamDetailed(anyString(), anyLong(), anyString(), anyString(), anyString()))
+        when(downloadService.validateAndStreamDetailed(
+                        anyString(), anyLong(), any(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(expiredResult);
         when(downloadResponseFactory.build(fileName, expiredResult)).thenReturn(notFoundResponse);
 
-        var response = statementsController.downloadStatementByFileName(fileName, expires, signature, null);
+        var response = statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -165,6 +173,7 @@ class StatementsControllerTest {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
+        var linkId = UUID.randomUUID();
         var signature = "signature";
 
         var customRequestInfo = new RequestInfo("10.0.0.1", "Custom-Agent", "customUser");
@@ -172,14 +181,17 @@ class StatementsControllerTest {
                 DownloadOutcome.OK, Optional.of(new ByteArrayInputStream(new byte[0])));
 
         when(requestInfoProvider.get()).thenReturn(customRequestInfo);
-        when(downloadService.validateAndStreamDetailed(anyString(), anyLong(), anyString(), anyString(), anyString()))
+        when(downloadService.validateAndStreamDetailed(
+                        anyString(), anyLong(), any(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(result);
         when(downloadResponseFactory.build(anyString(), any()))
                 .thenReturn(ResponseEntity.ok().build());
 
-        statementsController.downloadStatementByFileName(fileName, expires, signature, null);
+        statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
 
-        verify(downloadService).validateAndStreamDetailed(signature, expires, "10.0.0.1", "Custom-Agent", "customUser");
+        verify(downloadService)
+                .validateAndStreamDetailed(
+                        signature, expires, linkId, fileName, "10.0.0.1", "Custom-Agent", "customUser");
     }
 
     @Test
@@ -188,21 +200,24 @@ class StatementsControllerTest {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
+        var linkId = UUID.randomUUID();
         var signature = "specific-signature-value";
 
         DownloadService.DownloadStreamResult result = new DownloadService.DownloadStreamResult(
                 DownloadOutcome.OK, Optional.of(new ByteArrayInputStream(new byte[0])));
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(downloadService.validateAndStreamDetailed(eq(signature), anyLong(), anyString(), anyString(), anyString()))
+        when(downloadService.validateAndStreamDetailed(
+                        eq(signature), anyLong(), any(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(result);
         when(downloadResponseFactory.build(anyString(), any()))
                 .thenReturn(ResponseEntity.ok().build());
 
-        statementsController.downloadStatementByFileName(fileName, expires, signature, null);
+        statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
 
         verify(downloadService)
-                .validateAndStreamDetailed(eq(signature), anyLong(), anyString(), anyString(), anyString());
+                .validateAndStreamDetailed(
+                        eq(signature), anyLong(), any(), anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -211,6 +226,7 @@ class StatementsControllerTest {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
+        var linkId = UUID.randomUUID();
         var signature = "signature";
 
         DownloadService.DownloadStreamResult notFoundResult =
@@ -219,11 +235,12 @@ class StatementsControllerTest {
                 ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(downloadService.validateAndStreamDetailed(anyString(), anyLong(), anyString(), anyString(), anyString()))
+        when(downloadService.validateAndStreamDetailed(
+                        anyString(), anyLong(), any(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(notFoundResult);
         when(downloadResponseFactory.build(fileName, notFoundResult)).thenReturn(notFoundResponse);
 
-        var response = statementsController.downloadStatementByFileName(fileName, expires, signature, null);
+        var response = statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);

@@ -46,10 +46,9 @@ public class StatementQueryService {
             var accountNumber = dto.getAccountNumber();
 
             try {
-                var signedLinkBasePath = this.signedLinkService.getFilesBaseUrl(dto.getFileName());
-                var signedLink = this.signedLinkService.createSignedLink(
-                        dto.getStatementId(), true, performedBy, signedLinkBasePath);
-                var signedDownloadLink = signedLinkService.buildSignedDownloadLink(signedLink, signedLinkBasePath);
+                var fileName = dto.getFileName();
+                var signedLink = this.signedLinkService.createSignedLink(dto.getStatementId(), performedBy, fileName);
+                var signedDownloadLink = signedLinkService.buildSignedDownloadLink(signedLink, fileName);
                 dto.setDownloadLink(signedDownloadLink);
                 auditHelper.recordLinkGenerated(
                         statementId, accountNumber, signedLink.getId(), performedBy, clientIp, userAgent);

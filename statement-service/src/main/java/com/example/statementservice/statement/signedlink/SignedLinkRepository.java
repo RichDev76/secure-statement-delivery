@@ -11,12 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface SignedLinkRepository extends JpaRepository<SignedLink, UUID> {
 
-    Optional<SignedLink> findByToken(@Param("token") String token);
-
-    @Modifying
-    @Query("UPDATE SignedLink s SET s.used = true "
-            + "WHERE s.token = :token AND s.singleUse = true AND s.used = false")
-    int consumeSingleUse(@Param("token") String token);
+    Optional<SignedLink> findByTokenHash(@Param("tokenHash") String tokenHash);
 
     @Modifying
     @Transactional
@@ -29,5 +24,5 @@ public interface SignedLinkRepository extends JpaRepository<SignedLink, UUID> {
                     + "DELETE FROM signed_links "
                     + "WHERE id IN (SELECT id FROM rows_to_delete)",
             nativeQuery = true)
-    int deleteExpiredOrUsed(@Param("cutoff") OffsetDateTime cutoff, @Param("batchSize") int batchSize);
+    int deleteExpired(@Param("cutoff") OffsetDateTime cutoff, @Param("batchSize") int batchSize);
 }

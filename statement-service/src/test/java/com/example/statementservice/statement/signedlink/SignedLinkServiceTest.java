@@ -3,10 +3,12 @@ package com.example.statementservice.statement.signedlink;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -139,6 +141,7 @@ class SignedLinkServiceTest {
         when(linkSigner.verify(RAW_TOKEN, DOWNLOAD_PATH, link.getExpiresAt().toEpochSecond(), "GET", linkId.toString()))
                 .thenReturn(true);
         when(signedLinkRepository.findByTokenHash(link.getTokenHash())).thenReturn(Optional.of(link));
+        when(signedLinkRepository.recordRedemption(eq(linkId), anyInt())).thenReturn(1);
 
         // When
         var result = signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), linkId, FILE_NAME);
@@ -147,6 +150,26 @@ class SignedLinkServiceTest {
         assertThat(result.isValid()).isTrue();
         assertThat(result.getLink()).isEqualTo(link);
         assertThat(result.getFailureReason()).isNull();
+    }
+
+    @Test
+    void GivenLinkAlreadyAtMaxRedemptions_WhenValidate_ThenReturnsExpiredNotADistinctReason() {
+        // Given: exhausted redemptions are deliberately indistinguishable from natural expiry -
+        // no separate signal for an attacker to calibrate against.
+        var link = createTestLink(OffsetDateTime.now(clock).plusMinutes(10));
+        var linkId = link.getId();
+        when(linkSigner.verify(RAW_TOKEN, DOWNLOAD_PATH, link.getExpiresAt().toEpochSecond(), "GET", linkId.toString()))
+                .thenReturn(true);
+        when(signedLinkRepository.findByTokenHash(link.getTokenHash())).thenReturn(Optional.of(link));
+        when(signedLinkRepository.recordRedemption(eq(linkId), anyInt())).thenReturn(0);
+
+        // When
+        var result = signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), linkId, FILE_NAME);
+
+        // Then
+        assertThat(result.isValid()).isFalse();
+        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
+        assertThat(result.getLink()).isEqualTo(link);
     }
 
     @Test
@@ -241,6 +264,7 @@ class SignedLinkServiceTest {
         when(linkSigner.verify(anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .thenReturn(true);
         when(signedLinkRepository.findByTokenHash(anyString())).thenReturn(Optional.of(link));
+        when(signedLinkRepository.recordRedemption(any(), anyInt())).thenReturn(1);
 
         // When
         var first = signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), link.getId(), FILE_NAME);
@@ -251,6 +275,7 @@ class SignedLinkServiceTest {
         assertThat(first.isValid()).isTrue();
         assertThat(second.isValid()).isTrue();
         verify(signedLinkRepository, never()).save(any());
+        verify(signedLinkRepository, times(2)).recordRedemption(eq(link.getId()), anyInt());
     }
 
     @Test

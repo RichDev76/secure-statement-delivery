@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Statement Upload & Search API
-  version: 1.9.0
+  version: 1.10.0
   description: >
     Upload a PDF account statement with metadata and strict validation rules.
     Also provides search endpoints to retrieve statements by statementId,
@@ -284,6 +284,23 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ApiProblem'
+        '429':
+          description: Too many requests for this link
+          headers:
+            Retry-After:
+              description: Seconds until the next request is allowed
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/download"
+                title: "Too Many Requests"
+                status: 429
+                detail: "Too many requests for this link. Please try again later."
+                errorCode: "RATE_LIMITED"
 
   /audit/logs:
     get:
@@ -652,4 +669,9 @@ components:
             - STATEMENT_UPLOAD_FAILED
             - UNSUPPORTED_MEDIA_TYPE
             - INTERNAL_ERROR
+            - INVALID_SIGNATURE
+            - LINK_EXPIRED
+            - FILE_MISSING
+            - DECRYPTION_FAILED
+            - RATE_LIMITED
           example: "INVALID_MESSAGE_DIGEST"

@@ -14,6 +14,7 @@ public class SignedLinkCleanupService {
 
     private final SignedLinkRepository repository;
     private final SignedLinkCleanupProperties properties;
+    private final SignedLinkRateLimiterPort rateLimiter;
     private final Clock clock;
 
     @Transactional
@@ -41,6 +42,11 @@ public class SignedLinkCleanupService {
                     properties.getBatchSize());
         } else {
             log.info("SignedLink cleanup completed, no rows removed");
+        }
+
+        var expiredBuckets = rateLimiter.deleteExpiredBuckets();
+        if (expiredBuckets > 0) {
+            log.info("Rate limit bucket cleanup removed {} rows", expiredBuckets);
         }
     }
 }

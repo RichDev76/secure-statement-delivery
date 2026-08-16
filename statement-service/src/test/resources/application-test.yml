@@ -17,6 +17,15 @@ spring:
         jwt:
           # Never contacted: tests authenticate via MockMvc jwt() post-processors.
           jwk-set-uri: http://localhost:65535/unused-in-tests
+  data:
+    # Overridden per-IT by AbstractIntegrationTest's @DynamicPropertySource against a real Redis
+    # Testcontainer; a fallback default so @Validated context binding succeeds for any test that
+    # loads the "test" profile without that dynamic override.
+    redis:
+      host: localhost
+      port: 6379
+  cache:
+    type: redis
 
 statement:
   encryption:
@@ -28,6 +37,8 @@ statement:
   signed-link:
     expiry: 15m
     download-path: /api/v1/statements/download/
+    max-redemptions: 3
+    rate-limit-per-minute: 10
     cleanup:
       # "-" disables the @Scheduled cron trigger while keeping the bean graph intact.
       cron: "-"

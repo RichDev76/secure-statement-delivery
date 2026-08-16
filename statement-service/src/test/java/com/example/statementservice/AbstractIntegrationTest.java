@@ -30,14 +30,20 @@ public abstract class AbstractIntegrationTest {
     private static final String FLOCI_SECRET_KEY = "test";
     private static final String FLOCI_REGION = "us-east-1";
 
+    private static final int REDIS_PORT = 6379;
+
     protected static final GenericContainer<?> FLOCI = new GenericContainer<>(
                     DockerImageName.parse("floci/floci:1.5.33-compat"))
             .withExposedPorts(FLOCI_PORT)
             .waitingFor(Wait.forLogMessage(".*Ready\\.\\n", 1));
 
+    protected static final GenericContainer<?> REDIS =
+            new GenericContainer<>(DockerImageName.parse("redis:8-alpine")).withExposedPorts(REDIS_PORT);
+
     static {
         POSTGRES.start();
         FLOCI.start();
+        REDIS.start();
         // Picked up by the app's S3Client via the SDK's default credentials provider chain
         // (SystemPropertyCredentialsProvider) - Floci accepts any non-empty static keys.
         System.setProperty("aws.accessKeyId", FLOCI_ACCESS_KEY);
@@ -68,5 +74,11 @@ public abstract class AbstractIntegrationTest {
         registry.add("statement.storage.s3.endpoint", AbstractIntegrationTest::flociEndpoint);
         registry.add("statement.storage.s3.region", () -> FLOCI_REGION);
         registry.add("statement.storage.s3.path-style-access", () -> "true");
+    }
+
+    @DynamicPropertySource
+    static void registerRedisProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.redis.host", REDIS::getHost);
+        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(REDIS_PORT));
     }
 }

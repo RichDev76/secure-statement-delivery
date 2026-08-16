@@ -34,8 +34,10 @@ class SignedLinkPropertiesTest {
     void GivenNothingSet_WhenContextBinds_ThenDefaultsApply() {
         contextRunner.run(context -> {
             var properties = context.getBean(SignedLinkProperties.class);
-            assertThat(properties.getExpiry()).isEqualTo(Duration.ofMinutes(15));
+            assertThat(properties.getExpiry()).isEqualTo(Duration.ofMinutes(3));
             assertThat(properties.getDownloadPath()).isEqualTo("/api/v1/statements/download/");
+            assertThat(properties.getMaxRedemptions()).isEqualTo(3);
+            assertThat(properties.getRateLimitPerMinute()).isEqualTo(10);
         });
     }
 
@@ -65,5 +67,25 @@ class SignedLinkPropertiesTest {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure()).hasStackTraceContaining("download-path");
         });
+    }
+
+    @Test
+    void GivenMaxRedemptionsBelowOne_WhenContextBinds_ThenStartupFailsValidation() {
+        contextRunner
+                .withPropertyValues("statement.signed-link.max-redemptions=0")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure()).hasStackTraceContaining("max-redemptions");
+                });
+    }
+
+    @Test
+    void GivenRateLimitPerMinuteBelowOne_WhenContextBinds_ThenStartupFailsValidation() {
+        contextRunner
+                .withPropertyValues("statement.signed-link.rate-limit-per-minute=0")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure()).hasStackTraceContaining("rate-limit-per-minute");
+                });
     }
 }

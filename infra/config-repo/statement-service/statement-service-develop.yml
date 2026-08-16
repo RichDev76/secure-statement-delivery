@@ -35,6 +35,12 @@ spring:
     password: ${APP_DB_PASSWORD}
   jackson:
     time-zone: Africa/Johannesburg
+  data:
+    redis:
+      host: redis
+      port: 6379
+  cache:
+    type: redis
 
 statement:
   encryption:
@@ -49,8 +55,10 @@ statement:
       endpoint: http://floci:4566
       path-style-access: true
   signed-link:
-    expiry: 15m
+    expiry: 3m
     download-path: /api/v1/statements/download/
+    max-redemptions: 3
+    rate-limit-per-minute: 10
     cleanup:
       enabled: true
       cron: "0 0/5 * * * *"          # every 5 minutes

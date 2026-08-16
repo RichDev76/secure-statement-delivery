@@ -25,6 +25,12 @@ spring:
     url: jdbc:postgresql://localhost:5432/statementdb
     username: ${APP_DB_USER}
     password: ${APP_DB_PASSWORD}
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  cache:
+    type: redis
 
 statement:
   encryption:
@@ -39,20 +45,25 @@ statement:
       endpoint: http://localhost:4566
       path-style-access: true
   signed-link:
-    expiry: 15m
+    expiry: 3m
     download-path: /api/v1/statements/download/
-  audit:
-    partition-maintenance:
-      enabled: true
-      cron: "0 0 0 1 * *"
-      months-ahead: 2
-      lock-at-most-for: "PT5M"
-      lock-at-least-for: "PT10S"
+    max-redemptions: 3
+    rate-limit-per-minute: 10
+    # Pre-existing bug fixed alongside this same block: this "cleanup" section was nested under
+    # "audit" instead of "signed-link", so SignedLinkCleanupScheduler's
+    # ${statement.signed-link.cleanup.cron} placeholder never resolved against it in this profile.
     cleanup:
       enabled: true
       cron: "0 0/5 * * * *"
       retention-period: "PT0S"
       batch-size: 500
+      lock-at-most-for: "PT5M"
+      lock-at-least-for: "PT10S"
+  audit:
+    partition-maintenance:
+      enabled: true
+      cron: "0 0 0 1 * *"
+      months-ahead: 2
       lock-at-most-for: "PT5M"
       lock-at-least-for: "PT10S"
 

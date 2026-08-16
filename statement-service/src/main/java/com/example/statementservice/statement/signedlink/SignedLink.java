@@ -45,4 +45,7 @@ public class SignedLink {
 
     @Column(name = "created_by")
     private String createdBy;
+
+    @Column(name = "redemption_count")
+    private int redemptionCount;
 }

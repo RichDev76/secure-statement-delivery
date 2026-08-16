@@ -4,6 +4,7 @@ import com.example.statementservice.shared.IdGeneratorPort;
 import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Clock;
@@ -32,6 +33,7 @@ public class StatementService {
     private final StatementFileStore fileStore;
     private final FileCipher fileCipher;
     private final StatementEntityMapper statementEntityMapper;
+    private final EncryptedFileFetcher encryptedFileFetcher;
     private final IdGeneratorPort idGenerator;
     private final Clock clock;
 
@@ -130,7 +132,8 @@ public class StatementService {
 
     public InputStream openDecryptedFile(Statement statement) throws IOException {
         var dek = fileCipher.unwrapDek(statement.getEncryptedDek());
-        return fileCipher.decrypt(fileStore.open(statement.getStorageKey()), dek);
+        var ciphertext = encryptedFileFetcher.fetch(statement.getStorageKey());
+        return fileCipher.decrypt(new ByteArrayInputStream(ciphertext), dek);
     }
 
     private byte[] readBytes(MultipartFile file) {

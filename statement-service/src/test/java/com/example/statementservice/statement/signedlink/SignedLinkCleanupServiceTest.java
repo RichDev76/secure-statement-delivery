@@ -28,14 +28,17 @@ class SignedLinkCleanupServiceTest {
     @Mock
     private SignedLinkRepository repository;
 
+    @Mock
+    private SignedLinkRateLimiterPort rateLimiter;
+
     private SignedLinkCleanupProperties properties;
     private SignedLinkCleanupService cleanupService;
 
     @BeforeEach
     void setUp() {
         properties = new SignedLinkCleanupProperties();
-        cleanupService =
-                new SignedLinkCleanupService(repository, properties, Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
+        cleanupService = new SignedLinkCleanupService(
+                repository, properties, rateLimiter, Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
     }
 
     @Test
@@ -78,5 +81,19 @@ class SignedLinkCleanupServiceTest {
 
         // Then
         verify(repository, never()).deleteExpired(any(), anyInt());
+        verify(rateLimiter, never()).deleteExpiredBuckets();
+    }
+
+    @Test
+    void GivenCleanupEnabled_WhenCleaningUp_ThenExpiredRateLimitBucketsAreAlsoRemoved() {
+        // Given
+        when(repository.deleteExpired(any(), anyInt())).thenReturn(0);
+        when(rateLimiter.deleteExpiredBuckets()).thenReturn(3);
+
+        // When
+        cleanupService.cleanup();
+
+        // Then
+        verify(rateLimiter).deleteExpiredBuckets();
     }
 }

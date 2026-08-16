@@ -5,22 +5,30 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.example.statementservice.audit.AuditAction;
+import com.example.statementservice.audit.AuditLog;
+import com.example.statementservice.audit.AuditLogRepository;
 import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.statement.FileCipherException;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
+import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +39,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DownloadService Unit Tests")
@@ -46,6 +55,12 @@ class DownloadServiceTest {
 
     @Mock
     private AuditService auditService;
+
+    @Mock
+    private SignedLinkRateLimiterPort rateLimiter;
+
+    @Mock
+    private AuditLogRepository auditLogRepository;
 
     @InjectMocks
     private DownloadService downloadService;
@@ -86,6 +101,14 @@ class DownloadServiceTest {
         testStatement.setStorageKey("statements/hash/2026/07/statement.pdf.enc");
         testStatement.setSizeBytes(1024L);
         testStatement.setEncrypted(true);
+
+        // Most test paths reach the rate-limit check first (one test passes a null linkId, which
+        // skips it entirely) and only the OK-outcome tests reach the anomaly check - both stubs
+        // are lenient to avoid UnnecessaryStubbingException in the tests that don't use them.
+        lenient().when(rateLimiter.tryConsume(testLinkId)).thenReturn(true);
+        lenient()
+                .when(auditLogRepository.findBySignedLinkIdAndAction(any(), any()))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -362,5 +385,85 @@ class DownloadServiceTest {
                         eq(testLinkId),
                         eq(testPerformedBy),
                         any(Map.class));
+    }
+
+    @Test
+    void GivenRateLimitExceeded_WhenValidateAndStreamDetailed_ThenReturnsRateLimitedWithoutCallingValidate() {
+        // Given: overrides the lenient default stub from setUp()
+        when(rateLimiter.tryConsume(testLinkId)).thenReturn(false);
+
+        // When
+        var result = downloadService.validateAndStreamDetailed(
+                testToken, testExpires, testLinkId, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
+
+        // Then
+        assertThat(result.outcome()).isEqualTo(DownloadOutcome.RATE_LIMITED);
+        assertThat(result.stream()).isEmpty();
+        verifyNoInteractions(signedLinkService, statementService);
+        verify(auditService)
+                .record(
+                        eq(AuditAction.DOWNLOAD_FAILED.getValue()),
+                        isNull(),
+                        isNull(),
+                        eq(testLinkId),
+                        eq(testPerformedBy),
+                        any(Map.class));
+    }
+
+    @Test
+    void GivenNullLinkId_WhenValidateAndStreamDetailed_ThenRateLimiterIsNeverConsulted() {
+        // Given: SignedLinkService.validate() already rejects a null linkId as an invalid
+        // signature - the rate limiter has nothing meaningful to key on in that case.
+        var invalidResult = LinkValidationResult.invalidSignature(null);
+        when(signedLinkService.validate(testToken, testExpires, null, FILE_NAME))
+                .thenReturn(invalidResult);
+
+        // When
+        var result = downloadService.validateAndStreamDetailed(
+                testToken, testExpires, null, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
+
+        // Then
+        assertThat(result.outcome()).isEqualTo(DownloadOutcome.INVALID_SIGNATURE);
+        verifyNoInteractions(rateLimiter);
+    }
+
+    @Test
+    void GivenPriorSuccessfulRedemptionFromDifferentIp_WhenValidateAndStreamDetailed_ThenLogsWarnAndStillSucceeds()
+            throws Exception {
+        // Given
+        var validResult = LinkValidationResult.valid(testLink);
+        when(signedLinkService.validate(testToken, testExpires, testLinkId, FILE_NAME))
+                .thenReturn(validResult);
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
+        when(statementService.openDecryptedFile(testStatement))
+                .thenReturn(new ByteArrayInputStream("decrypted content".getBytes()));
+
+        var priorDetails = Map.<String, Object>of("ip", "10.0.0.99", "userAgent", "curl/8.0");
+        var priorLog = new AuditLog();
+        priorLog.setDetails(priorDetails);
+        when(auditLogRepository.findBySignedLinkIdAndAction(testLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue()))
+                .thenReturn(List.of(priorLog));
+
+        var downloadServiceLogger = (Logger) LoggerFactory.getLogger(DownloadService.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        downloadServiceLogger.addAppender(appender);
+
+        try {
+            // When
+            var result = downloadService.validateAndStreamDetailed(
+                    testToken, testExpires, testLinkId, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
+
+            // Then
+            assertThat(result.outcome()).isEqualTo(DownloadOutcome.OK);
+            assertThat(appender.list)
+                    .extracting(ILoggingEvent::getFormattedMessage)
+                    .anySatisfy(message -> assertThat(message)
+                            .contains("different ip/userAgent")
+                            .contains(testLinkId.toString()));
+        } finally {
+            downloadServiceLogger.detachAppender(appender);
+        }
     }
 }

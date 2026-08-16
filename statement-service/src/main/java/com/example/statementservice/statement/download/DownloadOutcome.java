@@ -6,5 +6,6 @@ public enum DownloadOutcome {
     LINK_EXPIRED,
     STATEMENT_NOT_FOUND,
     FILE_MISSING,
-    DECRYPTION_FAILED
+    DECRYPTION_FAILED,
+    RATE_LIMITED
 }

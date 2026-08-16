@@ -127,6 +127,21 @@
         retries: 6
         start_period: 30s
 
+    redis:
+      image: redis:8-alpine
+      container_name: redis
+      restart: unless-stopped
+      volumes:
+        - redis-data:/data
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 8
+        start_period: 10s
+      ports:
+        - "6379:6379"
+
     floci:
       image: floci/floci:1.5.33-compat
       container_name: floci
@@ -181,6 +196,8 @@
           condition: service_healthy
         floci:
           condition: service_healthy
+        redis:
+          condition: service_healthy
       ports:
         - "8080:8080"
       healthcheck:
@@ -194,3 +211,4 @@
     vault-data:
     keycloak-data:
     floci-data:
+    redis-data:

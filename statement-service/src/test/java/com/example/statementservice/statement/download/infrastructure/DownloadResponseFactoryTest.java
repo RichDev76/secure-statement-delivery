@@ -53,6 +53,18 @@ class DownloadResponseFactoryTest {
         assertTrue(headers.getContentDisposition().toString().contains("attachment"));
         assertEquals("no-store, no-cache, must-revalidate", headers.getCacheControl());
         assertEquals("no-cache", headers.getFirst("Pragma"));
+        assertEquals("no-referrer", headers.getFirst("Referrer-Policy"));
+    }
+
+    @Test
+    @DisplayName("Should throw DownloadRateLimitedException for RATE_LIMITED outcome")
+    void testBuild_RateLimitedOutcome() {
+
+        DownloadService.DownloadStreamResult result =
+                new DownloadService.DownloadStreamResult(DownloadOutcome.RATE_LIMITED, Optional.empty());
+        assertThrows(
+                com.example.statementservice.statement.download.DownloadRateLimitedException.class,
+                () -> downloadResponseFactory.build(fileName, result));
     }
 
     @Test
@@ -150,6 +162,7 @@ class DownloadResponseFactoryTest {
         var headers = response.getHeaders();
         assertEquals("no-store, no-cache, must-revalidate", headers.getCacheControl());
         assertEquals("no-cache", headers.getFirst("Pragma"));
+        assertEquals("no-referrer", headers.getFirst("Referrer-Policy"));
         var contentDisposition = headers.getContentDisposition().toString();
         assertTrue(contentDisposition.contains("attachment"));
         assertTrue(contentDisposition.contains(fileName));

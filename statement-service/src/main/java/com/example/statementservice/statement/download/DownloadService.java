@@ -1,15 +1,18 @@
 package com.example.statementservice.statement.download;
 
 import com.example.statementservice.audit.AuditAction;
+import com.example.statementservice.audit.AuditLogRepository;
 import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
+import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,8 @@ public class DownloadService {
     private final SignedLinkService signedLinkService;
     private final StatementService statementService;
     private final AuditService auditService;
+    private final SignedLinkRateLimiterPort rateLimiter;
+    private final AuditLogRepository auditLogRepository;
 
     public DownloadStreamResult validateAndStreamDetailed(
             String token,
@@ -41,6 +46,20 @@ public class DownloadService {
             String userAgent,
             String performedBy) {
         log.debug("Download request (detailed) - token: {}, ip: {}, user: {}", maskToken(token), clientIp, performedBy);
+
+        // Ahead of signature validation deliberately: a signature-guessing flood against a known
+        // real linkId is throttled too, not just genuinely valid requests.
+        if (linkId != null && !rateLimiter.tryConsume(linkId)) {
+            log.warn("Rate limit exceeded - linkId: {}", linkId);
+            auditService.record(
+                    AuditAction.DOWNLOAD_FAILED.getValue(),
+                    null,
+                    null,
+                    linkId,
+                    performedBy,
+                    getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.RATE_LIMITED.getValue()));
+            return new DownloadStreamResult(DownloadOutcome.RATE_LIMITED, Optional.empty());
+        }
 
         // Step 1: Validate link
         var result = signedLinkService.validate(token, expires, linkId, fileName);
@@ -160,6 +179,8 @@ public class DownloadService {
                     statement.getId(),
                     statement.getAccountNumber());
 
+            checkForSuspiciousRedemption(link, clientIp, userAgent);
+
             try {
                 auditService.record(
                         AuditAction.DOWNLOAD_SUCCESS.getValue(),
@@ -188,6 +209,22 @@ public class DownloadService {
                     errorAuditDetails);
 
             return Optional.empty();
+        }
+    }
+
+    // Must be called before auditService.record(DOWNLOAD_SUCCESS, ...), not after: that call
+    // submits asynchronously, so checking for prior redemptions here first avoids racing against
+    // its own not-yet-committed write.
+    private void checkForSuspiciousRedemption(SignedLink link, String clientIp, String userAgent) {
+        var priorSuccesses =
+                auditLogRepository.findBySignedLinkIdAndAction(link.getId(), AuditAction.DOWNLOAD_SUCCESS.getValue());
+        var suspicious = priorSuccesses.stream()
+                .anyMatch(prior -> !Objects.equals(prior.getDetails().get(AUDIT_KEY_IP), clientIp)
+                        || !Objects.equals(prior.getDetails().get(AUDIT_KEY_USER_AGENT), userAgent));
+        if (suspicious) {
+            log.warn(
+                    "Signed link {} redeemed from a different ip/userAgent than a prior successful download",
+                    link.getId());
         }
     }
 

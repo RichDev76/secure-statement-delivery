@@ -6,7 +6,9 @@ import com.example.statementservice.statement.download.DecryptionFailedException
 import com.example.statementservice.statement.download.DownloadFileMissingException;
 import com.example.statementservice.statement.download.DownloadInvalidSignatureException;
 import com.example.statementservice.statement.download.DownloadLinkExpiredException;
+import com.example.statementservice.statement.download.DownloadRateLimitedException;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -41,7 +43,12 @@ class DownloadExceptionHandlerTest {
                         new DecryptionFailedException("decryption failed"),
                         HttpStatus.INTERNAL_SERVER_ERROR,
                         "Decryption Failed",
-                        "DECRYPTION_FAILED"));
+                        "DECRYPTION_FAILED"),
+                Arguments.of(
+                        new DownloadRateLimitedException("too many requests"),
+                        HttpStatus.TOO_MANY_REQUESTS,
+                        "Too Many Requests",
+                        "RATE_LIMITED"));
     }
 
     @ParameterizedTest
@@ -58,5 +65,23 @@ class DownloadExceptionHandlerTest {
         assertThat(response.getBody().getTitle()).isEqualTo(expectedTitle);
         assertThat(response.getBody().getDetail()).isEqualTo(ex.getMessage());
         assertThat(response.getBody().getProperties()).containsEntry("errorCode", expectedErrorCode);
+    }
+
+    @Test
+    void GivenRateLimitedException_WhenHandleDownloadExceptions_ThenResponseIncludesRetryAfterHeader() {
+        // When
+        var response = handler.handleDownloadExceptions(new DownloadRateLimitedException("too many requests"), request);
+
+        // Then
+        assertThat(response.getHeaders().getFirst("Retry-After")).isNotNull();
+    }
+
+    @Test
+    void GivenNonRateLimitedException_WhenHandleDownloadExceptions_ThenNoRetryAfterHeaderIsSet() {
+        // When
+        var response = handler.handleDownloadExceptions(new DownloadLinkExpiredException("expired"), request);
+
+        // Then
+        assertThat(response.getHeaders().getFirst("Retry-After")).isNull();
     }
 }

@@ -25,6 +25,7 @@
         <archunit.version>1.5.0</archunit.version>
         <awssdk.version>2.46.7</awssdk.version>
         <uuid-creator.version>6.1.1</uuid-creator.version>
+        <bucket4j.version>8.13.1</bucket4j.version>
         <jackson-databind-nullable.version>0.2.4</jackson-databind-nullable.version>
         <spotless.version>3.0.0</spotless.version>
         <openapi-generator.version>7.0.1</openapi-generator.version>
@@ -99,6 +100,11 @@
                 <groupId>com.github.f4b6a3</groupId>
                 <artifactId>uuid-creator</artifactId>
                 <version>${uuid-creator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bucket4j</groupId>
+                <artifactId>bucket4j_jdk17-postgresql</artifactId>
+                <version>${bucket4j.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

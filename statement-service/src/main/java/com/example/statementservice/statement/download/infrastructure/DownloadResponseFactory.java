@@ -5,6 +5,7 @@ import com.example.statementservice.statement.download.DecryptionFailedException
 import com.example.statementservice.statement.download.DownloadFileMissingException;
 import com.example.statementservice.statement.download.DownloadInvalidSignatureException;
 import com.example.statementservice.statement.download.DownloadLinkExpiredException;
+import com.example.statementservice.statement.download.DownloadRateLimitedException;
 import com.example.statementservice.statement.download.DownloadService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
@@ -20,8 +21,10 @@ public class DownloadResponseFactory {
 
     public static final String CACHE_CONTROL = "no-store, no-cache, must-revalidate";
     public static final String HTTP_HEADER_PRAGMA = "Pragma";
+    public static final String HTTP_HEADER_REFERRER_POLICY = "Referrer-Policy";
     public static final String CONTENT_DISPOSITION_ATTACHMENT = "attachment";
     public static final String PRAGMA_NO_CACHE = "no-cache";
+    public static final String REFERRER_POLICY_NO_REFERRER = "no-referrer";
 
     public ResponseEntity<Resource> build(String fileName, DownloadService.DownloadStreamResult result) {
         switch (result.outcome()) {
@@ -32,6 +35,7 @@ public class DownloadResponseFactory {
                 headers.setContentDispositionFormData(CONTENT_DISPOSITION_ATTACHMENT, fileName);
                 headers.setCacheControl(CACHE_CONTROL);
                 headers.add(HTTP_HEADER_PRAGMA, PRAGMA_NO_CACHE);
+                headers.add(HTTP_HEADER_REFERRER_POLICY, REFERRER_POLICY_NO_REFERRER);
                 return ResponseEntity.ok().headers(headers).body(resource);
             }
             case INVALID_SIGNATURE -> {
@@ -54,6 +58,10 @@ public class DownloadResponseFactory {
             case DECRYPTION_FAILED -> {
                 log.error("Decryption failed during download for fileName: {}", fileName);
                 throw new DecryptionFailedException("Failed to decrypt the statement file.");
+            }
+            case RATE_LIMITED -> {
+                log.warn("Rate limit exceeded for download - fileName: {}", fileName);
+                throw new DownloadRateLimitedException("Too many requests for this link. Please try again later.");
             }
             default -> {
                 throw new DownloadInvalidSignatureException("Access to the requested resource is denied.");

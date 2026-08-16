@@ -62,6 +62,9 @@ class StatementServiceTest {
     @Mock
     private IdGeneratorPort idGenerator;
 
+    @Mock
+    private EncryptedFileFetcher encryptedFileFetcher;
+
     @InjectMocks
     private StatementService statementService;
 
@@ -184,15 +187,18 @@ class StatementServiceTest {
 
     @Test
     void GivenStatementWithWrappedDek_WhenOpenDecryptedFile_ThenUnwrapsDekBeforeDecrypting() throws Exception {
-        // Given
+        // Given: fetching ciphertext now goes through EncryptedFileFetcher (possibly cached), not
+        // StatementFileStore directly - openDecryptedFile wraps the returned bytes in a fresh
+        // ByteArrayInputStream before decrypting, so decrypt's stream argument can't be matched
+        // against a specific pre-built instance anymore.
         var wrappedDek = new byte[] {8, 8, 8, 8, 8};
         var dek = new byte[] {9, 9, 9, 9};
         testStatement.setEncryptedDek(wrappedDek);
-        var ciphertextStream = new java.io.ByteArrayInputStream("ciphertext".getBytes());
+        var ciphertext = "ciphertext".getBytes();
         var decryptedStream = new java.io.ByteArrayInputStream("plaintext".getBytes());
         when(fileCipher.unwrapDek(wrappedDek)).thenReturn(dek);
-        when(fileStore.open(testStatement.getStorageKey())).thenReturn(ciphertextStream);
-        when(fileCipher.decrypt(ciphertextStream, dek)).thenReturn(decryptedStream);
+        when(encryptedFileFetcher.fetch(testStatement.getStorageKey())).thenReturn(ciphertext);
+        when(fileCipher.decrypt(any(), eq(dek))).thenReturn(decryptedStream);
 
         // When
         var result = statementService.openDecryptedFile(testStatement);
@@ -200,7 +206,8 @@ class StatementServiceTest {
         // Then
         assertThat(result).isEqualTo(decryptedStream);
         verify(fileCipher).unwrapDek(wrappedDek);
-        verify(fileCipher).decrypt(ciphertextStream, dek);
+        verify(fileCipher).decrypt(any(), eq(dek));
+        verify(fileStore, never()).open(any());
     }
 
     @Test

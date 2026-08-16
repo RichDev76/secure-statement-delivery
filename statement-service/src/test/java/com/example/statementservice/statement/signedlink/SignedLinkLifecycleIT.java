@@ -118,6 +118,45 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void Given_LinkRedeemedUpToMaxRedemptions_When_RedeemingOneMoreTime_Then_TreatedAsExpired() throws Exception {
+        // Given: statement.signed-link.max-redemptions defaults to 3 in the test profile - a real
+        // upload so every one of the first 3 downloads actually succeeds, not just the check.
+        var originalBytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
+        var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, originalBytes);
+        var digest = Sha256Digest.hexOf(originalBytes);
+        var accountNumber = String.format("1%08d", System.currentTimeMillis() % 100000000L);
+        var uploadResponseBody = mockMvc.perform(multipart("/api/v1/statements/upload")
+                        .file(file)
+                        .param("accountNumber", accountNumber)
+                        .param("date", "2026-07-01")
+                        .header("X-Message-Digest", digest)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_Upload"))))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String statementId = JsonPath.read(uploadResponseBody, "$.statementId");
+        var uri = mintLinkUri(UUID.fromString(statementId)).build();
+
+        // When: the first 3 redemptions all succeed
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mockMvc.perform(get(uri.getPath())
+                            .queryParam("expires", uri.getQueryParams().getFirst("expires"))
+                            .queryParam("linkId", uri.getQueryParams().getFirst("linkId"))
+                            .queryParam("signature", uri.getQueryParams().getFirst("signature")))
+                    .andExpect(status().isOk());
+        }
+
+        // Then: the 4th is treated exactly like a naturally expired link - a 404, not a
+        // distinguishable "redemption limit" response.
+        mockMvc.perform(get(uri.getPath())
+                        .queryParam("expires", uri.getQueryParams().getFirst("expires"))
+                        .queryParam("linkId", uri.getQueryParams().getFirst("linkId"))
+                        .queryParam("signature", uri.getQueryParams().getFirst("signature")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void Given_TamperedSignature_When_Downloading_Then_Returns403() throws Exception {
         // Given
         var statement = seedStatement();

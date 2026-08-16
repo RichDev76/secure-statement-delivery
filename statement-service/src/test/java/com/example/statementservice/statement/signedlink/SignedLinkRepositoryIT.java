@@ -100,4 +100,32 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
         var hashOfLeakedValue = Sha256Digest.hexOf(storedValue.getBytes(StandardCharsets.UTF_8));
         assertThat(signedLinkRepository.findByTokenHash(hashOfLeakedValue)).isEmpty();
     }
+
+    @Test
+    void Given_FreshLink_When_RecordingRedemptionsUpToMax_Then_EachCallSucceeds() {
+        // Given
+        var link = persistLink(
+                "redeemable-token-" + UUID.randomUUID(),
+                OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(10));
+
+        // When / Then: 3 redemptions against a max of 3 all succeed (1 row affected each time)
+        assertThat(signedLinkRepository.recordRedemption(link.getId(), 3)).isEqualTo(1);
+        assertThat(signedLinkRepository.recordRedemption(link.getId(), 3)).isEqualTo(1);
+        assertThat(signedLinkRepository.recordRedemption(link.getId(), 3)).isEqualTo(1);
+    }
+
+    @Test
+    void Given_LinkAlreadyAtMaxRedemptions_When_RecordingAnotherRedemption_Then_ZeroRowsAffected() {
+        // Given
+        var link = persistLink(
+                "exhausted-token-" + UUID.randomUUID(),
+                OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(10));
+        signedLinkRepository.recordRedemption(link.getId(), 1);
+
+        // When
+        var result = signedLinkRepository.recordRedemption(link.getId(), 1);
+
+        // Then
+        assertThat(result).isZero();
+    }
 }

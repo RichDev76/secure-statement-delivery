@@ -95,6 +95,15 @@ public class SignedLinkService {
             return LinkValidationResult.expired(link);
         }
 
+        // Bounded redemption count: absorbs legitimate retries while capping what a leaked link
+        // is worth in total. Exhausted redemptions are deliberately indistinguishable from a
+        // naturally expired link - no separate signal for an attacker to calibrate against.
+        var redeemed = signedLinkRepository.recordRedemption(link.getId(), properties.getMaxRedemptions());
+        if (redeemed == 0) {
+            log.info("Link redemption limit reached: {}", link.getId());
+            return LinkValidationResult.expired(link);
+        }
+
         return LinkValidationResult.valid(link);
     }
 

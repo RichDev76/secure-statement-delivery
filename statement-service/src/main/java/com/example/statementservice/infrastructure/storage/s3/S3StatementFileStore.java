@@ -2,6 +2,7 @@ package com.example.statementservice.infrastructure.storage.s3;
 
 import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.statement.StatementFileStore;
+import com.example.statementservice.statement.StatementStorageUnavailableException;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -81,9 +82,12 @@ public class S3StatementFileStore implements StatementFileStore {
             return true;
         } catch (NoSuchKeyException e) {
             return false;
+        } catch (SdkException e) {
+            // Any other SdkException (network/auth/outage) must not be miscategorized as "file
+            // missing" - see ADR 0021.
+            log.error("Failed to check object existence - bucket: {}, key: {}", properties.getBucket(), reference, e);
+            throw new StatementStorageUnavailableException("Failed to check statement existence in object storage", e);
         }
-        // Any other SdkException (network/auth/outage) propagates unchecked rather than being
-        // miscategorized as "file missing" - see ADR 0026.
     }
 
     private String buildKey(String accountHash, LocalDate statementDate, UUID id) {

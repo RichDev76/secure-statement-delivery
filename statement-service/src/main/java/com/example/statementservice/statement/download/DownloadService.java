@@ -5,6 +5,7 @@ import com.example.statementservice.audit.AuditLogRepository;
 import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementService;
+import com.example.statementservice.statement.StatementStorageUnavailableException;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
 import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
@@ -79,9 +80,14 @@ public class DownloadService {
 
         // Step 3: Verify file exists
         var statement = statementOpt.get();
-        if (!statementService.fileExists(statement)) {
-            handleMissingFile(statement, link, token, clientIp, userAgent, performedBy);
-            return new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
+        try {
+            if (!statementService.fileExists(statement)) {
+                handleMissingFile(statement, link, token, clientIp, userAgent, performedBy);
+                return new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
+            }
+        } catch (StatementStorageUnavailableException e) {
+            handleStorageUnavailable(statement, link, token, clientIp, userAgent, performedBy, e);
+            return new DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty());
         }
 
         // Step 4: Decrypt and stream
@@ -169,6 +175,28 @@ public class DownloadService {
                 getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.FILE_MISSING.getValue()));
     }
 
+    private void handleStorageUnavailable(
+            Statement statement,
+            SignedLink link,
+            String token,
+            String clientIp,
+            String userAgent,
+            String performedBy,
+            StatementStorageUnavailableException e) {
+        log.error(
+                "Storage unavailable while checking file existence - key: {}, statementId: {}",
+                statement.getStorageKey(),
+                statement.getId(),
+                e);
+        auditService.record(
+                AuditAction.DOWNLOAD_FAILED.getValue(),
+                statement.getId(),
+                statement.getAccountNumber(),
+                link.getId(),
+                performedBy,
+                getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.STORAGE_UNAVAILABLE.getValue()));
+    }
+
     private Optional<InputStream> decryptAndStream(
             Statement statement, SignedLink link, String token, String clientIp, String userAgent, String performedBy) {
         try {
@@ -216,15 +244,19 @@ public class DownloadService {
     // submits asynchronously, so checking for prior redemptions here first avoids racing against
     // its own not-yet-committed write.
     private void checkForSuspiciousRedemption(SignedLink link, String clientIp, String userAgent) {
-        var priorSuccesses =
-                auditLogRepository.findBySignedLinkIdAndAction(link.getId(), AuditAction.DOWNLOAD_SUCCESS.getValue());
-        var suspicious = priorSuccesses.stream()
-                .anyMatch(prior -> !Objects.equals(prior.getDetails().get(AUDIT_KEY_IP), clientIp)
-                        || !Objects.equals(prior.getDetails().get(AUDIT_KEY_USER_AGENT), userAgent));
-        if (suspicious) {
-            log.warn(
-                    "Signed link {} redeemed from a different ip/userAgent than a prior successful download",
-                    link.getId());
+        try {
+            var priorSuccesses = auditLogRepository.findBySignedLinkIdAndAction(
+                    link.getId(), AuditAction.DOWNLOAD_SUCCESS.getValue());
+            var suspicious = priorSuccesses.stream()
+                    .anyMatch(prior -> !Objects.equals(prior.getDetails().get(AUDIT_KEY_IP), clientIp)
+                            || !Objects.equals(prior.getDetails().get(AUDIT_KEY_USER_AGENT), userAgent));
+            if (suspicious) {
+                log.warn(
+                        "Signed link {} redeemed from a different ip/userAgent than a prior successful download",
+                        link.getId());
+            }
+        } catch (Exception e) {
+            log.warn("Suspicious-redemption check failed - linkId: {}", link.getId(), e);
         }
     }
 

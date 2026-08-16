@@ -9,6 +9,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  data:
+    redis:
+      timeout: 2s
+      connect-timeout: 1s
 
 server:
   port: 8080
@@ -30,6 +34,13 @@ management:
     health:
       show-details: when-authorized
       show-components: always
+      # Redis is deliberately excluded from readiness: its outage degrades cache performance,
+      # not availability, and must not pull the instance out of the load balancer.
+      group:
+        readiness:
+          include: readinessState,db,s3
+        liveness:
+          include: livenessState
   health:
     readinessstate:
       enabled: true

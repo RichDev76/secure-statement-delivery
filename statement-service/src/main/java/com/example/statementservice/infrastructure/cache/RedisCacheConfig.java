@@ -2,7 +2,10 @@ package com.example.statementservice.infrastructure.cache;
 
 import com.example.statementservice.statement.signedlink.SignedLinkProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.LoggingCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -12,7 +15,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 @EnableCaching
 @Configuration
 @RequiredArgsConstructor
-public class RedisCacheConfig {
+public class RedisCacheConfig implements CachingConfigurer {
 
     public static final String STATEMENT_CIPHERTEXT_CACHE = "statementCiphertext";
 
@@ -27,5 +30,13 @@ public class RedisCacheConfig {
                 .cacheDefaults(cacheConfig)
                 .withCacheConfiguration(STATEMENT_CIPHERTEXT_CACHE, cacheConfig)
                 .build();
+    }
+
+    // Spring's default SimpleCacheErrorHandler rethrows, which would fail the download on a
+    // Redis outage instead of falling through to S3.
+    @Override
+    @Bean
+    public CacheErrorHandler errorHandler() {
+        return new LoggingCacheErrorHandler(true);
     }
 }

@@ -201,7 +201,10 @@
       ports:
         - "8080:8080"
       healthcheck:
-        test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/statements/actuator/health || exit 1"]
+        # Liveness, not overall health: overall /health folds in Redis, whose outage degrades
+        # cache performance, not availability - restarting the container on a Redis blip would
+        # be actively harmful.
+        test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/statements/actuator/health/liveness || exit 1"]
         interval: 10s
         timeout: 5s
         retries: 6

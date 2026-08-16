@@ -121,6 +121,17 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
+    @DisplayName("Should throw DownloadStorageUnavailableException for STORAGE_UNAVAILABLE outcome")
+    void testBuild_StorageUnavailableOutcome() {
+
+        DownloadService.DownloadStreamResult result =
+                new DownloadService.DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty());
+        assertThrows(
+                com.example.statementservice.statement.download.DownloadStorageUnavailableException.class,
+                () -> downloadResponseFactory.build(fileName, result));
+    }
+
+    @Test
     @DisplayName("Should handle OK outcome with different file names")
     void testBuild_OkOutcome_DifferentFileNames() {
 

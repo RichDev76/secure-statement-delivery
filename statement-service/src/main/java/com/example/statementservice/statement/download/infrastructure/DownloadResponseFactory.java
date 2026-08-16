@@ -7,6 +7,7 @@ import com.example.statementservice.statement.download.DownloadInvalidSignatureE
 import com.example.statementservice.statement.download.DownloadLinkExpiredException;
 import com.example.statementservice.statement.download.DownloadRateLimitedException;
 import com.example.statementservice.statement.download.DownloadService;
+import com.example.statementservice.statement.download.DownloadStorageUnavailableException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -62,6 +63,11 @@ public class DownloadResponseFactory {
             case RATE_LIMITED -> {
                 log.warn("Rate limit exceeded for download - fileName: {}", fileName);
                 throw new DownloadRateLimitedException("Too many requests for this link. Please try again later.");
+            }
+            case STORAGE_UNAVAILABLE -> {
+                log.error("Storage unavailable for download - fileName: {}", fileName);
+                throw new DownloadStorageUnavailableException(
+                        "The statement storage backend is temporarily unavailable. Please try again shortly.");
             }
             default -> {
                 throw new DownloadInvalidSignatureException("Access to the requested resource is denied.");

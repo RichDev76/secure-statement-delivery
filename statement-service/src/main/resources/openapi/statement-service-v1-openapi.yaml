@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Statement Upload & Search API
-  version: 1.10.0
+  version: 1.11.0
   description: >
     Upload a PDF account statement with metadata and strict validation rules.
     Also provides search endpoints to retrieve statements by statementId,
@@ -301,6 +301,23 @@ paths:
                 status: 429
                 detail: "Too many requests for this link. Please try again later."
                 errorCode: "RATE_LIMITED"
+        '503':
+          description: Statement storage backend is temporarily unavailable
+          headers:
+            Retry-After:
+              description: Seconds until the client should retry
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/download"
+                title: "Storage Unavailable"
+                status: 503
+                detail: "The statement storage backend is temporarily unavailable. Please try again shortly."
+                errorCode: "STORAGE_UNAVAILABLE"
 
   /audit/logs:
     get:
@@ -674,4 +691,5 @@ components:
             - FILE_MISSING
             - DECRYPTION_FAILED
             - RATE_LIMITED
+            - STORAGE_UNAVAILABLE
           example: "INVALID_MESSAGE_DIGEST"

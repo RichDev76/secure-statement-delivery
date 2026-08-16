@@ -10,6 +10,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.example.statementservice.statement.StatementStorageUnavailableException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -206,16 +207,18 @@ class S3StatementFileStoreTest {
     }
 
     @Test
-    void GivenStorageIsUnreachable_WhenCheckingExistence_ThenExceptionPropagatesRatherThanReturningFalse() {
-        // Given: a non-NoSuchKey S3 failure must not be miscategorized as "file missing" (see ADR 0026 / ADR 0025).
-        when(s3Client.headObject(any(HeadObjectRequest.class)))
-                .thenThrow(S3Exception.builder()
-                        .statusCode(503)
-                        .message("service unavailable")
-                        .build());
+    void GivenStorageIsUnreachable_WhenCheckingExistence_ThenStatementStorageUnavailableExceptionIsThrown() {
+        // Given: a non-NoSuchKey S3 failure must not be miscategorized as "file missing" (ADR 0021),
+        // and must not leak the raw SDK exception type out of the storage adapter either.
+        var failure = S3Exception.builder()
+                .statusCode(503)
+                .message("service unavailable")
+                .build();
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenThrow(failure);
 
         // When / Then
         assertThatThrownBy(() -> fileStore.exists("statements/abc123/2026/07/some-id.pdf.enc"))
-                .isInstanceOf(S3Exception.class);
+                .isInstanceOf(StatementStorageUnavailableException.class)
+                .hasCause(failure);
     }
 }

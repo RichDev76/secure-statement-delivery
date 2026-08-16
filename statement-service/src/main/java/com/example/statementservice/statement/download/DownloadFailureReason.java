@@ -9,7 +9,8 @@ public enum DownloadFailureReason {
     STATEMENT_NOT_FOUND("statement_not_found"),
     FILE_MISSING("file_missing"),
     DECRYPTION_FAILED("decryption_failed"),
-    RATE_LIMITED("rate_limited");
+    RATE_LIMITED("rate_limited"),
+    STORAGE_UNAVAILABLE("storage_unavailable");
 
     private final String value;
 

@@ -7,5 +7,6 @@ public enum DownloadOutcome {
     STATEMENT_NOT_FOUND,
     FILE_MISSING,
     DECRYPTION_FAILED,
-    RATE_LIMITED
+    RATE_LIMITED,
+    STORAGE_UNAVAILABLE
 }

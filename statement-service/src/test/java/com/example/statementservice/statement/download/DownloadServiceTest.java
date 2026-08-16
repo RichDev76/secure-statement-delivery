@@ -21,6 +21,7 @@ import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.statement.FileCipherException;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementService;
+import com.example.statementservice.statement.StatementStorageUnavailableException;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
 import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
@@ -425,6 +426,59 @@ class DownloadServiceTest {
         // Then
         assertThat(result.outcome()).isEqualTo(DownloadOutcome.INVALID_SIGNATURE);
         verifyNoInteractions(rateLimiter);
+    }
+
+    @Test
+    void
+            GivenFileExistenceCheckThrowsStorageUnavailable_WhenValidateAndStreamDetailed_ThenReturnsStorageUnavailableAndAuditsFailure()
+                    throws Exception {
+        // Given
+        var validResult = LinkValidationResult.valid(testLink);
+        when(signedLinkService.validate(testToken, testExpires, testLinkId, FILE_NAME))
+                .thenReturn(validResult);
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement))
+                .thenThrow(new StatementStorageUnavailableException("S3 outage", new RuntimeException("cause")));
+
+        // When
+        var result = downloadService.validateAndStreamDetailed(
+                testToken, testExpires, testLinkId, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
+
+        // Then
+        assertThat(result.outcome()).isEqualTo(DownloadOutcome.STORAGE_UNAVAILABLE);
+        assertThat(result.stream()).isEmpty();
+        verify(statementService, never()).openDecryptedFile(any());
+        verify(auditService)
+                .record(
+                        eq(AuditAction.DOWNLOAD_FAILED.getValue()),
+                        eq(testStatementId),
+                        eq("123456789"),
+                        eq(testLinkId),
+                        eq(testPerformedBy),
+                        any(Map.class));
+    }
+
+    @Test
+    void GivenSuspiciousRedemptionCheckThrows_WhenValidateAndStreamDetailed_ThenDownloadStillSucceeds()
+            throws Exception {
+        // Given
+        var validResult = LinkValidationResult.valid(testLink);
+        when(signedLinkService.validate(testToken, testExpires, testLinkId, FILE_NAME))
+                .thenReturn(validResult);
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
+        var mockStream = new ByteArrayInputStream("decrypted content".getBytes());
+        when(statementService.openDecryptedFile(testStatement)).thenReturn(mockStream);
+        when(auditLogRepository.findBySignedLinkIdAndAction(testLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue()))
+                .thenThrow(new RuntimeException("audit query failed"));
+
+        // When
+        var result = downloadService.validateAndStreamDetailed(
+                testToken, testExpires, testLinkId, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
+
+        // Then
+        assertThat(result.outcome()).isEqualTo(DownloadOutcome.OK);
+        assertThat(result.stream()).contains(mockStream);
     }
 
     @Test

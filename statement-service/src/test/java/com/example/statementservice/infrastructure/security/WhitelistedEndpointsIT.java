@@ -38,4 +38,14 @@ class WhitelistedEndpointsIT extends AbstractIntegrationTest {
                 .as("whitelisted download path must not be blocked by authentication")
                 .isNotEqualTo(HttpStatus.UNAUTHORIZED.value());
     }
+
+    @Test
+    void GivenNoAuthentication_WhenCheckingReadinessGroup_ThenUpIsReturned() throws Exception {
+        mockMvc.perform(get("/api/v1/statements/actuator/health/readiness")).andExpect(status().isOk());
+    }
+
+    @Test
+    void GivenNoAuthentication_WhenCheckingLivenessGroup_ThenUpIsReturned() throws Exception {
+        mockMvc.perform(get("/api/v1/statements/actuator/health/liveness")).andExpect(status().isOk());
+    }
 }

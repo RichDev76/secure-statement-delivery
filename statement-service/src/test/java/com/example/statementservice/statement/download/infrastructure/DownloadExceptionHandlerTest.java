@@ -7,6 +7,7 @@ import com.example.statementservice.statement.download.DownloadFileMissingExcept
 import com.example.statementservice.statement.download.DownloadInvalidSignatureException;
 import com.example.statementservice.statement.download.DownloadLinkExpiredException;
 import com.example.statementservice.statement.download.DownloadRateLimitedException;
+import com.example.statementservice.statement.download.DownloadStorageUnavailableException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,7 +49,12 @@ class DownloadExceptionHandlerTest {
                         new DownloadRateLimitedException("too many requests"),
                         HttpStatus.TOO_MANY_REQUESTS,
                         "Too Many Requests",
-                        "RATE_LIMITED"));
+                        "RATE_LIMITED"),
+                Arguments.of(
+                        new DownloadStorageUnavailableException("storage unavailable"),
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "Storage Unavailable",
+                        "STORAGE_UNAVAILABLE"));
     }
 
     @ParameterizedTest
@@ -83,5 +89,15 @@ class DownloadExceptionHandlerTest {
 
         // Then
         assertThat(response.getHeaders().getFirst("Retry-After")).isNull();
+    }
+
+    @Test
+    void GivenStorageUnavailableException_WhenHandleDownloadExceptions_ThenResponseIncludesRetryAfterHeader() {
+        // When
+        var response = handler.handleDownloadExceptions(
+                new DownloadStorageUnavailableException("storage unavailable"), request);
+
+        // Then
+        assertThat(response.getHeaders().getFirst("Retry-After")).isNotNull();
     }
 }

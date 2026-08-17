@@ -4,8 +4,10 @@ import com.example.statementservice.audit.AuditAction;
 import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
+import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.StatementService;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,8 +39,11 @@ public class StatementUploadService {
             String xMessageDigest, MultipartFile file, String accountNumber, String date, RequestInfo requestInfo) {
         var performedBy = requestInfo.getPerformedBy() != null ? requestInfo.getPerformedBy() : ADMIN_USER;
         try {
-            this.validationUtil.validateFileUploadInputs(file, xMessageDigest, accountNumber, date);
-            var dto = this.statementService.uploadStatement(accountNumber, LocalDate.parse(date), file, performedBy);
+            this.validationUtil.validateFileUploadInputs(file, accountNumber, date);
+            var contentHash = computeContentHash(file);
+            this.validationUtil.validateMessageDigest(contentHash, xMessageDigest);
+            var dto = this.statementService.uploadStatement(
+                    accountNumber, LocalDate.parse(date), file, performedBy, contentHash);
             auditUploadSuccess(accountNumber, requestInfo, dto.getStatementId(), performedBy);
             return dto;
         } catch (RuntimeException e) {
@@ -78,6 +83,14 @@ public class StatementUploadService {
         } catch (Exception auditEx) {
             // Fail-open: the original business failure must propagate, not the audit failure.
             log.warn("Failed to record upload failure audit", auditEx);
+        }
+    }
+
+    private static String computeContentHash(MultipartFile file) {
+        try (var content = file.getInputStream()) {
+            return Sha256Digest.hexOf(content);
+        } catch (IOException e) {
+            throw new DigestComputationException("Failed to compute file digest", e);
         }
     }
 

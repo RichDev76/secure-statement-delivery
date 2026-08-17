@@ -39,8 +39,7 @@ class ValidationUtilTest {
     @DisplayName("validateFileUploadInputs - should pass with all valid inputs")
     void validateFileUploadInputs_Success() {
 
-        assertThatCode(() -> validationUtil.validateFileUploadInputs(
-                        validPdfFile, validMessageDigest, validAccountNumber, validDate))
+        assertThatCode(() -> validationUtil.validateFileUploadInputs(validPdfFile, validAccountNumber, validDate))
                 .doesNotThrowAnyException();
     }
 
@@ -48,7 +47,7 @@ class ValidationUtilTest {
     @DisplayName("validateMessageDigest - should pass with valid digest")
     void validateMessageDigest_Valid() {
 
-        assertThatCode(() -> validationUtil.validateMessageDigest(validPdfFile, validMessageDigest))
+        assertThatCode(() -> validationUtil.validateMessageDigest(validMessageDigest, validMessageDigest))
                 .doesNotThrowAnyException();
     }
 
@@ -56,7 +55,7 @@ class ValidationUtilTest {
     @DisplayName("validateMessageDigest - should throw exception for null digest")
     void validateMessageDigest_Null() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, null))
+        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, null))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -65,7 +64,7 @@ class ValidationUtilTest {
     @DisplayName("validateMessageDigest - should throw exception for empty digest")
     void validateMessageDigest_Empty() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, ""))
+        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, ""))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -74,7 +73,7 @@ class ValidationUtilTest {
     @DisplayName("validateMessageDigest - should throw exception for invalid format (too short)")
     void validateMessageDigest_TooShort() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, "abc123"))
+        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "abc123"))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -83,7 +82,7 @@ class ValidationUtilTest {
     @DisplayName("validateMessageDigest - should throw exception for invalid format (too long)")
     void validateMessageDigest_TooLong() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, "a".repeat(65)))
+        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "a".repeat(65)))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -92,7 +91,7 @@ class ValidationUtilTest {
     @DisplayName("validateMessageDigest - should throw exception for non-hex characters")
     void validateMessageDigest_NonHex() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, "g".repeat(64)))
+        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "g".repeat(64)))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -102,7 +101,7 @@ class ValidationUtilTest {
     void validateMessageDigest_Mismatch() {
 
         var wrongDigest = "b".repeat(64);
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validPdfFile, wrongDigest))
+        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, wrongDigest))
                 .isInstanceOf(DigestMismatchException.class)
                 .hasMessageContaining("X-Message-Digest does not match file contents");
     }
@@ -111,7 +110,7 @@ class ValidationUtilTest {
     @DisplayName("validateMessageDigest - should be case insensitive for hex comparison")
     void validateMessageDigest_CaseInsensitive() {
 
-        assertThatCode(() -> validationUtil.validateMessageDigest(validPdfFile, validMessageDigest.toUpperCase()))
+        assertThatCode(() -> validationUtil.validateMessageDigest(validMessageDigest, validMessageDigest.toUpperCase()))
                 .doesNotThrowAnyException();
     }
 

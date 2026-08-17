@@ -11,9 +11,11 @@ spring:
       enabled: true
   servlet:
     multipart:
-      # The upload path buffers ~3x the file size on-heap; keep the cap small until uploads stream.
+      # Ciphertext is still buffered on-heap in the S3 adapter; keep the cap small (ADR-0023).
       max-file-size: 10MB
       max-request-size: 12MB
+      # Parts must spool to disk: the digest pass re-reads them via getInputStream() (ADR-0023).
+      file-size-threshold: 0
   data:
     redis:
       timeout: 2s

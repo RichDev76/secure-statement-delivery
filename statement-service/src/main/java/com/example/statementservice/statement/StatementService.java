@@ -1,7 +1,6 @@
 package com.example.statementservice.statement;
 
 import com.example.statementservice.shared.IdGeneratorPort;
-import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.io.ByteArrayInputStream;
@@ -39,7 +38,7 @@ public class StatementService {
 
     @Transactional
     public UploadResponseDto uploadStatement(
-            String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy) {
+            String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy, String contentHash) {
         var id = idGenerator.newId();
         var initializationVector = fileCipher.generateInitializationVector();
         byte[] dek;
@@ -61,9 +60,6 @@ public class StatementService {
         } catch (IOException e) {
             throw new StatementUploadException("Failed to encrypt and store file", e);
         }
-
-        var contentHash = Sha256Digest.hexOf(readBytes(file));
-        log.info("Message Digest {}", contentHash);
 
         var statement = buildStatement(
                 accountNumber,
@@ -140,14 +136,6 @@ public class StatementService {
         var dek = fileCipher.unwrapDek(statement.getEncryptedDek());
         var ciphertext = encryptedFileFetcher.fetch(statement.getStorageKey());
         return new ByteArrayInputStream(fileCipher.decrypt(ciphertext, dek));
-    }
-
-    private byte[] readBytes(MultipartFile file) {
-        try {
-            return file.getBytes();
-        } catch (IOException e) {
-            throw new StatementUploadException("Failed to read file for digest computation", e);
-        }
     }
 
     private Statement buildStatement(

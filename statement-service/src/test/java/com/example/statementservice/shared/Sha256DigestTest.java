@@ -2,7 +2,10 @@ package com.example.statementservice.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.Test;
 
 class Sha256DigestTest {
@@ -29,6 +32,43 @@ class Sha256DigestTest {
 
         // Then
         assertThat(hex).isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
+
+    @Test
+    void GivenKnownInputAsStream_WhenHashing_ThenWellKnownSha256HexIsProduced() throws IOException {
+        // Given: SHA-256("abc") is a published test vector
+        var input = new ByteArrayInputStream("abc".getBytes(StandardCharsets.UTF_8));
+
+        // When
+        var hex = Sha256Digest.hexOf(input);
+
+        // Then
+        assertThat(hex).isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    }
+
+    @Test
+    void GivenEmptyStream_WhenHashing_ThenEmptyInputSha256HexIsProduced() throws IOException {
+        // Given
+        var input = new ByteArrayInputStream(new byte[0]);
+
+        // When
+        var hex = Sha256Digest.hexOf(input);
+
+        // Then
+        assertThat(hex).isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
+
+    @Test
+    void GivenContentLargerThanInternalBuffer_WhenHashingAsStream_ThenMatchesByteArrayOverload() throws IOException {
+        // Given: content spanning multiple 8KB read chunks
+        var content = new byte[64 * 1024 + 17];
+        ThreadLocalRandom.current().nextBytes(content);
+
+        // When
+        var streamedHex = Sha256Digest.hexOf(new ByteArrayInputStream(content));
+
+        // Then
+        assertThat(streamedHex).isEqualTo(Sha256Digest.hexOf(content));
     }
 
     @Test

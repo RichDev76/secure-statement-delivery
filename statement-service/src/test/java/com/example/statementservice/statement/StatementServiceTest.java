@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.statementservice.shared.IdGeneratorPort;
+import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.io.ByteArrayOutputStream;
@@ -73,12 +74,14 @@ class StatementServiceTest {
     private UUID testId;
     private String testAccountNumber;
     private LocalDate testStatementDate;
+    private String testContentHash;
 
     @BeforeEach
     void setUp() {
         testId = UUID.randomUUID();
         testAccountNumber = "123456789";
         testStatementDate = LocalDate.of(2024, 1, 1);
+        testContentHash = Sha256Digest.hexOf("file-content".getBytes());
         testStatement = new Statement();
         testStatement.setId(testId);
         testStatement.setAccountNumber(testAccountNumber);
@@ -116,11 +119,10 @@ class StatementServiceTest {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
         stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
-        UploadResponseDto result =
-                statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, uploadedBy);
+        UploadResponseDto result = statementService.uploadStatement(
+                testAccountNumber, testStatementDate, multipartFile, uploadedBy, testContentHash);
         assertThat(result).isNotNull();
         assertThat(result.getStatementId()).isNotNull();
         assertThat(result.getFileName()).isEqualTo("statement.pdf");
@@ -136,14 +138,13 @@ class StatementServiceTest {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
         stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> {
             Statement stmt = i.getArgument(0);
             assertThat(stmt.getUploadedBy()).isEqualTo("admin");
             return stmt;
         });
-        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, null);
+        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, null, testContentHash);
         verify(statementRepository).saveAndFlush(any(Statement.class));
     }
 
@@ -153,11 +154,10 @@ class StatementServiceTest {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
         stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any())).thenThrow(new RuntimeException("DB error"));
-        assertThatThrownBy(() ->
-                        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user"))
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
                 .isInstanceOf(StatementUploadException.class)
                 .hasMessageContaining("Failed to persist statement metadata");
     }
@@ -171,8 +171,8 @@ class StatementServiceTest {
         when(fileCipher.wrapDek(any())).thenThrow(new FileCipherException("Failed to wrap DEK"));
 
         // When / Then: classified as an upload failure, and nothing is stored or persisted
-        assertThatThrownBy(() ->
-                        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user"))
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
                 .isInstanceOf(StatementUploadException.class)
                 .hasMessageContaining("Failed to prepare encryption key");
         verify(statementRepository, never()).saveAndFlush(any());
@@ -187,18 +187,35 @@ class StatementServiceTest {
         when(fileCipher.wrapDek(dek)).thenReturn(wrappedDek);
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
         stubSuccessfulEncryptAndStore(new byte[] {1, 2, 3, 4}, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
 
         // When
-        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user");
+        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user", testContentHash);
 
         // Then
         var captor = org.mockito.ArgumentCaptor.forClass(Statement.class);
         verify(statementRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getEncryptedDek()).isEqualTo(wrappedDek).isNotEqualTo(dek);
         verify(fileCipher).encrypt(any(), any(), eq(new byte[] {1, 2, 3, 4}), eq(dek));
+    }
+
+    @Test
+    void GivenPrecomputedContentHash_WhenUploadStatement_ThenPersistsThatHashWithoutRereadingFile() throws Exception {
+        // Given
+        when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
+        when(multipartFile.getSize()).thenReturn(2048L);
+        stubSuccessfulEncryptAndStore(new byte[] {1, 2, 3, 4}, "file-content".getBytes());
+        when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
+
+        // When
+        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user", testContentHash);
+
+        // Then
+        var captor = org.mockito.ArgumentCaptor.forClass(Statement.class);
+        verify(statementRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getContentHash()).isEqualTo(testContentHash);
+        verify(multipartFile, never()).getBytes();
     }
 
     @Test

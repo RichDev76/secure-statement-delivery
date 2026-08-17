@@ -1,6 +1,7 @@
 package com.example.statementservice.infrastructure.security;
 
 import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
+import static com.example.statementservice.infrastructure.web.CommonUtil.createProblemDetail;
 
 import java.net.URI;
 import java.util.List;
@@ -15,7 +16,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -33,6 +33,9 @@ import tools.jackson.databind.json.JsonMapper;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final String ERROR_CODE_UNAUTHENTICATED = "UNAUTHENTICATED";
+    private static final String ERROR_CODE_ACCESS_DENIED = "ACCESS_DENIED";
+
     private final SecurityEndpointsProperties endpoints;
 
     @Bean
@@ -45,7 +48,7 @@ public class SecurityConfig {
 
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Stateless, bearer-token-only API with no cookie/session auth anywhere - CSRF
-                // protection has nothing to protect. See ADR 0024.
+                // protection has nothing to protect. See ADR 0012.
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
                     var registry = auth;
@@ -104,10 +107,12 @@ public class SecurityConfig {
         return (request, response, authException) -> {
             log.warn("Unauthenticated access - path={}, method={}", request.getRequestURI(), request.getMethod());
 
-            var pd = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
-            pd.setType(buildProblemDetailTypeURI(request, "/errors/authentication"));
-            pd.setTitle("Unauthenticated");
-            pd.setDetail("Authentication required to access this resource");
+            var pd = createProblemDetail(
+                    HttpStatus.UNAUTHORIZED,
+                    buildProblemDetailTypeURI(request, "/errors/authentication"),
+                    "Unauthenticated",
+                    "Authentication required to access this resource",
+                    ERROR_CODE_UNAUTHENTICATED);
 
             try {
                 pd.setInstance(URI.create(request.getRequestURI()));
@@ -125,10 +130,12 @@ public class SecurityConfig {
         return (request, response, accessDeniedException) -> {
             log.warn("Access denied - path={}, method={}", request.getRequestURI(), request.getMethod());
 
-            var pd = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
-            pd.setType(buildProblemDetailTypeURI(request, "/errors/authorization"));
-            pd.setTitle("Forbidden");
-            pd.setDetail("You do not have permission to access this resource");
+            var pd = createProblemDetail(
+                    HttpStatus.FORBIDDEN,
+                    buildProblemDetailTypeURI(request, "/errors/authorization"),
+                    "Forbidden",
+                    "You do not have permission to access this resource",
+                    ERROR_CODE_ACCESS_DENIED);
             try {
                 pd.setInstance(URI.create(request.getRequestURI()));
             } catch (Exception ignored) {

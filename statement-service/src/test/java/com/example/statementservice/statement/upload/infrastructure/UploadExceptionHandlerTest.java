@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 class UploadExceptionHandlerTest {
 
@@ -91,5 +92,33 @@ class UploadExceptionHandlerTest {
         return Stream.of(
                 new UnsupportedContentTypeException("only application/pdf is accepted"),
                 new HttpMediaTypeNotSupportedException("unsupported"));
+    }
+
+    @Test
+    void GivenMaxUploadSizeExceededException_WhenHandled_ThenReturns413WithUploadTooLargeErrorCode() {
+        // Given
+        var ex = new MaxUploadSizeExceededException(10_485_760L);
+
+        // When
+        var response = handler.handleMaxUploadSizeExceeded(ex, request);
+
+        // Then
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE.value());
+        assertThat(response.getTitle()).isEqualTo("Upload Too Large");
+        assertThat(response.getProperties()).containsEntry("errorCode", "UPLOAD_TOO_LARGE");
+    }
+
+    @Test
+    void GivenMaxUploadSizeExceededException_WhenHandled_ThenDetailHidesContainerInternals() {
+        // Given: the raw exception message embeds the configured byte limit
+        var ex = new MaxUploadSizeExceededException(10_485_760L);
+
+        // When
+        var response = handler.handleMaxUploadSizeExceeded(ex, request);
+
+        // Then
+        assertThat(response.getDetail())
+                .isEqualTo("Uploaded file exceeds the maximum allowed size")
+                .doesNotContain("10485760");
     }
 }

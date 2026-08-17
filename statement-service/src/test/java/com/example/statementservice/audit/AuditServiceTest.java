@@ -115,6 +115,26 @@ class AuditServiceTest {
     }
 
     @Test
+    void GivenShutDownExecutor_WhenRecord_ThenLogsWarningAndDoesNotThrow() {
+        // Given: an audit write racing a graceful shutdown
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        executor.shutdown();
+        var serviceWithShutDownExecutor =
+                new AuditService(auditLogRepository, executor, idGenerator, Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
+
+        // When
+        serviceWithShutDownExecutor.record(
+                testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
+
+        // Then
+        assertThat(appender.list).anySatisfy(event -> {
+            assertThat(event.getLevel()).isEqualTo(Level.WARN);
+            assertThat(event.getFormattedMessage()).contains("Audit executor rejected task");
+        });
+        verify(auditLogRepository, times(0)).save(any());
+    }
+
+    @Test
     @DisplayName("record - should handle null statement ID")
     void record_NullStatementId() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));

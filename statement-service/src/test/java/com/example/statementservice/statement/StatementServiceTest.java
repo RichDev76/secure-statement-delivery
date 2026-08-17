@@ -163,6 +163,22 @@ class StatementServiceTest {
     }
 
     @Test
+    void GivenDekWrapFailure_WhenUploadStatement_ThenThrowsStatementUploadException() {
+        // Given: a master-key problem surfaces as FileCipherException from wrapDek
+        when(idGenerator.newId()).thenReturn(testId);
+        when(fileCipher.generateInitializationVector()).thenReturn(new byte[] {1, 2, 3, 4});
+        when(fileCipher.generateDek()).thenReturn(new byte[] {9, 9, 9, 9});
+        when(fileCipher.wrapDek(any())).thenThrow(new FileCipherException("Failed to wrap DEK"));
+
+        // When / Then: classified as an upload failure, and nothing is stored or persisted
+        assertThatThrownBy(() ->
+                        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user"))
+                .isInstanceOf(StatementUploadException.class)
+                .hasMessageContaining("Failed to prepare encryption key");
+        verify(statementRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void GivenValidUpload_WhenUploadStatement_ThenGeneratesDekAndPersistsItsWrappedFormNotTheRawDek() throws Exception {
         // Given
         var dek = new byte[] {9, 9, 9, 9};
@@ -187,26 +203,24 @@ class StatementServiceTest {
 
     @Test
     void GivenStatementWithWrappedDek_WhenOpenDecryptedFile_ThenUnwrapsDekBeforeDecrypting() throws Exception {
-        // Given: fetching ciphertext now goes through EncryptedFileFetcher (possibly cached), not
-        // StatementFileStore directly - openDecryptedFile wraps the returned bytes in a fresh
-        // ByteArrayInputStream before decrypting, so decrypt's stream argument can't be matched
-        // against a specific pre-built instance anymore.
+        // Given: ciphertext is fetched via EncryptedFileFetcher (possibly cached), never
+        // StatementFileStore directly
         var wrappedDek = new byte[] {8, 8, 8, 8, 8};
         var dek = new byte[] {9, 9, 9, 9};
         testStatement.setEncryptedDek(wrappedDek);
         var ciphertext = "ciphertext".getBytes();
-        var decryptedStream = new java.io.ByteArrayInputStream("plaintext".getBytes());
+        var plaintext = "plaintext".getBytes();
         when(fileCipher.unwrapDek(wrappedDek)).thenReturn(dek);
         when(encryptedFileFetcher.fetch(testStatement.getStorageKey())).thenReturn(ciphertext);
-        when(fileCipher.decrypt(any(), eq(dek))).thenReturn(decryptedStream);
+        when(fileCipher.decrypt(ciphertext, dek)).thenReturn(plaintext);
 
         // When
         var result = statementService.openDecryptedFile(testStatement);
 
         // Then
-        assertThat(result).isEqualTo(decryptedStream);
+        assertThat(result.readAllBytes()).isEqualTo(plaintext);
         verify(fileCipher).unwrapDek(wrappedDek);
-        verify(fileCipher).decrypt(any(), eq(dek));
+        verify(fileCipher).decrypt(ciphertext, dek);
         verify(fileStore, never()).open(any());
     }
 

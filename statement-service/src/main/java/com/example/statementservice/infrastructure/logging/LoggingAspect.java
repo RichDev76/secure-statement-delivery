@@ -3,6 +3,7 @@ package com.example.statementservice.infrastructure.logging;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -91,6 +92,9 @@ public class LoggingAspect {
                 .orElse("");
     }
 
+    // Type allowlist, not content truncation: strings routinely carry signed-link tokens and
+    // account numbers, and printing any content defeats the masking done at the call sites.
+    // The allowlist fails closed - a new token-shaped parameter type is summarized by default.
     private String safeToString(Object arg) {
         if (arg == null) return "null";
 
@@ -106,11 +110,7 @@ public class LoggingAspect {
         }
 
         if (arg instanceof CharSequence cs) {
-            var s = cs.toString();
-            if (s.length() > 200) {
-                return '"' + s.substring(0, 200) + "…" + '"';
-            }
-            return '"' + s + '"';
+            return "String[len=" + cs.length() + "]";
         }
 
         if (arg instanceof byte[] bytes) {
@@ -129,6 +129,10 @@ public class LoggingAspect {
             return arg.getClass().getComponentType().getSimpleName() + "[]";
         }
 
+        if (isValueSafeType(arg)) {
+            return String.valueOf(arg);
+        }
+
         String simple = ClassUtils.getShortName(arg.getClass());
         try {
             var idField = arg.getClass().getDeclaredField("id");
@@ -138,11 +142,15 @@ public class LoggingAspect {
         } catch (NoSuchFieldException | IllegalAccessException ignored) {
         }
 
-        String s = String.valueOf(arg);
-        if (s.length() > 300) {
-            return simple + "{" + s.substring(0, 300) + "…}";
-        }
-        return s;
+        return simple;
+    }
+
+    private boolean isValueSafeType(Object arg) {
+        return arg instanceof UUID
+                || arg instanceof Number
+                || arg instanceof Boolean
+                || arg.getClass().isEnum()
+                || arg.getClass().getPackageName().startsWith("java.time");
     }
 
     private String summarizeResult(Object result) {
@@ -161,11 +169,7 @@ public class LoggingAspect {
             }
             default -> {}
         }
-        var s = String.valueOf(result);
-        if (s.length() > 200) {
-            return ClassUtils.getShortName(result.getClass()) + "{" + s.substring(0, 200) + "…}";
-        }
-        return s;
+        return safeToString(result);
     }
 
     private void logInfoEntry(String className, String methodName) {

@@ -67,8 +67,9 @@ public class S3StatementFileStore implements StatementFileStore {
         } catch (NoSuchKeyException e) {
             throw new FileNotFoundException("No object found for the requested reference");
         } catch (SdkException e) {
+            // Mirrors exists(): an outage must not be miscategorized downstream - see ADR 0021.
             log.error("Failed to open object - bucket: {}, key: {}", properties.getBucket(), reference, e);
-            throw new IOException("Failed to open statement in object storage", e);
+            throw new StatementStorageUnavailableException("Failed to open statement in object storage", e);
         }
     }
 

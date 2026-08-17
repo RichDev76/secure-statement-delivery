@@ -42,8 +42,14 @@ public class StatementService {
             String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy) {
         var id = idGenerator.newId();
         var initializationVector = fileCipher.generateInitializationVector();
-        var dek = fileCipher.generateDek();
-        var wrappedDek = fileCipher.wrapDek(dek);
+        byte[] dek;
+        byte[] wrappedDek;
+        try {
+            dek = fileCipher.generateDek();
+            wrappedDek = fileCipher.wrapDek(dek);
+        } catch (FileCipherException e) {
+            throw new StatementUploadException("Failed to prepare encryption key", e);
+        }
 
         String reference;
         try {
@@ -133,7 +139,7 @@ public class StatementService {
     public InputStream openDecryptedFile(Statement statement) throws IOException {
         var dek = fileCipher.unwrapDek(statement.getEncryptedDek());
         var ciphertext = encryptedFileFetcher.fetch(statement.getStorageKey());
-        return fileCipher.decrypt(new ByteArrayInputStream(ciphertext), dek);
+        return new ByteArrayInputStream(fileCipher.decrypt(ciphertext, dek));
     }
 
     private byte[] readBytes(MultipartFile file) {

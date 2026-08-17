@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,18 +30,27 @@ public class AuditService {
             String performedBy,
             Map<String, Object> details) {
         var auditLog = buildAuditLog(action, statementId, accountNumber, signedLinkId, performedBy, details);
-        auditExecutor.submit(() -> {
-            try {
-                auditLogRepository.save(auditLog);
-            } catch (Exception e) {
-                log.error(
-                        "Failed to save audit log: id={}, action={}, statementId={}",
-                        auditLog.getId(),
-                        auditLog.getAction(),
-                        auditLog.getStatementId(),
-                        e);
-            }
-        });
+        try {
+            auditExecutor.submit(() -> {
+                try {
+                    auditLogRepository.save(auditLog);
+                } catch (Exception e) {
+                    log.error(
+                            "Failed to save audit log: id={}, action={}, statementId={}",
+                            auditLog.getId(),
+                            auditLog.getAction(),
+                            auditLog.getStatementId(),
+                            e);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            // A shutting-down executor must not turn in-flight requests into 500s.
+            log.warn(
+                    "Audit executor rejected task - action={}, statementId={}",
+                    auditLog.getAction(),
+                    auditLog.getStatementId(),
+                    e);
+        }
     }
 
     public List<AuditLog> getAllAuditLogs() {

@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
+import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.StatementService;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -105,7 +106,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should throw exception when validation fails")
+    @DisplayName("upload - should throw exception when validation fails and audit the failure")
     void upload_ValidationFails() {
         doThrow(new InvalidMessageDigestException("Invalid digest"))
                 .when(validationUtil)
@@ -116,7 +117,95 @@ class StatementUploadServiceTest {
                 .hasMessageContaining("Invalid digest");
         verify(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
         verify(statementService, never()).uploadStatement(any(), any(), any(), any());
-        verify(auditService, never()).record(any(), any(), any(), any(), any(), any());
+        ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(auditService)
+                .record(
+                        eq("UPLOAD_FAILED"),
+                        isNull(),
+                        eq(testAccountNumber),
+                        isNull(),
+                        eq("testUser"),
+                        detailsCaptor.capture());
+        assertThat(detailsCaptor.getValue()).containsEntry("reason", "validation_failed");
+    }
+
+    @Test
+    void GivenDigestMismatch_WhenUpload_ThenRecordsUploadFailedAuditWithDigestMismatchReasonAndRethrows() {
+        // Given
+        doThrow(new DigestMismatchException("X-Message-Digest does not match file contents"))
+                .when(validationUtil)
+                .validateFileUploadInputs(any(), any(), any(), any());
+
+        // When / Then
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
+                .isInstanceOf(DigestMismatchException.class);
+        ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(auditService)
+                .record(eq("UPLOAD_FAILED"), isNull(), eq(testAccountNumber), isNull(), any(), detailsCaptor.capture());
+        assertThat(detailsCaptor.getValue()).containsEntry("reason", "digest_mismatch");
+    }
+
+    @Test
+    void GivenStorageFailureDuringUpload_WhenUpload_ThenRecordsUploadFailedAuditWithUploadErrorReason() {
+        // Given
+        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
+        when(statementService.uploadStatement(any(), any(), any(), any()))
+                .thenThrow(new StatementUploadException("Failed to encrypt and store file"));
+
+        // When / Then
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
+                .isInstanceOf(StatementUploadException.class);
+        ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(auditService)
+                .record(eq("UPLOAD_FAILED"), isNull(), eq(testAccountNumber), isNull(), any(), detailsCaptor.capture());
+        assertThat(detailsCaptor.getValue()).containsEntry("reason", "upload_error");
+    }
+
+    @Test
+    void GivenUnexpectedRuntimeFailure_WhenUpload_ThenRecordsUploadFailedAuditWithUnexpectedReason() {
+        // Given
+        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any(), any());
+        when(statementService.uploadStatement(any(), any(), any(), any())).thenThrow(new IllegalStateException("boom"));
+
+        // When / Then
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
+                .isInstanceOf(IllegalStateException.class);
+        ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(auditService).record(eq("UPLOAD_FAILED"), isNull(), any(), isNull(), any(), detailsCaptor.capture());
+        assertThat(detailsCaptor.getValue()).containsEntry("reason", "unexpected");
+    }
+
+    @Test
+    void GivenInvalidAccountNumber_WhenUpload_ThenUploadFailedAuditOmitsAccountNumber() {
+        // Given: the rejected value must not be persisted as an account identifier
+        var garbageAccountNumber = "'; DROP TABLE statements; --";
+        doThrow(new InvalidAccountNumberException("Invalid account number"))
+                .when(validationUtil)
+                .validateFileUploadInputs(any(), any(), any(), any());
+
+        // When / Then
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, garbageAccountNumber, testDate, testRequestInfo))
+                .isInstanceOf(InvalidAccountNumberException.class);
+        verify(auditService).record(eq("UPLOAD_FAILED"), isNull(), isNull(), isNull(), any(), any(Map.class));
+    }
+
+    @Test
+    void GivenFailureAuditRecordingAlsoThrows_WhenUpload_ThenOriginalExceptionStillPropagates() {
+        // Given
+        doThrow(new DigestMismatchException("mismatch"))
+                .when(validationUtil)
+                .validateFileUploadInputs(any(), any(), any(), any());
+        doThrow(new RuntimeException("audit down")).when(auditService).record(any(), any(), any(), any(), any(), any());
+
+        // When / Then: the audit failure must not mask the business failure
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
+                .isInstanceOf(DigestMismatchException.class)
+                .hasMessage("mismatch");
     }
 
     @Test

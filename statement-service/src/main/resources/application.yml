@@ -9,6 +9,11 @@ spring:
   threads:
     virtual:
       enabled: true
+  servlet:
+    multipart:
+      # The upload path buffers ~3x the file size on-heap; keep the cap small until uploads stream.
+      max-file-size: 10MB
+      max-request-size: 12MB
   data:
     redis:
       timeout: 2s

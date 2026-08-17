@@ -94,8 +94,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should save audit log asynchronously")
-    void record_Success() {
+    void GivenAuditEvent_WhenRecording_ThenLogIsSavedAsynchronously() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
         auditService.record(
                 testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
@@ -115,8 +114,27 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should handle null statement ID")
-    void record_NullStatementId() {
+    void GivenShutDownExecutor_WhenRecord_ThenLogsWarningAndDoesNotThrow() {
+        // Given: an audit write racing a graceful shutdown
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        executor.shutdown();
+        var serviceWithShutDownExecutor =
+                new AuditService(auditLogRepository, executor, idGenerator, Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
+
+        // When
+        serviceWithShutDownExecutor.record(
+                testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
+
+        // Then
+        assertThat(appender.list).anySatisfy(event -> {
+            assertThat(event.getLevel()).isEqualTo(Level.WARN);
+            assertThat(event.getFormattedMessage()).contains("Audit executor rejected task");
+        });
+        verify(auditLogRepository, times(0)).save(any());
+    }
+
+    @Test
+    void GivenNullStatementId_WhenRecording_ThenLogIsSavedWithNullStatementId() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
         auditService.record(testAction, null, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -128,8 +146,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should handle null account number")
-    void record_NullAccountNumber() {
+    void GivenNullAccountNumber_WhenRecording_ThenLogIsSavedWithNullAccountNumber() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
         auditService.record(testAction, testStatementId, null, testSignedLinkId, testPerformedBy, testDetails);
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -141,8 +158,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should handle null signed link ID")
-    void record_NullSignedLinkId() {
+    void GivenNullSignedLinkId_WhenRecording_ThenLogIsSavedWithNullSignedLinkId() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
         auditService.record(testAction, testStatementId, testAccountNumber, null, testPerformedBy, testDetails);
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -154,8 +170,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should handle null details")
-    void record_NullDetails() {
+    void GivenNullDetails_WhenRecording_ThenLogIsSavedWithNullDetails() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
         auditService.record(testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, null);
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -167,8 +182,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should handle empty details map")
-    void record_EmptyDetails() {
+    void GivenEmptyDetails_WhenRecording_ThenLogIsSavedWithEmptyDetails() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
         var emptyDetails = new HashMap<String, Object>();
         auditService.record(
@@ -182,8 +196,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should handle repository exception gracefully")
-    void record_RepositoryException() {
+    void GivenRepositoryThrows_WhenRecording_ThenFailureIsHandledGracefully() {
         when(auditLogRepository.save(any(AuditLog.class))).thenThrow(new RuntimeException("Database error"));
         auditService.record(
                 testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
@@ -215,7 +228,6 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should stamp performedAt from the injected clock")
     void GivenFixedClock_WhenRecording_ThenPerformedAtIsExactlyTheClockInstant() {
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
         auditService.record(
@@ -229,8 +241,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should generate unique IDs for each audit log")
-    void record_UniqueIds() {
+    void GivenMultipleEvents_WhenRecording_ThenEachLogGetsUniqueId() {
         var savedLogs = new ArrayList<AuditLog>();
         when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(invocation -> {
             AuditLog log = invocation.getArgument(0);
@@ -254,8 +265,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("record - should handle complex details map")
-    void record_ComplexDetails() {
+    void GivenComplexDetails_WhenRecording_ThenDetailsAreSavedUnchanged() {
         var complexDetails = new HashMap<String, Object>();
         complexDetails.put("ip", "192.168.1.1");
         complexDetails.put("userAgent", "Mozilla/5.0");
@@ -276,8 +286,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("getAllAuditLogs - should return all audit logs")
-    void getAllAuditLogs_Success() {
+    void GivenStoredLogs_WhenGettingAllAuditLogs_ThenAllAreReturned() {
         var log1 = createAuditLog("ACTION1");
         var log2 = createAuditLog("ACTION2");
         var logs = Arrays.asList(log1, log2);
@@ -289,8 +298,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("getAllAuditLogs - should return empty list when no logs exist")
-    void getAllAuditLogs_Empty() {
+    void GivenNoLogs_WhenGettingAllAuditLogs_ThenReturnsEmptyList() {
         when(auditLogRepository.findAll()).thenReturn(Collections.emptyList());
         var result = auditService.getAllAuditLogs();
         assertThat(result).isEmpty();
@@ -298,8 +306,7 @@ class AuditServiceTest {
     }
 
     @Test
-    @DisplayName("getAllAuditLogs - should return multiple audit logs")
-    void getAllAuditLogs_Multiple() {
+    void GivenMultipleLogs_WhenGettingAllAuditLogs_ThenAllAreReturned() {
         var logs = new ArrayList<AuditLog>();
         for (int i = 0; i < 10; i++) {
             logs.add(createAuditLog("ACTION" + i));

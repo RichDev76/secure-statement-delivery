@@ -9,8 +9,6 @@ spring:
   profiles:
     active: composite
   cloud:
-    vault:
-      enabled: false
     config:
       server:
         allowOverride: true

@@ -1,7 +1,6 @@
 package com.example.statementservice.statement.upload;
 
 import com.example.statementservice.shared.InvalidDateException;
-import com.example.statementservice.shared.Sha256Digest;
 import java.io.IOException;
 import java.io.InputStream;
 import org.springframework.http.MediaType;
@@ -39,32 +38,22 @@ public class ValidationUtil {
     private static final String INVALID_PDF_MSG = "File is not a valid PDF";
     private static final String PDF_READ_ERROR_MSG = "Failed to read file for magic number validation";
 
-    public void validateFileUploadInputs(MultipartFile file, String xMessageDigest, String accountNumber, String date) {
+    public void validateFileUploadInputs(MultipartFile file, String accountNumber, String date) {
         validateFileName(file);
         validatePdfMagicNumber(file);
         validateCorrectContentType(file);
-        validateMessageDigest(file, xMessageDigest);
         validateFileNotEmpty(file);
         validateAccountNumber(accountNumber);
         validateDate(date);
     }
 
-    public void validateMessageDigest(MultipartFile file, String xMessageDigest) {
+    public void validateMessageDigest(String computedDigestHex, String xMessageDigest) {
         if (!StringUtils.hasText(xMessageDigest) || !xMessageDigest.matches(MESSAGE_DIGEST_PATTERN)) {
             throw new InvalidMessageDigestException(INVALID_DIGEST_FORMAT_MSG);
         }
 
-        var computedDigest = computeSha256Hex(file);
-        if (!computedDigest.equalsIgnoreCase(xMessageDigest)) {
+        if (!computedDigestHex.equalsIgnoreCase(xMessageDigest)) {
             throw new DigestMismatchException(DIGEST_MISMATCH_MSG);
-        }
-    }
-
-    private String computeSha256Hex(MultipartFile file) {
-        try {
-            return Sha256Digest.hexOf(file.getBytes());
-        } catch (IOException e) {
-            throw new DigestComputationException("Failed to compute file digest", e);
         }
     }
 

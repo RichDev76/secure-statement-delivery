@@ -1,7 +1,6 @@
 package com.example.statementservice.statement;
 
 import com.example.statementservice.shared.IdGeneratorPort;
-import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.io.ByteArrayInputStream;
@@ -39,11 +38,17 @@ public class StatementService {
 
     @Transactional
     public UploadResponseDto uploadStatement(
-            String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy) {
+            String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy, String contentHash) {
         var id = idGenerator.newId();
         var initializationVector = fileCipher.generateInitializationVector();
-        var dek = fileCipher.generateDek();
-        var wrappedDek = fileCipher.wrapDek(dek);
+        byte[] dek;
+        byte[] wrappedDek;
+        try {
+            dek = fileCipher.generateDek();
+            wrappedDek = fileCipher.wrapDek(dek);
+        } catch (FileCipherException e) {
+            throw new StatementUploadException("Failed to prepare encryption key", e);
+        }
 
         String reference;
         try {
@@ -55,9 +60,6 @@ public class StatementService {
         } catch (IOException e) {
             throw new StatementUploadException("Failed to encrypt and store file", e);
         }
-
-        var contentHash = Sha256Digest.hexOf(readBytes(file));
-        log.info("Message Digest {}", contentHash);
 
         var statement = buildStatement(
                 accountNumber,
@@ -133,15 +135,7 @@ public class StatementService {
     public InputStream openDecryptedFile(Statement statement) throws IOException {
         var dek = fileCipher.unwrapDek(statement.getEncryptedDek());
         var ciphertext = encryptedFileFetcher.fetch(statement.getStorageKey());
-        return fileCipher.decrypt(new ByteArrayInputStream(ciphertext), dek);
-    }
-
-    private byte[] readBytes(MultipartFile file) {
-        try {
-            return file.getBytes();
-        } catch (IOException e) {
-            throw new StatementUploadException("Failed to read file for digest computation", e);
-        }
+        return new ByteArrayInputStream(fileCipher.decrypt(ciphertext, dek));
     }
 
     private Statement buildStatement(

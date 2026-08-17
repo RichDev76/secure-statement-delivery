@@ -19,8 +19,8 @@ public class SecurityEndpointsProperties {
     @NotEmpty(message = "security.endpoints.whitelist must declare at least one rule")
     private List<@Valid EndpointRule> whitelist = new ArrayList<>();
 
-    @NotEmpty(message = "security.endpoints.admin must declare at least one rule")
-    private List<@Valid EndpointRule> admin = new ArrayList<>();
+    @NotEmpty(message = "security.endpoints.upload must declare at least one rule")
+    private List<@Valid EndpointRule> upload = new ArrayList<>();
 
     @NotEmpty(message = "security.endpoints.audit must declare at least one rule")
     private List<@Valid EndpointRule> audit = new ArrayList<>();

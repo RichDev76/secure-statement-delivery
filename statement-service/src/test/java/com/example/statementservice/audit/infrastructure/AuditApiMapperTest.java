@@ -17,8 +17,7 @@ class AuditApiMapperTest {
     private final AuditApiMapper auditApiMapper = new AuditApiMapperImpl(new DateMapper());
 
     @Test
-    @DisplayName("toApi - should map all fields from DTO to API model")
-    void toApi_AllFields() {
+    void GivenDtoWithAllFields_WhenMappingToApi_ThenAllFieldsAreMapped() {
         var id = UUID.randomUUID();
         var statementId = UUID.randomUUID();
         var performedAt = OffsetDateTime.now();
@@ -53,16 +52,14 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle null DTO")
-    void toApi_NullDto() {
+    void GivenNullDto_WhenMappingToApi_ThenReturnsNull() {
         var result = auditApiMapper.toApi(null);
 
         assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("toApi - should handle DTO with null fields")
-    void toApi_NullFields() {
+    void GivenDtoWithNullFields_WhenMappingToApi_ThenNullsArePreserved() {
         var dto = new AuditLogDto();
         dto.setId(UUID.randomUUID());
         dto.setAction("TEST_ACTION");
@@ -83,8 +80,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle empty details map")
-    void toApi_EmptyDetails() {
+    void GivenEmptyDetails_WhenMappingToApi_ThenDetailsAreEmpty() {
         var dto = new AuditLogDto();
         dto.setId(UUID.randomUUID());
         dto.setAction("TEST_ACTION");
@@ -97,8 +93,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should map performedAt to timestamp")
-    void toApi_TimestampMapping() {
+    void GivenPerformedAtTimestamp_WhenMappingToApi_ThenTimestampIsMapped() {
         var now = OffsetDateTime.now();
         var dto = new AuditLogDto();
         dto.setId(UUID.randomUUID());
@@ -113,8 +108,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toPage - should map list of DTOs to page with content")
-    void toPage_WithContent() {
+    void GivenPageWithContent_WhenMappingToPage_ThenContentAndMetadataAreMapped() {
         var dto1 = createAuditLogDto("ACTION1", "ACC1");
         var dto2 = createAuditLogDto("ACTION2", "ACC2");
         var dto3 = createAuditLogDto("ACTION3", "ACC3");
@@ -130,8 +124,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toPage - should handle null list")
-    void toPage_NullList() {
+    void GivenNullContentList_WhenMappingToPage_ThenContentIsEmpty() {
         var result = auditApiMapper.toPage(null);
 
         assertThat(result).isNotNull();
@@ -139,8 +132,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toPage - should handle empty list")
-    void toPage_EmptyList() {
+    void GivenEmptyPage_WhenMappingToPage_ThenContentIsEmpty() {
         List<AuditLogDto> emptyList = Collections.emptyList();
 
         var result = auditApiMapper.toPage(emptyList);
@@ -150,8 +142,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toPage - should handle single item list")
-    void toPage_SingleItem() {
+    void GivenSingleItemPage_WhenMappingToPage_ThenOneEntryIsMapped() {
 
         var dto = createAuditLogDto("SINGLE_ACTION", "ACC123");
         List<AuditLogDto> dtos = Collections.singletonList(dto);
@@ -165,8 +156,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toPage - should handle large list")
-    void toPage_LargeList() {
+    void GivenLargePage_WhenMappingToPage_ThenAllEntriesAreMapped() {
         var dtos = new ArrayList<AuditLogDto>();
         for (int i = 0; i < 100; i++) {
             dtos.add(createAuditLogDto("ACTION" + i, "ACC" + i));
@@ -179,8 +169,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toPage - should preserve all DTO properties in mapped entries")
-    void toPage_PreservesAllProperties() {
+    void GivenPage_WhenMappingToPage_ThenAllPropertiesArePreserved() {
         var id = UUID.randomUUID();
         var statementId = UUID.randomUUID();
         var timestamp = OffsetDateTime.now();
@@ -216,8 +205,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toPage - should handle list with null elements")
-    void toPage_WithNullElements() {
+    void GivenPageWithNullElements_WhenMappingToPage_ThenNullsAreMappedAsNull() {
         var dto1 = createAuditLogDto("ACTION1", "ACC1");
         List<AuditLogDto> dtos = Arrays.asList(dto1, null, createAuditLogDto("ACTION2", "ACC2"));
 
@@ -231,8 +219,7 @@ class AuditApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle complex details map")
-    void toApi_ComplexDetails() {
+    void GivenComplexDetails_WhenMappingToApi_ThenDetailsAreMapped() {
 
         var complexDetails = new HashMap<String, Object>();
         complexDetails.put("string", "value");

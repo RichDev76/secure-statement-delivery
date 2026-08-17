@@ -14,14 +14,6 @@ headers {
   Content-Type: application/x-www-form-urlencoded
 }
 
-body:json {
-  {
-      grant_type: client_credentials
-      client_id: statement-service-admin-client
-      client_secret: {{ADMIN_CLIENT_SECRET}}
-  }
-}
-
 body:form-urlencoded {
   grant_type: client_credentials
   client_id: statement-service-admin-client
@@ -34,6 +26,13 @@ vars:post-response {
 
 script:post-response {
       bru.setEnvVar('ADMIN_ACCESS_TOKEN', res.body.access_token);
+}
+
+tests {
+  test("returns 200 with an access token", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.have.property('access_token');
+  });
 }
 
 settings {

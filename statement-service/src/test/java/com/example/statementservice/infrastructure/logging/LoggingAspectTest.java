@@ -6,6 +6,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,10 @@ class LoggingAspectTest {
     static class SampleService {
         public String work() {
             return "worked";
+        }
+
+        public String redeem(String token, UUID linkId) {
+            return "secret-plaintext-result";
         }
     }
 
@@ -99,5 +104,56 @@ class LoggingAspectTest {
 
         assertThat(result).isEqualTo("ran");
         assertThat(appender.list).isEmpty();
+    }
+
+    @Test
+    void GivenServiceMethodWithStringTokenArgument_WhenDebugLogged_ThenTokenContentDoesNotAppearInLogOutput() {
+        // Given
+        var service = advisedProxy(new SampleService());
+        var token = "super-secret-signed-link-token";
+
+        // When
+        service.redeem(token, UUID.randomUUID());
+
+        // Then: strings are summarized as lengths, never printed
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .noneSatisfy(message -> assertThat(message).contains(token));
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message ->
+                        assertThat(message).contains("Entering").contains("String[len=" + token.length() + "]"));
+    }
+
+    @Test
+    void GivenServiceMethodWithUuidArgument_WhenDebugLogged_ThenUuidValueAppears() {
+        // Given
+        var service = advisedProxy(new SampleService());
+        var linkId = UUID.randomUUID();
+
+        // When
+        service.redeem("token-value", linkId);
+
+        // Then: UUIDs are on the value allowlist
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> assertThat(message).contains(linkId.toString()));
+    }
+
+    @Test
+    void GivenServiceMethodReturningString_WhenDebugLogged_ThenReturnContentIsSummarizedNotPrinted() {
+        // Given
+        var service = advisedProxy(new SampleService());
+
+        // When
+        service.redeem("token-value", UUID.randomUUID());
+
+        // Then
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .noneSatisfy(message -> assertThat(message).contains("secret-plaintext-result"));
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> assertThat(message).contains("Exiting").contains("String[len="));
     }
 }

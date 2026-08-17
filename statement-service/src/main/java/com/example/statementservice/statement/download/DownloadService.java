@@ -10,6 +10,7 @@ import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
 import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +32,8 @@ public class DownloadService {
     private static final String AUDIT_KEY_REASON = "reason";
     private static final String AUDIT_KEY_ERROR = "error";
     private static final String AUDIT_UNKNOWN = "unknown";
+    private static final String STAGE_EXISTENCE_CHECK = "checking file existence";
+    private static final String STAGE_OPENING_FILE = "opening file";
 
     private final SignedLinkService signedLinkService;
     private final StatementService statementService;
@@ -86,17 +89,13 @@ public class DownloadService {
                 return new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
             }
         } catch (StatementStorageUnavailableException e) {
-            handleStorageUnavailable(statement, link, token, clientIp, userAgent, performedBy, e);
+            handleStorageUnavailable(
+                    statement, link, token, clientIp, userAgent, performedBy, STAGE_EXISTENCE_CHECK, e);
             return new DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty());
         }
 
         // Step 4: Decrypt and stream
-        Optional<InputStream> streamResult = decryptAndStream(statement, link, token, clientIp, userAgent, performedBy);
-        if (streamResult.isPresent()) {
-            return new DownloadStreamResult(DownloadOutcome.OK, streamResult);
-        } else {
-            return new DownloadStreamResult(DownloadOutcome.DECRYPTION_FAILED, Optional.empty());
-        }
+        return decryptAndStream(statement, link, token, clientIp, userAgent, performedBy);
     }
 
     private DownloadOutcome getDownloadOutcome(LinkValidationResult result) {
@@ -182,9 +181,11 @@ public class DownloadService {
             String clientIp,
             String userAgent,
             String performedBy,
+            String stage,
             StatementStorageUnavailableException e) {
         log.error(
-                "Storage unavailable while checking file existence - key: {}, statementId: {}",
+                "Storage unavailable while {} - key: {}, statementId: {}",
+                stage,
                 statement.getStorageKey(),
                 statement.getId(),
                 e);
@@ -197,7 +198,7 @@ public class DownloadService {
                 getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.STORAGE_UNAVAILABLE.getValue()));
     }
 
-    private Optional<InputStream> decryptAndStream(
+    private DownloadStreamResult decryptAndStream(
             Statement statement, SignedLink link, String token, String clientIp, String userAgent, String performedBy) {
         try {
             var decrypted = statementService.openDecryptedFile(statement);
@@ -221,11 +222,18 @@ public class DownloadService {
                 // Log but don't fail the download
                 log.warn("Failed to record download audit", auditEx);
             }
-            return Optional.of(decrypted);
+            return new DownloadStreamResult(DownloadOutcome.OK, Optional.of(decrypted));
+        } catch (StatementStorageUnavailableException e) {
+            handleStorageUnavailable(statement, link, token, clientIp, userAgent, performedBy, STAGE_OPENING_FILE, e);
+            return new DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty());
+        } catch (FileNotFoundException e) {
+            // Object deleted between the exists() check and open().
+            handleMissingFile(statement, link, token, clientIp, userAgent, performedBy);
+            return new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
         } catch (Exception e) {
             log.error("Decryption failed - statementId: {}, error: {}", statement.getId(), e.getMessage(), e);
-            var errorAuditDetails = new HashMap<>(getUserAuditDetails(
-                    token, clientIp, userAgent, DownloadFailureReason.DECRYPTION_FAILED.getValue()));
+            var errorAuditDetails =
+                    getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.DECRYPTION_FAILED.getValue());
             errorAuditDetails.put(AUDIT_KEY_ERROR, e.getMessage());
 
             auditService.record(
@@ -236,7 +244,7 @@ public class DownloadService {
                     performedBy,
                     errorAuditDetails);
 
-            return Optional.empty();
+            return new DownloadStreamResult(DownloadOutcome.DECRYPTION_FAILED, Optional.empty());
         }
     }
 

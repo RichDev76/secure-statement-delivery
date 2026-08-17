@@ -45,8 +45,10 @@ class ErrorContractIT extends AbstractIntegrationTest {
     // from that pair when a handler returns a bare ProblemDetail (not a pinned ResponseEntity) - if
     // a future OpenAPI edit ever drops application/problem+json from that list, this regresses to a
     // 406 or a broken content type instead of a correctly negotiated error body.
+    // Omitting the required linkId parameter fails before link validation: the exercised path is
+    // MissingServletRequestParameterException through the global handler.
     @Test
-    void GivenUnknownSignedLinkOnDownloadEndpoint_WhenRequestFails_ThenProblemJsonIsNegotiatedNotOctetStream()
+    void GivenDownloadRequestMissingRequiredLinkIdParameter_WhenRequestFails_ThenProblemJsonIsNegotiatedNotOctetStream()
             throws Exception {
         // Given / When
         var result = mockMvc.perform(get("/api/v1/statements/download/unknown-file.pdf.enc")

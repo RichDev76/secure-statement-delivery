@@ -1,0 +1,46 @@
+meta {
+  name: Upload oversized file
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: 0000000000000000000000000000000000000000000000000000000000000000
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(fixtures/oversized-statement.pdf) @contentType(application/pdf)
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a file over the 10MB cap", function () {
+    expect(res.getStatus()).to.equal(413);
+    expect(res.getBody().errorCode).to.equal('UPLOAD_TOO_LARGE');
+  });
+}
+
+docs {
+  fixtures/oversized-statement.pdf is ~10.1MB, just over spring.servlet.multipart.max-file-size: 10MB. Spring's
+  multipart parser throws MaxUploadSizeExceededException before any app-level validation runs, so the digest
+  value here is irrelevant.
+}

@@ -9,7 +9,6 @@ import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -106,21 +105,20 @@ public class AesGcmFileCipher implements FileCipher {
     }
 
     @Override
-    public InputStream decrypt(InputStream ciphertext, byte[] dek) throws IOException {
-        var initializationVector = new byte[INITIALIZATION_VECTOR_LENGTH];
-        int read = ciphertext.readNBytes(initializationVector, 0, INITIALIZATION_VECTOR_LENGTH);
-        if (read != INITIALIZATION_VECTOR_LENGTH) {
-            ciphertext.close();
-            throw new IOException("Invalid encrypted file format: initialization vector missing");
+    public byte[] decrypt(byte[] ciphertext, byte[] dek) {
+        if (ciphertext == null || ciphertext.length < INITIALIZATION_VECTOR_LENGTH) {
+            throw new FileCipherException("Invalid encrypted file format: initialization vector missing");
         }
+        var initializationVector = Arrays.copyOfRange(ciphertext, 0, INITIALIZATION_VECTOR_LENGTH);
         try {
             var keySpec = new SecretKeySpec(dek, ALGORITHM_AES);
             var cipher = Cipher.getInstance(ALGO);
             var spec = new GCMParameterSpec(GCM_TAG_LENGTH, initializationVector);
             cipher.init(Cipher.DECRYPT_MODE, keySpec, spec);
-            return new CipherInputStream(ciphertext, cipher);
-        } catch (Exception e) {
-            throw new IOException("Decryption failed", e);
+            return cipher.doFinal(
+                    ciphertext, INITIALIZATION_VECTOR_LENGTH, ciphertext.length - INITIALIZATION_VECTOR_LENGTH);
+        } catch (GeneralSecurityException e) {
+            throw new FileCipherException("Ciphertext integrity check failed", e);
         }
     }
 }

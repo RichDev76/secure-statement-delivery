@@ -1,0 +1,46 @@
+meta {
+  name: Upload with digest mismatch
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: 0000000000000000000000000000000000000000000000000000000000000000
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(fixtures/statement1.pdf) @contentType(application/pdf)
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a digest that does not match the file contents", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getHeader('content-type')).to.include('application/problem+json');
+    expect(res.getBody().errorCode).to.equal('DIGEST_MISMATCH');
+  });
+}
+
+docs {
+  X-Message-Digest is correctly formatted (64 hex chars) but does not match fixtures/statement1.pdf's real SHA-256
+  — proves the server actually recomputes and compares the digest rather than trusting the header.
+}

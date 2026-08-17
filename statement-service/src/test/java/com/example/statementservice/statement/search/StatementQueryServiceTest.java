@@ -110,6 +110,33 @@ class StatementQueryServiceTest {
     }
 
     @Test
+    void
+            GivenSignedLinkCreationFails_WhenGettingSignedDownloadLink_ThenDtoWithoutDownloadLinkIsReturnedAndFailureAudited() {
+        // Given
+        when(statementService.getStatementDtoById(testStatementId)).thenReturn(testStatementDto);
+        String fileName = testStatementDto.getFileName();
+        RuntimeException linkFailure = new RuntimeException("signing key unavailable");
+        when(signedLinkService.createSignedLink(testStatementId, "test-user", fileName))
+                .thenThrow(linkFailure);
+
+        // When
+        Optional<StatementDto> result =
+                statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
+
+        // Then
+        assertThat(result).isPresent();
+        assertThat(result.get().getDownloadLink()).isNull();
+        verify(auditHelper)
+                .recordLinkGenerationFailed(
+                        eq(testStatementId),
+                        eq(testAccountNumber),
+                        eq("test-user"),
+                        eq(linkFailure),
+                        eq("127.0.0.1"),
+                        eq("JUnit"));
+    }
+
+    @Test
     void GivenMissingStatement_WhenGettingSignedDownloadLink_ThenEmptyIsReturned() {
         when(statementService.getStatementDtoById(testStatementId))
                 .thenThrow(new StatementNotFoundException("Not found"));

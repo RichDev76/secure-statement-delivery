@@ -17,5 +17,7 @@ public interface FileCipher {
     void encrypt(InputStream plaintext, OutputStream ciphertext, byte[] initializationVector, byte[] dek)
             throws IOException;
 
-    InputStream decrypt(InputStream ciphertext, byte[] dek) throws IOException;
+    // Deliberately eager (byte[] in, byte[] out): a lazy stream would commit the HTTP 200 before
+    // the GCM tag is verified, letting tampered ciphertext reach the client as a truncated body.
+    byte[] decrypt(byte[] ciphertext, byte[] dek);
 }

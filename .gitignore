@@ -81,3 +81,4 @@ replay_pid*
 !/.mvn/wrapper/maven-wrapper.jar
 /docs/standards/
 /CLAUDE.md
+/infra/vault/init/

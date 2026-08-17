@@ -22,8 +22,7 @@ class StatementEntityMapperTest {
     void setUp() {}
 
     @Test
-    @DisplayName("toDto - should map all fields from entity to DTO without download link")
-    void toDto_AllFields() {
+    void GivenEntityWithAllFields_WhenMappingToDto_ThenAllFieldsAreMapped() {
         var id = UUID.randomUUID();
         var statementDate = LocalDate.of(2024, 1, 15);
         var uploadedAt = OffsetDateTime.now();
@@ -46,15 +45,13 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should handle null entity")
-    void toDto_NullEntity() {
+    void GivenNullEntity_WhenMappingToDto_ThenReturnsNull() {
         var result = statementEntityMapper.toDto(null);
         assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("toDto - should map id to statementId")
-    void toDto_IdMapping() {
+    void GivenEntityId_WhenMappingToDto_ThenIdIsMapped() {
         var id = UUID.randomUUID();
         var entity = new Statement();
         entity.setId(id);
@@ -66,8 +63,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should map uploadFileName to fileName")
-    void toDto_FileNameMapping() {
+    void GivenUploadFileName_WhenMappingToDto_ThenFileNameIsMapped() {
         var entity = new Statement();
         entity.setId(UUID.randomUUID());
         entity.setUploadFileName("original-name.pdf");
@@ -78,8 +74,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should map sizeBytes to fileSize")
-    void toDto_FileSizeMapping() {
+    void GivenSizeBytes_WhenMappingToDto_ThenFileSizeIsMapped() {
         var entity = new Statement();
         entity.setId(UUID.randomUUID());
         entity.setUploadFileName("test.pdf");
@@ -90,8 +85,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDtos - should map list of entities using withoutLink variant")
-    void toDtos_MultipleEntities() {
+    void GivenMultipleEntities_WhenMappingToDtos_ThenAllAreMapped() {
         var entity1 = createStatement("ACC001", "file1.pdf", 1024L);
         var entity2 = createStatement("ACC002", "file2.pdf", 2048L);
         var entity3 = createStatement("ACC003", "file3.pdf", 4096L);
@@ -110,23 +104,20 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDtos - should handle null list")
-    void toDtos_NullList() {
+    void GivenNullList_WhenMappingToDtos_ThenReturnsNull() {
         var result = statementEntityMapper.toDtos(null);
         assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("toDtos - should handle empty list")
-    void toDtos_EmptyList() {
+    void GivenEmptyList_WhenMappingToDtos_ThenReturnsEmptyList() {
         List<Statement> emptyList = Collections.emptyList();
         var result = statementEntityMapper.toDtos(emptyList);
         assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("toDtos - should handle single item list")
-    void toDtos_SingleItem() {
+    void GivenSingleEntity_WhenMappingToDtos_ThenOneDtoIsReturned() {
         var entity = createStatement("ACC123", "single.pdf", 1024L);
         var entities = Collections.singletonList(entity);
         var result = statementEntityMapper.toDtos(entities);
@@ -137,8 +128,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDtos - should preserve all properties in mapped DTOs")
-    void toDtos_PreservesAllProperties() {
+    void GivenEntities_WhenMappingToDtos_ThenAllPropertiesArePreserved() {
         var id = UUID.randomUUID();
         var date = LocalDate.of(2024, 5, 15);
         var uploadedAt = OffsetDateTime.now();
@@ -163,8 +153,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDtos - should handle large list")
-    void toDtos_LargeList() {
+    void GivenLargeList_WhenMappingToDtos_ThenAllAreMapped() {
         var entities = new ArrayList<Statement>();
         for (int i = 0; i < 100; i++) {
             entities.add(createStatement("ACC" + i, "file" + i + ".pdf", 1024L * i));
@@ -176,8 +165,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should handle entity with null optional fields")
-    void toDto_NullOptionalFields() {
+    void GivenEntityWithNullOptionalFields_WhenMappingToDto_ThenNullsArePreserved() {
         var entity = new Statement();
         entity.setId(UUID.randomUUID());
         entity.setUploadFileName("test.pdf");
@@ -192,8 +180,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should handle zero file size")
-    void toDto_ZeroFileSize() {
+    void GivenZeroSizeBytes_WhenMappingToDto_ThenZeroIsMapped() {
         var entity = new Statement();
         entity.setId(UUID.randomUUID());
         entity.setUploadFileName("empty.pdf");
@@ -204,8 +191,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should handle special characters in file name")
-    void toDto_SpecialCharactersInFileName() {
+    void GivenSpecialCharacterFileName_WhenMappingToDto_ThenFileNameIsPreserved() {
         var entity = new Statement();
         entity.setId(UUID.randomUUID());
         entity.setUploadFileName("statement (2024) [final].pdf");

@@ -19,8 +19,7 @@ class AuditLogEntityMapperTest {
     private final AuditLogEntityMapper auditLogEntityMapper = Mappers.getMapper(AuditLogEntityMapper.class);
 
     @Test
-    @DisplayName("toDto - should map all fields from entity to DTO")
-    void toDto_AllFields() {
+    void GivenEntityWithAllFields_WhenMappingToDto_ThenAllFieldsAreMapped() {
         var id = UUID.randomUUID();
         var statementId = UUID.randomUUID();
         var signedLinkId = UUID.randomUUID();
@@ -53,15 +52,13 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should handle null entity")
-    void toDto_NullEntity() {
+    void GivenNullEntity_WhenMappingToDto_ThenReturnsNull() {
         var result = auditLogEntityMapper.toDto(null);
         assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("toDto - should extract IP address from details")
-    void toDto_ExtractIpAddress() {
+    void GivenIpInDetails_WhenMappingToDto_ThenIpIsExtracted() {
         var details = new HashMap<String, Object>();
         details.put("ip", "10.0.0.1");
         var entity = new AuditLog();
@@ -74,8 +71,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should extract userAgent from details")
-    void toDto_ExtractUserAgent() {
+    void GivenUserAgentInDetails_WhenMappingToDto_ThenUserAgentIsExtracted() {
         var details = new HashMap<String, Object>();
         details.put("userAgent", "Chrome/90.0");
         var entity = new AuditLog();
@@ -90,8 +86,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should handle null details")
-    void toDto_NullDetails() {
+    void GivenNullDetails_WhenMappingToDto_ThenIpUserAgentAreNullAndDetailsEmpty() {
         var entity = new AuditLog();
         entity.setId(UUID.randomUUID());
         entity.setAction("TEST_ACTION");
@@ -104,8 +99,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should handle empty details map")
-    void toDto_EmptyDetails() {
+    void GivenEmptyDetails_WhenMappingToDto_ThenIpUserAgentAreNullAndDetailsEmpty() {
         var entity = new AuditLog();
         entity.setId(UUID.randomUUID());
         entity.setAction("TEST_ACTION");
@@ -118,8 +112,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should only include reason in details output")
-    void toDto_OnlyReasonInDetails() {
+    void GivenOnlyReasonInDetails_WhenMappingToDto_ThenReasonIsExtracted() {
         var details = new HashMap<String, Object>();
         details.put("ip", "192.168.1.1");
         details.put("userAgent", "Mozilla/5.0");
@@ -137,8 +130,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should return empty details when reason is missing")
-    void toDto_NoReason() {
+    void GivenDetailsWithoutReason_WhenMappingToDto_ThenReasonIsNull() {
         var details = new HashMap<String, Object>();
         details.put("ip", "192.168.1.1");
         details.put("userAgent", "Mozilla/5.0");
@@ -153,8 +145,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDto - should handle non-string detail values")
-    void toDto_NonStringDetailValues() {
+    void GivenNonStringDetailValues_WhenMappingToDto_ThenValuesAreStringified() {
         var details = new HashMap<String, Object>();
         details.put("ip", 12345); // Integer instead of String
         details.put("userAgent", true); // Boolean instead of String
@@ -169,8 +160,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDtos - should map list of entities to list of DTOs")
-    void toDtos_MultipleEntities() {
+    void GivenMultipleEntities_WhenMappingToDtos_ThenAllAreMapped() {
         AuditLog entity1 = createAuditLog("ACTION1", "ACC1");
         AuditLog entity2 = createAuditLog("ACTION2", "ACC2");
         AuditLog entity3 = createAuditLog("ACTION3", "ACC3");
@@ -185,23 +175,20 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDtos - should handle null list")
-    void toDtos_NullList() {
+    void GivenNullList_WhenMappingToDtos_ThenReturnsNull() {
         var result = auditLogEntityMapper.toDtos(null);
         assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("toDtos - should handle empty list")
-    void toDtos_EmptyList() {
+    void GivenEmptyList_WhenMappingToDtos_ThenReturnsEmptyList() {
         List<AuditLog> emptyList = Collections.emptyList();
         var result = auditLogEntityMapper.toDtos(emptyList);
         assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("toDtos - should handle single item list")
-    void toDtos_SingleItem() {
+    void GivenSingleEntity_WhenMappingToDtos_ThenOneDtoIsReturned() {
         var entity = createAuditLog("SINGLE_ACTION", "ACC123");
         List<AuditLog> entities = Collections.singletonList(entity);
         var result = auditLogEntityMapper.toDtos(entities);
@@ -211,8 +198,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("toDtos - should preserve all properties in mapped DTOs")
-    void toDtos_PreservesAllProperties() {
+    void GivenEntities_WhenMappingToDtos_ThenAllPropertiesArePreserved() {
         var id = UUID.randomUUID();
         var timestamp = OffsetDateTime.now();
         var details = new HashMap<String, Object>();
@@ -239,8 +225,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("extractDetail - should return null for null details")
-    void extractDetail_NullDetails() {
+    void GivenNullDetails_WhenExtractingDetail_ThenReturnsNull() {
         var log = new AuditLog();
         log.setDetails(null);
         var result = auditLogEntityMapper.extractDetail(log, "ip");
@@ -248,8 +233,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("extractDetail - should return null for missing key")
-    void extractDetail_MissingKey() {
+    void GivenMissingKey_WhenExtractingDetail_ThenReturnsNull() {
         var details = new HashMap<String, Object>();
         details.put("ip", "192.168.1.1");
         var log = new AuditLog();
@@ -259,8 +243,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("extractDetail - should convert value to string")
-    void extractDetail_ConvertToString() {
+    void GivenNonStringValue_WhenExtractingDetail_ThenValueIsStringified() {
         var details = new HashMap<String, Object>();
         details.put("count", 42);
         details.put("flag", true);
@@ -273,15 +256,13 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("extractReason - should return empty map for null log")
-    void extractReason_NullLog() {
+    void GivenNullLog_WhenExtractingReason_ThenReturnsNull() {
         var result = auditLogEntityMapper.extractReason(null);
         assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("extractReason - should return empty map for null details")
-    void extractReason_NullDetails() {
+    void GivenNullDetails_WhenExtractingReason_ThenReturnsNull() {
         var log = new AuditLog();
         log.setDetails(null);
         var result = auditLogEntityMapper.extractReason(log);
@@ -289,8 +270,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("extractReason - should return empty map when reason is missing")
-    void extractReason_MissingReason() {
+    void GivenDetailsWithoutReason_WhenExtractingReason_ThenReturnsNull() {
         var details = new HashMap<String, Object>();
         details.put("ip", "192.168.1.1");
         details.put("userAgent", "Mozilla/5.0");
@@ -301,8 +281,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("extractReason - should return map with only reason when present")
-    void extractReason_WithReason() {
+    void GivenDetailsWithReason_WhenExtractingReason_ThenReasonIsReturned() {
         var details = new HashMap<String, Object>();
         details.put("ip", "192.168.1.1");
         details.put("userAgent", "Mozilla/5.0");
@@ -317,8 +296,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("extractReason - should handle non-string reason values")
-    void extractReason_NonStringReason() {
+    void GivenNonStringReason_WhenExtractingReason_ThenRawValueIsKept() {
         var details = new HashMap<String, Object>();
         details.put("reason", 404);
         var log = new AuditLog();
@@ -329,8 +307,7 @@ class AuditLogEntityMapperTest {
     }
 
     @Test
-    @DisplayName("extractReason - should return immutable map")
-    void extractReason_ImmutableMap() {
+    void GivenImmutableDetails_WhenExtractingReason_ThenReasonIsReadWithoutMutation() {
         Map<String, Object> details = Collections.singletonMap("reason", "Test");
         var log = new AuditLog();
         log.setDetails(details);

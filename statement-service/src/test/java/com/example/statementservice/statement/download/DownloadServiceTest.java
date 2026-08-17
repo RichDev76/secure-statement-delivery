@@ -27,6 +27,7 @@ import com.example.statementservice.statement.signedlink.SignedLink;
 import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -448,6 +449,67 @@ class DownloadServiceTest {
         assertThat(result.outcome()).isEqualTo(DownloadOutcome.STORAGE_UNAVAILABLE);
         assertThat(result.stream()).isEmpty();
         verify(statementService, never()).openDecryptedFile(any());
+        verify(auditService)
+                .record(
+                        eq(AuditAction.DOWNLOAD_FAILED.getValue()),
+                        eq(testStatementId),
+                        eq("123456789"),
+                        eq(testLinkId),
+                        eq(testPerformedBy),
+                        any(Map.class));
+    }
+
+    @Test
+    void
+            GivenStorageUnavailableWhileOpeningFile_WhenValidateAndStreamDetailed_ThenReturnsStorageUnavailableAndAuditsFailure()
+                    throws Exception {
+        // Given: exists() succeeded but the S3 GetObject failed mid-download
+        var validResult = LinkValidationResult.valid(testLink);
+        when(signedLinkService.validate(testToken, testExpires, testLinkId, FILE_NAME))
+                .thenReturn(validResult);
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
+        when(statementService.openDecryptedFile(testStatement))
+                .thenThrow(new StatementStorageUnavailableException("S3 outage", new RuntimeException("cause")));
+
+        // When
+        var result = downloadService.validateAndStreamDetailed(
+                testToken, testExpires, testLinkId, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
+
+        // Then
+        assertThat(result.outcome()).isEqualTo(DownloadOutcome.STORAGE_UNAVAILABLE);
+        assertThat(result.stream()).isEmpty();
+        verify(auditService)
+                .record(
+                        eq(AuditAction.DOWNLOAD_FAILED.getValue()),
+                        eq(testStatementId),
+                        eq("123456789"),
+                        eq(testLinkId),
+                        eq(testPerformedBy),
+                        any(Map.class));
+        verify(auditService, never())
+                .record(eq(AuditAction.DOWNLOAD_SUCCESS.getValue()), any(), any(), any(), any(), any(Map.class));
+    }
+
+    @Test
+    void GivenFileMissingBetweenExistsAndOpen_WhenValidateAndStreamDetailed_ThenReturnsFileMissingAndAuditsFailure()
+            throws Exception {
+        // Given: the object was deleted between the exists() check and open()
+        var validResult = LinkValidationResult.valid(testLink);
+        when(signedLinkService.validate(testToken, testExpires, testLinkId, FILE_NAME))
+                .thenReturn(validResult);
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
+        when(statementService.openDecryptedFile(testStatement))
+                .thenThrow(new FileNotFoundException("No object found for the requested reference"));
+
+        // When
+        var result = downloadService.validateAndStreamDetailed(
+                testToken, testExpires, testLinkId, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
+
+        // Then
+        assertThat(result.outcome()).isEqualTo(DownloadOutcome.FILE_MISSING);
+        assertThat(result.stream()).isEmpty();
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),

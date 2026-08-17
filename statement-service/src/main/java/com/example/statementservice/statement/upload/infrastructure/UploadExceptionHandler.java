@@ -22,6 +22,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @RestControllerAdvice
@@ -40,6 +41,8 @@ public class UploadExceptionHandler {
     private static final String TITLE_DESCRIPTION_PDF_VALIDATION_FAILED = "PDF Validation Failed";
     private static final String TITLE_DESCRIPTION_STATEMENT_UPLOAD_FAILED = "Statement Upload Failed";
     private static final String TITLE_DESCRIPTION_UNSUPPORTED_MEDIA_TYPE = "Unsupported Media Type";
+    private static final String TITLE_DESCRIPTION_UPLOAD_TOO_LARGE = "Upload Too Large";
+    private static final String DETAIL_UPLOAD_TOO_LARGE = "Uploaded file exceeds the maximum allowed size";
 
     private static final String ERROR_CODE_INVALID_MESSAGE_DIGEST = "INVALID_MESSAGE_DIGEST";
     private static final String ERROR_CODE_MISSING_FILE = "MISSING_FILE";
@@ -50,6 +53,7 @@ public class UploadExceptionHandler {
     private static final String ERROR_CODE_PDF_VALIDATION_FAILED = "PDF_VALIDATION_FAILED";
     private static final String ERROR_CODE_UPLOAD_FAILED = "STATEMENT_UPLOAD_FAILED";
     private static final String ERROR_CODE_UNSUPPORTED_MEDIA = "UNSUPPORTED_MEDIA_TYPE";
+    private static final String ERROR_CODE_UPLOAD_TOO_LARGE = "UPLOAD_TOO_LARGE";
 
     private static final Map<Class<? extends Exception>, ExceptionMetadata> VALIDATION_EXCEPTION_METADATA = Map.of(
             InvalidMessageDigestException.class,
@@ -108,5 +112,16 @@ public class UploadExceptionHandler {
                 TITLE_DESCRIPTION_UNSUPPORTED_MEDIA_TYPE,
                 ex.getMessage(),
                 ERROR_CODE_UNSUPPORTED_MEDIA);
+    }
+
+    // Fixed detail: the exception message embeds container internals that must not reach clients.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return createProblemDetail(
+                HttpStatus.CONTENT_TOO_LARGE,
+                buildProblemDetailTypeURI(request, TYPE_UPLOAD),
+                TITLE_DESCRIPTION_UPLOAD_TOO_LARGE,
+                DETAIL_UPLOAD_TOO_LARGE,
+                ERROR_CODE_UPLOAD_TOO_LARGE);
     }
 }

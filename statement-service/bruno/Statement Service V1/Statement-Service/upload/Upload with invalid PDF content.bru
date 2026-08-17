@@ -1,0 +1,47 @@
+meta {
+  name: Upload with invalid PDF content
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: 97d1fb706ea67dece74a1d670f57342444c1305f135e2e0675f5fcbb7b19e2a0
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(fixtures/invalid-content.pdf) @contentType(application/pdf)
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a file without a valid PDF magic number", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getHeader('content-type')).to.include('application/problem+json');
+    expect(res.getBody().errorCode).to.equal('PDF_VALIDATION_FAILED');
+  });
+}
+
+docs {
+  fixtures/invalid-content.pdf is plain text, not a real PDF (no %PDF magic bytes) — the magic-number check runs
+  first in validateFileUploadInputs, so this fails before content-type, account number, date, or digest are ever
+  looked at.
+}

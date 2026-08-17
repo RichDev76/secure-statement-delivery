@@ -1,13 +1,18 @@
 openapi: 3.0.0
 info:
   title: Statement Upload & Search API
-  version: 1.11.0
+  version: 1.12.0
   description: >
     Upload a PDF account statement with metadata and strict validation rules.
     Also provides search endpoints to retrieve statements by statementId,
     and to search by account number and/or date using paginated results.
     Includes audit log retrieval capabilities.
     All endpoints require JWT bearer authentication and support the x-correlation-id header for request tracing.
+
+    1.12.0: error-contract truth-up (additive). Backfills errorCode values the service already
+    emits (STATEMENT_NOT_FOUND, PDF_VALIDATION_FAILED, INVALID_SEARCH_PARAMETERS, INVALID_REQUEST),
+    adds UPLOAD_TOO_LARGE / UNAUTHENTICATED / ACCESS_DENIED, and documents previously
+    undocumented responses (500 on download; 413/403 on upload; 401/403 on link, search and audit).
 
 servers:
   - url: https://api.example.com/api/v1/statements
@@ -109,6 +114,30 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Authenticated but missing the upload role
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/authorization"
+                title: "Forbidden"
+                status: 403
+                detail: "You do not have permission to access this resource"
+                errorCode: "ACCESS_DENIED"
+        '413':
+          description: Uploaded file exceeds the maximum allowed size
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/upload"
+                title: "Upload Too Large"
+                status: 413
+                detail: "Uploaded file exceeds the maximum allowed size"
+                errorCode: "UPLOAD_TOO_LARGE"
         '415':
           description: Unsupported media type (non-PDF)
           content:
@@ -121,6 +150,18 @@ paths:
                 status: 415
                 detail: "Only application/pdf is supported"
                 errorCode: "UNSUPPORTED_MEDIA_TYPE"
+        '500':
+          description: Statement could not be persisted due to an unexpected server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/upload"
+                title: "Upload Failed"
+                status: 500
+                detail: "Failed to store the uploaded statement."
+                errorCode: "STATEMENT_UPLOAD_FAILED"
 
   /link/{statementId}:
     get:
@@ -154,12 +195,30 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Authenticated but missing the link-generation role
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
         '404':
           description: Statement not found
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/statement"
+                title: "Statement Not Found"
+                status: 404
+                detail: "The requested statement could not be found."
+                errorCode: "STATEMENT_NOT_FOUND"
 
   /search:
     get:
@@ -198,15 +257,31 @@ paths:
                 title: "Invalid Search Criteria"
                 status: 400
                 detail: "Provide at least one search criterion: accountNumber or date"
-                errorCode: "INVALID_INPUT"
+                errorCode: "INVALID_SEARCH_PARAMETERS"
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Authenticated but missing the search role
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
         '404':
-          description: No statements found for the given criteria
+          description: >
+            Documented historically; no current code path produces this response on /search
+            (an empty result set returns an empty page with 200). Scheduled for removal in v2.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ApiProblem'
         '410':
-          description: Download link has expired or already been used
+          description: >
+            Documented historically; no current code path produces this response on /search
+            (link expiry is signalled on /download as 404 LINK_EXPIRED). Scheduled for removal in v2.
           content:
             application/problem+json:
               schema:
@@ -225,6 +300,7 @@ paths:
       summary: Download statement PDF using signed URL
       description: Download the encrypted statement PDF file using a filename-based signed URL with expires and signature parameters.
       operationId: downloadStatementByFileName
+      security: []
       parameters:
         - $ref: '#/components/parameters/correlationIdHeader'
         - name: fileName
@@ -301,6 +377,18 @@ paths:
                 status: 429
                 detail: "Too many requests for this link. Please try again later."
                 errorCode: "RATE_LIMITED"
+        '500':
+          description: Statement could not be decrypted (integrity or key failure)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/download"
+                title: "Decryption Failed"
+                status: 500
+                detail: "Failed to decrypt the statement file."
+                errorCode: "DECRYPTION_FAILED"
         '503':
           description: Statement storage backend is temporarily unavailable
           headers:
@@ -388,6 +476,12 @@ paths:
                 $ref: '#/components/schemas/ApiProblem'
         '401':
           description: Unauthorized - authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Authenticated but missing the audit role
           content:
             application/problem+json:
               schema:
@@ -692,4 +786,11 @@ components:
             - DECRYPTION_FAILED
             - RATE_LIMITED
             - STORAGE_UNAVAILABLE
+            - STATEMENT_NOT_FOUND
+            - PDF_VALIDATION_FAILED
+            - INVALID_SEARCH_PARAMETERS
+            - INVALID_REQUEST
+            - UPLOAD_TOO_LARGE
+            - UNAUTHENTICATED
+            - ACCESS_DENIED
           example: "INVALID_MESSAGE_DIGEST"

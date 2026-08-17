@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.statementservice.shared.IdGeneratorPort;
+import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.io.ByteArrayOutputStream;
@@ -73,12 +74,14 @@ class StatementServiceTest {
     private UUID testId;
     private String testAccountNumber;
     private LocalDate testStatementDate;
+    private String testContentHash;
 
     @BeforeEach
     void setUp() {
         testId = UUID.randomUUID();
         testAccountNumber = "123456789";
         testStatementDate = LocalDate.of(2024, 1, 1);
+        testContentHash = Sha256Digest.hexOf("file-content".getBytes());
         testStatement = new Statement();
         testStatement.setId(testId);
         testStatement.setAccountNumber(testAccountNumber);
@@ -110,17 +113,15 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should successfully upload and persist statement")
-    void uploadStatement_Success() throws Exception {
+    void GivenValidUpload_WhenUploadStatement_ThenPersistsAndReturnsResponse() throws Exception {
         String uploadedBy = "testUser";
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
         stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
-        UploadResponseDto result =
-                statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, uploadedBy);
+        UploadResponseDto result = statementService.uploadStatement(
+                testAccountNumber, testStatementDate, multipartFile, uploadedBy, testContentHash);
         assertThat(result).isNotNull();
         assertThat(result.getStatementId()).isNotNull();
         assertThat(result.getFileName()).isEqualTo("statement.pdf");
@@ -131,35 +132,47 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should use default 'admin' when uploadedBy is null")
-    void uploadStatement_NullUploadedBy() throws Exception {
+    void GivenNullUploadedBy_WhenUploadStatement_ThenAdminIsPersistedAsUploader() throws Exception {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
         stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> {
             Statement stmt = i.getArgument(0);
             assertThat(stmt.getUploadedBy()).isEqualTo("admin");
             return stmt;
         });
-        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, null);
+        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, null, testContentHash);
         verify(statementRepository).saveAndFlush(any(Statement.class));
     }
 
     @Test
-    @DisplayName("uploadStatement - should throw StatementUploadException on repository failure")
-    void uploadStatement_RepositoryFailure() throws Exception {
+    void GivenRepositoryFailure_WhenUploadStatement_ThenThrowsStatementUploadException() throws Exception {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
         stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any())).thenThrow(new RuntimeException("DB error"));
-        assertThatThrownBy(() ->
-                        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user"))
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
                 .isInstanceOf(StatementUploadException.class)
                 .hasMessageContaining("Failed to persist statement metadata");
+    }
+
+    @Test
+    void GivenDekWrapFailure_WhenUploadStatement_ThenThrowsStatementUploadException() {
+        // Given: a master-key problem surfaces as FileCipherException from wrapDek
+        when(idGenerator.newId()).thenReturn(testId);
+        when(fileCipher.generateInitializationVector()).thenReturn(new byte[] {1, 2, 3, 4});
+        when(fileCipher.generateDek()).thenReturn(new byte[] {9, 9, 9, 9});
+        when(fileCipher.wrapDek(any())).thenThrow(new FileCipherException("Failed to wrap DEK"));
+
+        // When / Then: classified as an upload failure, and nothing is stored or persisted
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
+                .isInstanceOf(StatementUploadException.class)
+                .hasMessageContaining("Failed to prepare encryption key");
+        verify(statementRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -171,12 +184,11 @@ class StatementServiceTest {
         when(fileCipher.wrapDek(dek)).thenReturn(wrappedDek);
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
-        when(multipartFile.getBytes()).thenReturn("file-content".getBytes());
         stubSuccessfulEncryptAndStore(new byte[] {1, 2, 3, 4}, "file-content".getBytes());
         when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
 
         // When
-        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user");
+        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user", testContentHash);
 
         // Then
         var captor = org.mockito.ArgumentCaptor.forClass(Statement.class);
@@ -186,33 +198,48 @@ class StatementServiceTest {
     }
 
     @Test
+    void GivenPrecomputedContentHash_WhenUploadStatement_ThenPersistsThatHashWithoutRereadingFile() throws Exception {
+        // Given
+        when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
+        when(multipartFile.getSize()).thenReturn(2048L);
+        stubSuccessfulEncryptAndStore(new byte[] {1, 2, 3, 4}, "file-content".getBytes());
+        when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
+
+        // When
+        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user", testContentHash);
+
+        // Then
+        var captor = org.mockito.ArgumentCaptor.forClass(Statement.class);
+        verify(statementRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getContentHash()).isEqualTo(testContentHash);
+        verify(multipartFile, never()).getBytes();
+    }
+
+    @Test
     void GivenStatementWithWrappedDek_WhenOpenDecryptedFile_ThenUnwrapsDekBeforeDecrypting() throws Exception {
-        // Given: fetching ciphertext now goes through EncryptedFileFetcher (possibly cached), not
-        // StatementFileStore directly - openDecryptedFile wraps the returned bytes in a fresh
-        // ByteArrayInputStream before decrypting, so decrypt's stream argument can't be matched
-        // against a specific pre-built instance anymore.
+        // Given: ciphertext is fetched via EncryptedFileFetcher (possibly cached), never
+        // StatementFileStore directly
         var wrappedDek = new byte[] {8, 8, 8, 8, 8};
         var dek = new byte[] {9, 9, 9, 9};
         testStatement.setEncryptedDek(wrappedDek);
         var ciphertext = "ciphertext".getBytes();
-        var decryptedStream = new java.io.ByteArrayInputStream("plaintext".getBytes());
+        var plaintext = "plaintext".getBytes();
         when(fileCipher.unwrapDek(wrappedDek)).thenReturn(dek);
         when(encryptedFileFetcher.fetch(testStatement.getStorageKey())).thenReturn(ciphertext);
-        when(fileCipher.decrypt(any(), eq(dek))).thenReturn(decryptedStream);
+        when(fileCipher.decrypt(ciphertext, dek)).thenReturn(plaintext);
 
         // When
         var result = statementService.openDecryptedFile(testStatement);
 
         // Then
-        assertThat(result).isEqualTo(decryptedStream);
+        assertThat(result.readAllBytes()).isEqualTo(plaintext);
         verify(fileCipher).unwrapDek(wrappedDek);
-        verify(fileCipher).decrypt(any(), eq(dek));
+        verify(fileCipher).decrypt(ciphertext, dek);
         verify(fileStore, never()).open(any());
     }
 
     @Test
-    @DisplayName("getStatementById - should return statement when found")
-    void getStatementById_Found() {
+    void GivenExistingId_WhenGettingStatementById_ThenReturnsStatement() {
         when(statementRepository.findStatementById(testId)).thenReturn(Optional.of(testStatement));
         Statement result = statementService.getStatementById(testId);
         assertThat(result).isNotNull();
@@ -222,8 +249,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementById - should throw StatementNotFoundException when not found")
-    void getStatementById_NotFound() {
+    void GivenUnknownId_WhenGettingStatementById_ThenThrowsStatementNotFoundException() {
         when(statementRepository.findStatementById(testId)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> statementService.getStatementById(testId))
                 .isInstanceOf(StatementNotFoundException.class)
@@ -232,8 +258,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementsByAccountNumber (pageable) - should return page of statements")
-    void getStatementsByAccountNumber_Pageable() {
+    void GivenPageable_WhenGettingStatementsByAccountNumber_ThenReturnsPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Statement> page = new PageImpl<>(Arrays.asList(testStatement));
         when(statementRepository.findByAccountNumber(testAccountNumber, pageable))
@@ -246,8 +271,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementsByAccountNumber (list) - should return list of statements")
-    void getStatementsByAccountNumber_List() {
+    void GivenExistingAccount_WhenGettingStatementsByAccountNumber_ThenReturnsList() {
         List<Statement> statements = Arrays.asList(testStatement);
         when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.of(statements));
         List<Statement> result = statementService.getStatementsByAccountNumber(testAccountNumber);
@@ -258,8 +282,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementsByAccountNumber (list) - should throw exception when not found")
-    void getStatementsByAccountNumber_NotFound() {
+    void GivenUnknownAccount_WhenGettingStatementsByAccountNumber_ThenThrowsStatementNotFoundException() {
         when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> statementService.getStatementsByAccountNumber(testAccountNumber))
                 .isInstanceOf(StatementNotFoundException.class)
@@ -268,8 +291,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementByAccountNumberAndStatementDate - should return statement when found")
-    void getStatementByAccountNumberAndStatementDate_Found() {
+    void GivenExistingAccountAndDate_WhenGettingStatement_ThenReturnsIt() {
         when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
                 .thenReturn(Optional.of(testStatement));
         Optional<Statement> result =
@@ -281,8 +303,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementByAccountNumberAndStatementDate - should return empty when not found")
-    void getStatementByAccountNumberAndStatementDate_NotFound() {
+    void GivenUnknownAccountAndDate_WhenGettingStatement_ThenReturnsEmpty() {
         when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
                 .thenReturn(Optional.empty());
         Optional<Statement> result =
@@ -292,8 +313,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("toDto - should convert statement to DTO")
-    void toDto_Success() {
+    void GivenStatementEntity_WhenMappingToDto_ThenMapperResultIsReturned() {
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
         StatementDto result = statementService.toDto(testStatement);
         assertThat(result).isNotNull();
@@ -302,8 +322,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementDtoById - should return statement DTO by ID")
-    void getStatementDtoById_Success() {
+    void GivenExistingId_WhenGettingStatementDtoById_ThenReturnsDto() {
         when(statementRepository.findStatementById(testId)).thenReturn(Optional.of(testStatement));
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
         StatementDto result = statementService.getStatementDtoById(testId);
@@ -314,8 +333,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementsDtoByAccountNumber - should return list of statement DTOs")
-    void getStatementsDtoByAccountNumber_Success() {
+    void GivenExistingAccount_WhenGettingStatementDtos_ThenReturnsDtos() {
         List<Statement> statements = Arrays.asList(testStatement);
         List<StatementDto> dtos = Arrays.asList(testStatementDto);
         when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.of(statements));
@@ -329,8 +347,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementDtoByAccountNumberAndStatementDate - should return DTO when found")
-    void getStatementDtoByAccountNumberAndStatementDate_Found() {
+    void GivenExistingAccountAndDate_WhenGettingStatementDto_ThenReturnsDto() {
         when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
                 .thenReturn(Optional.of(testStatement));
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
@@ -343,8 +360,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementDtoByAccountNumberAndStatementDate - should return empty when not found")
-    void getStatementDtoByAccountNumberAndStatementDate_NotFound() {
+    void GivenUnknownAccountAndDate_WhenGettingStatementDto_ThenReturnsEmpty() {
         when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
                 .thenReturn(Optional.empty());
         Optional<StatementDto> result =

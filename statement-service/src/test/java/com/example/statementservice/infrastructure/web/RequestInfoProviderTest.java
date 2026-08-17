@@ -54,8 +54,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should get request info with authenticated user")
-    void testGet_WithAuthenticatedUser() {
+    void GivenAuthenticatedUser_WhenGettingRequestInfo_ThenPerformedByIsUsername() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(request);
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
@@ -72,8 +71,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should get request info with unauthenticated user")
-    void testGet_WithUnauthenticatedUser() {
+    void GivenUnauthenticatedUser_WhenGettingRequestInfo_ThenPerformedByIsSystem() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(request);
         when(request.getRemoteAddr()).thenReturn("10.0.0.5");
@@ -89,8 +87,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should get request info when authentication is null")
-    void testGet_NullAuthentication() {
+    void GivenNullAuthentication_WhenGettingRequestInfo_ThenPerformedByIsSystem() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(request);
         when(request.getRemoteAddr()).thenReturn("172.16.0.1");
@@ -105,8 +102,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should get request info when security context is null")
-    void testGet_NullSecurityContext() {
+    void GivenNullSecurityContext_WhenGettingRequestInfo_ThenPerformedByIsSystem() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(request);
         when(request.getRemoteAddr()).thenReturn("192.168.0.50");
@@ -120,8 +116,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should handle exception during authentication resolution")
-    void testGet_ExceptionDuringAuthResolution() {
+    void GivenAuthResolutionThrows_WhenGettingRequestInfo_ThenPerformedByFallsBackToSystem() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(request);
         when(request.getRemoteAddr()).thenReturn("192.168.10.20");
@@ -135,8 +130,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should return unknown when request attributes are null")
-    void testGet_NullRequestAttributes() {
+    void GivenNullRequestAttributes_WhenGettingRequestInfo_ThenUnknownValuesAreReturned() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(null);
         when(SecurityContextHolder.getContext()).thenReturn(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
@@ -150,8 +144,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should return unknown when request is null")
-    void testGet_NullRequest() {
+    void GivenNullRequest_WhenGettingRequestInfo_ThenUnknownValuesAreReturned() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(null);
         when(SecurityContextHolder.getContext()).thenReturn(securityContext);
@@ -166,8 +159,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should handle null User-Agent header")
-    void testGet_NullUserAgent() {
+    void GivenNullUserAgentHeader_WhenGettingRequestInfo_ThenUserAgentIsNull() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(request);
         when(request.getRemoteAddr()).thenReturn("127.0.0.1");
@@ -184,8 +176,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should handle null remote address")
-    void testGet_NullRemoteAddress() {
+    void GivenNullRemoteAddress_WhenGettingRequestInfo_ThenClientIpIsNull() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(request);
         when(request.getRemoteAddr()).thenReturn(null);
@@ -202,8 +193,7 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    @DisplayName("Should handle all null values")
-    void testGet_AllNullValues() {
+    void GivenAllNullRequestValues_WhenGettingRequestInfo_ThenNullsAreReturned() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(null);
         when(SecurityContextHolder.getContext()).thenReturn(null);
         var result = requestInfoProvider.get();

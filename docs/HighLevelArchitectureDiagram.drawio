@@ -1,220 +1,176 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.0 Safari/537.36" version="29.0.3">
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.0 Safari/537.36">
   <diagram id="jcRfVOLcMEO8CqGIGNHT" name="Statement Service Platform Architecture">
-    <mxGraphModel dx="1216" dy="782" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+    <mxGraphModel dx="2020" dy="1084" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2040" pageHeight="1030" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-1" value="Statement Service Platform Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" parent="1" vertex="1">
-          <mxGeometry x="540" y="370" width="400" height="40" as="geometry" />
+        <mxCell id="hla-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" value="Secure Statement Delivery — High-Level Architecture" vertex="1">
+          <mxGeometry height="34" width="520" x="760" y="16" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-2" value="Client Layer" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1" parent="1" vertex="1">
-          <mxGeometry x="130" y="430" width="180" height="200" as="geometry" />
+        <mxCell id="hla-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#666666" value="Feature-first / Hexagonal packaging · Spring Boot 4 / Java 25 · Contract-first OpenAPI · Docker Compose" vertex="1">
+          <mxGeometry height="20" width="720" x="660" y="52" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-3" value="Web Browser / Mobile App" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-2" vertex="1">
-          <mxGeometry x="30" y="35" width="120" height="50" as="geometry" />
+        <mxCell id="hla-client" parent="1" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1" value="Clients" vertex="1">
+          <mxGeometry height="170" width="230" x="10" y="110" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-4" value="API Client (Bruno/Postman)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-2" vertex="1">
-          <mxGeometry x="30" y="100" width="120" height="50" as="geometry" />
+        <mxCell id="hla-client-1" parent="hla-client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;" value="Web Browser / Mobile App" vertex="1">
+          <mxGeometry height="55" width="160" x="50" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-5" value="Security &amp; Auth" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" parent="1" vertex="1">
-          <mxGeometry x="350" y="430" width="200" height="200" as="geometry" />
+        <mxCell id="hla-client-2" parent="hla-client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;" value="API Client (Bruno / CI)" vertex="1">
+          <mxGeometry height="45" width="160" x="50" y="105" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-6" value="Keycloak&#xa;(OAuth2/OIDC)&#xa;:8081" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="gPxJ6dk6Sm1LYoOYOHQH-5" vertex="1">
-          <mxGeometry x="40" y="30" width="120" height="60" as="geometry" />
+        <mxCell id="hla-identity" parent="1" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" value="Identity &amp; Access" vertex="1">
+          <mxGeometry height="190" width="230" x="10" y="310" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-7" value="JWT Bearer Tokens&#xa;Role-Based Access" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="gPxJ6dk6Sm1LYoOYOHQH-5" vertex="1">
-          <mxGeometry x="40" y="110" width="120" height="50" as="geometry" />
+        <mxCell id="hla-identity-1" parent="hla-identity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="Keycloak :8081&#xa;(OAuth2 / OIDC)" vertex="1">
+          <mxGeometry height="55" width="160" x="40" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-8" value="Statement Service (Spring Boot :8080)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;startSize=30" parent="1" vertex="1">
-          <mxGeometry x="590" y="430" width="460" height="380" as="geometry" />
+        <mxCell id="hla-identity-2" parent="hla-identity" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Realm roles: Upload, Search,&#xa;GenerateSignedLink, AuditLogsSearch" vertex="1">
+          <mxGeometry height="55" width="160" x="40" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-9" value="Controllers (REST API)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;startSize=25" parent="gPxJ6dk6Sm1LYoOYOHQH-8" vertex="1">
-          <mxGeometry x="20" y="40" width="420" height="70" as="geometry" />
+        <mxCell id="hla-legend" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;startSize=20" value="Legend" vertex="1">
+          <mxGeometry height="190" width="230" x="10" y="530" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-10" value="StatementsController&#xa;/api/v1/statements/*" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-9" vertex="1">
-          <mxGeometry x="10" y="30" width="120" height="35" as="geometry" />
+        <mxCell id="hla-legend-1" parent="hla-legend" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Client / External" vertex="1">
+          <mxGeometry height="20" width="160" x="20" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-11" value="AdminController&#xa;/upload" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-9" vertex="1">
-          <mxGeometry x="150" y="30" width="110" height="35" as="geometry" />
+        <mxCell id="hla-legend-2" parent="hla-legend" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#f5f5f5;strokeColor=#666666;" value="Identity Provider" vertex="1">
+          <mxGeometry height="20" width="160" x="20" y="55" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-12" value="AuditController&#xa;/audit/logs" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-9" vertex="1">
-          <mxGeometry x="280" y="30" width="110" height="35" as="geometry" />
+        <mxCell id="hla-legend-3" parent="hla-legend" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Cross-Cutting Concern" vertex="1">
+          <mxGeometry height="20" width="160" x="20" y="80" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-13" value="Services (Business Logic)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;startSize=25" parent="gPxJ6dk6Sm1LYoOYOHQH-8" vertex="1">
-          <mxGeometry x="20" y="120" width="420" height="90" as="geometry" />
+        <mxCell id="hla-legend-4" parent="hla-legend" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Controller / Feature Slice" vertex="1">
+          <mxGeometry height="20" width="160" x="20" y="105" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-14" value="StatementService&#xa;StatementQueryService" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-13" vertex="1">
-          <mxGeometry x="10" y="30" width="95" height="50" as="geometry" />
+        <mxCell id="hla-legend-5" parent="hla-legend" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Infrastructure Adapter" vertex="1">
+          <mxGeometry height="20" width="160" x="20" y="130" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-15" value="DownloadService&#xa;SignedLinkService" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-13" vertex="1">
-          <mxGeometry x="115" y="30" width="95" height="50" as="geometry" />
+        <mxCell id="hla-legend-6" parent="hla-legend" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#f8cecc;strokeColor=#b85450;" value="Data Store / Config / Secrets" vertex="1">
+          <mxGeometry height="20" width="160" x="20" y="155" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-16" value="EncryptionService&#xa;(AES-GCM)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-13" vertex="1">
-          <mxGeometry x="220" y="30" width="90" height="50" as="geometry" />
+        <mxCell id="hla-svc" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;startSize=34;verticalAlign=top" value="Statement Service — Spring Boot 4 / Java 25 · :8080 · Hexagonal + Feature-First Packaging" vertex="1">
+          <mxGeometry height="630" width="1440" x="280" y="110" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-17" value="AuditService&#xa;FileStorageService" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-13" vertex="1">
-          <mxGeometry x="320" y="30" width="90" height="50" as="geometry" />
+        <mxCell id="hla-row1" parent="hla-svc" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;startSize=24" value="Cross-Cutting Concerns" vertex="1">
+          <mxGeometry height="90" width="1400" x="20" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-18" value="Repositories (Spring Data JPA)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;startSize=25" parent="gPxJ6dk6Sm1LYoOYOHQH-8" vertex="1">
-          <mxGeometry x="20" y="220" width="420" height="70" as="geometry" />
+        <mxCell id="hla-row1-1" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Security Filter Chain&#xa;(JWT Resource Server +&#xa;KeycloakRoleConverter)" vertex="1">
+          <mxGeometry height="50" width="325" x="20" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-19" value="StatementRepository" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-18" vertex="1">
-          <mxGeometry x="20" y="30" width="110" height="30" as="geometry" />
+        <mxCell id="hla-row1-2" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Global Exception Handling&#xa;(RFC 9457 ProblemDetail)" vertex="1">
+          <mxGeometry height="50" width="325" x="365" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-20" value="SignedLinkRepository" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-18" vertex="1">
-          <mxGeometry x="155" y="30" width="110" height="30" as="geometry" />
+        <mxCell id="hla-row1-3" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Correlation ID + Logging&#xa;(AOP, virtual threads)" vertex="1">
+          <mxGeometry height="50" width="325" x="710" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-21" value="AuditLogRepository" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-18" vertex="1">
-          <mxGeometry x="290" y="30" width="110" height="30" as="geometry" />
+        <mxCell id="hla-row1-4" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Rate-Limit Enforcement&#xa;(Bucket4j token bucket)" vertex="1">
+          <mxGeometry height="50" width="325" x="1055" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-22" value="Entities" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;startSize=25" parent="gPxJ6dk6Sm1LYoOYOHQH-8" vertex="1">
-          <mxGeometry x="20" y="300" width="420" height="70" as="geometry" />
+        <mxCell id="hla-row2" parent="hla-svc" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;startSize=24" value="REST Controllers (contract-first, generated from OpenAPI)" vertex="1">
+          <mxGeometry height="100" width="1400" x="20" y="140" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-23" value="Statement" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-22" vertex="1">
-          <mxGeometry x="20" y="30" width="110" height="30" as="geometry" />
+        <mxCell id="hla-row2-1" parent="hla-row2" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="AdminController&#xa;POST /upload  [role: Upload]" vertex="1">
+          <mxGeometry height="60" width="440" x="20" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-24" value="SignedLink" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-22" vertex="1">
-          <mxGeometry x="155" y="30" width="110" height="30" as="geometry" />
+        <mxCell id="hla-row2-2" parent="hla-row2" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="StatementsController&#xa;GET /link/{id}  [role: GenerateSignedLink]&#xa;GET /download/{fileName}  [public, signed]&#xa;GET /search  [role: Search]" vertex="1">
+          <mxGeometry height="60" width="440" x="480" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-25" value="AuditLog" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-22" vertex="1">
-          <mxGeometry x="290" y="30" width="110" height="30" as="geometry" />
+        <mxCell id="hla-row2-3" parent="hla-row2" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="AuditController&#xa;GET /audit/logs  [role: AuditLogsSearch]" vertex="1">
+          <mxGeometry height="60" width="440" x="940" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-26" value="Infrastructure Layer (Docker Compose)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;startSize=30" parent="1" vertex="1">
-          <mxGeometry x="490" y="880" width="700" height="170" as="geometry" />
+        <mxCell id="hla-row3" parent="hla-svc" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;startSize=24" value="Feature Slices (Screaming Architecture)" vertex="1">
+          <mxGeometry height="130" width="1400" x="20" y="250" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-27" value="PostgreSQL&#xa;:5432&#xa;(Statements, SignedLinks, AuditLogs)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="gPxJ6dk6Sm1LYoOYOHQH-26" vertex="1">
-          <mxGeometry x="10" y="40" width="160" height="90" as="geometry" />
+        <mxCell id="hla-row3-1" parent="hla-row3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="statement.upload&#xa;StatementUploadService&#xa;ValidationUtil&#xa;Streaming SHA-256 digest" vertex="1">
+          <mxGeometry height="90" width="256" x="20" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-28" value="HashiCorp Vault&#xa;:8200&#xa;(Master Keys, Secrets)" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="gPxJ6dk6Sm1LYoOYOHQH-26" vertex="1">
-          <mxGeometry x="200" y="50" width="140" height="80" as="geometry" />
+        <mxCell id="hla-row3-2" parent="hla-row3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="statement.download&#xa;DownloadService&#xa;DownloadResponseFactory" vertex="1">
+          <mxGeometry height="90" width="256" x="296" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-29" value="Config Server&#xa;:8888&#xa;(Spring Cloud Config)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="gPxJ6dk6Sm1LYoOYOHQH-26" vertex="1">
-          <mxGeometry x="400" y="50" width="130" height="80" as="geometry" />
+        <mxCell id="hla-row3-3" parent="hla-row3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="statement.signedlink&#xa;SignedLinkService&#xa;HmacSha256LinkSigner&#xa;CleanupScheduler (ShedLock)" vertex="1">
+          <mxGeometry height="90" width="256" x="572" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-30" value="File Storage&#xa;(Encrypted PDFs)" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="gPxJ6dk6Sm1LYoOYOHQH-26" vertex="1">
-          <mxGeometry x="550" y="50" width="120" height="80" as="geometry" />
+        <mxCell id="hla-row3-4" parent="hla-row3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="statement.search&#xa;StatementQueryService" vertex="1">
+          <mxGeometry height="90" width="256" x="848" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;" parent="1" source="gPxJ6dk6Sm1LYoOYOHQH-3" target="gPxJ6dk6Sm1LYoOYOHQH-6" edge="1">
+        <mxCell id="hla-row3-5" parent="hla-row3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="audit&#xa;AuditService (async, fail-open)&#xa;AuditQueryService&#xa;Partition maintenance (ShedLock)" vertex="1">
+          <mxGeometry height="90" width="256" x="1124" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row4" parent="hla-svc" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;startSize=24" value="Persistence (Spring Data JPA)" vertex="1">
+          <mxGeometry height="90" width="1400" x="20" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row4-1" parent="hla-row4" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="StatementRepository" vertex="1">
+          <mxGeometry height="50" width="325" x="20" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row4-2" parent="hla-row4" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="SignedLinkRepository" vertex="1">
+          <mxGeometry height="50" width="325" x="365" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row4-3" parent="hla-row4" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="AuditLogRepository&#xa;(monthly partitions)" vertex="1">
+          <mxGeometry height="50" width="325" x="710" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row4-4" parent="hla-row4" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Entities: Statement · SignedLink · AuditLog" vertex="1">
+          <mxGeometry height="50" width="325" x="1055" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row5" parent="hla-svc" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;startSize=24" value="Infrastructure Adapters (Hexagonal Ports)" vertex="1">
+          <mxGeometry height="100" width="1400" x="20" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row5-crypto" parent="hla-row5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Crypto Adapter&#xa;AesGcmFileCipher (envelope encryption)&#xa;MasterKeyProvider" vertex="1">
+          <mxGeometry height="60" width="325" x="20" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row5-ratelimit" parent="hla-row5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Rate-Limit Adapter&#xa;Bucket4jSignedLinkRateLimiter&#xa;(Postgres token bucket)" vertex="1">
+          <mxGeometry height="60" width="325" x="365" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row5-cache" parent="hla-row5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Cache Adapter&#xa;CachingEncryptedFileFetcher&#xa;(Redis ciphertext cache)" vertex="1">
+          <mxGeometry height="60" width="325" x="710" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row5-storage" parent="hla-row5" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Storage Adapter&#xa;S3StatementFileStore&#xa;(Floci / S3-compatible)" vertex="1">
+          <mxGeometry height="60" width="325" x="1055" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-data" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;startSize=30" value="Data &amp; Storage (Docker Compose)" vertex="1">
+          <mxGeometry height="170" width="1440" x="280" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-data-pg" parent="hla-data" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fontSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="PostgreSQL 18 :5432&#xa;Statements · SignedLinks&#xa;AuditLogs (partitioned)&#xa;RateLimitBuckets · ShedLock" vertex="1">
+          <mxGeometry height="110" width="260" x="420" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-data-redis" parent="hla-data" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fontSize=10;fillColor=#f8cecc;strokeColor=#b85450;" value="Redis 8 :6379&#xa;Ciphertext cache&#xa;(TTL = signed-link expiry)" vertex="1">
+          <mxGeometry height="110" width="260" x="760" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-data-floci" parent="hla-data" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fontSize=10;fillColor=#fff2cc;strokeColor=#d6b656;" value="Floci (S3-compatible) :4566&#xa;Encrypted PDF objects" vertex="1">
+          <mxGeometry height="110" width="260" x="1110" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-config" parent="1" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1" value="Config &amp; Secrets" vertex="1">
+          <mxGeometry height="630" width="260" x="1760" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-config-server" parent="hla-config" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="Config Server :8888&#xa;(Spring Cloud Config)" vertex="1">
+          <mxGeometry height="90" width="180" x="50" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-config-vault" parent="hla-config" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="HashiCorp Vault :8200&#xa;(KV secrets engine)" vertex="1">
+          <mxGeometry height="90" width="200" x="40" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-e1" edge="1" parent="1" source="hla-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=9;align=center;" target="hla-identity" value="Authenticate&#xa;(OAuth2 / OIDC)">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-32" value="Auth" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" parent="gPxJ6dk6Sm1LYoOYOHQH-31" vertex="1" connectable="0">
-          <mxGeometry x="-0.2" relative="1" as="geometry">
-            <mxPoint as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;" parent="1" source="gPxJ6dk6Sm1LYoOYOHQH-4" target="gPxJ6dk6Sm1LYoOYOHQH-9" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="320" y="570" />
-              <mxPoint x="320" y="650" />
-              <mxPoint x="570" y="650" />
-              <mxPoint x="570" y="520" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-34" value="REST API + JWT" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" parent="gPxJ6dk6Sm1LYoOYOHQH-33" vertex="1" connectable="0">
-          <mxGeometry x="0.1" relative="1" as="geometry">
-            <mxPoint as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" source="gPxJ6dk6Sm1LYoOYOHQH-18" target="gPxJ6dk6Sm1LYoOYOHQH-27" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="570" y="685" />
-              <mxPoint x="570" y="820" />
-              <mxPoint x="610" y="820" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-36" value="JDBC" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" parent="gPxJ6dk6Sm1LYoOYOHQH-35" vertex="1" connectable="0">
-          <mxGeometry x="-0.2" relative="1" as="geometry">
-            <mxPoint as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;dashed=1;" parent="1" source="gPxJ6dk6Sm1LYoOYOHQH-16" target="gPxJ6dk6Sm1LYoOYOHQH-28" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="890" y="850" />
-              <mxPoint x="780" y="850" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-38" value="Master Key" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" parent="gPxJ6dk6Sm1LYoOYOHQH-37" vertex="1" connectable="0">
-          <mxGeometry x="-0.3" relative="1" as="geometry">
-            <mxPoint x="-50" y="76" as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;strokeWidth=2;dashed=1;" parent="1" source="gPxJ6dk6Sm1LYoOYOHQH-29" target="gPxJ6dk6Sm1LYoOYOHQH-28" edge="1">
+        <mxCell id="hla-e2" edge="1" parent="1" source="hla-client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.13;entryDx=0;entryDy=0;fontSize=9;align=center;" target="hla-svc" value="REST API + Bearer JWT">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-40" value="Secrets" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" parent="gPxJ6dk6Sm1LYoOYOHQH-39" vertex="1" connectable="0">
-          <mxGeometry x="-0.2" relative="1" as="geometry">
-            <mxPoint as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d79b00;strokeWidth=2;" parent="1" source="gPxJ6dk6Sm1LYoOYOHQH-17" target="gPxJ6dk6Sm1LYoOYOHQH-30" edge="1">
+        <mxCell id="hla-e3" edge="1" parent="1" source="hla-identity" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.30;entryDx=0;entryDy=0;fontSize=9;align=center;" target="hla-svc" value="Validate JWT (JWKS)">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-42" value="Read/Write PDFs" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" parent="gPxJ6dk6Sm1LYoOYOHQH-41" vertex="1" connectable="0">
-          <mxGeometry x="-0.2" relative="1" as="geometry">
-            <mxPoint as="offset" />
-          </mxGeometry>
+        <mxCell id="hla-e4" edge="1" parent="1" source="hla-svc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=9;align=center;" target="hla-config-server" value="Fetch config incl. master key&#xa;(bootstrap)">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-43" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;" parent="1" source="gPxJ6dk6Sm1LYoOYOHQH-7" target="gPxJ6dk6Sm1LYoOYOHQH-9" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="550" y="565" />
-              <mxPoint x="550" y="490" />
-            </Array>
-          </mxGeometry>
+        <mxCell id="hla-e5" edge="1" parent="1" source="hla-config-server" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;strokeWidth=2;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=9;align=center;" target="hla-config-vault" value="Fetch secrets&#xa;(KV engine)">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-44" value="Validate JWT" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" parent="gPxJ6dk6Sm1LYoOYOHQH-43" vertex="1" connectable="0">
-          <mxGeometry x="0.1" relative="1" as="geometry">
-            <mxPoint as="offset" />
-          </mxGeometry>
+        <mxCell id="hla-e6" edge="1" parent="1" source="hla-row5-storage" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=9;align=center;" target="hla-data-floci" value="PUT / GET encrypted objects&#xa;(S3 API)">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;strokeWidth=2;dashed=1;" parent="1" source="gPxJ6dk6Sm1LYoOYOHQH-8" target="gPxJ6dk6Sm1LYoOYOHQH-29" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="830" y="830" />
-              <mxPoint x="950" y="830" />
-            </Array>
-          </mxGeometry>
+        <mxCell id="hla-e7" edge="1" parent="1" source="hla-row5-cache" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=9;align=center;" target="hla-data-redis" value="GET / PUT ciphertext&#xa;(cache-aside)">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-46" value="Config" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" parent="gPxJ6dk6Sm1LYoOYOHQH-45" vertex="1" connectable="0">
-          <mxGeometry x="-0.2" relative="1" as="geometry">
-            <mxPoint as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-47" value="Legend" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;startSize=20" parent="1" vertex="1">
-          <mxGeometry x="130" y="670" width="180" height="140" as="geometry" />
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-48" value="Java 25 / Spring Boot" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#d5e8d4;strokeColor=#82b366;" parent="gPxJ6dk6Sm1LYoOYOHQH-47" vertex="1">
-          <mxGeometry x="10" y="30" width="160" height="20" as="geometry" />
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-49" value="Security Components" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#f8cecc;strokeColor=#b85450;" parent="gPxJ6dk6Sm1LYoOYOHQH-47" vertex="1">
-          <mxGeometry x="10" y="55" width="160" height="20" as="geometry" />
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-50" value="Database / Storage" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="gPxJ6dk6Sm1LYoOYOHQH-47" vertex="1">
-          <mxGeometry x="10" y="80" width="160" height="20" as="geometry" />
-        </mxCell>
-        <mxCell id="gPxJ6dk6Sm1LYoOYOHQH-51" value="Config / Secrets Mgmt" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="gPxJ6dk6Sm1LYoOYOHQH-47" vertex="1">
-          <mxGeometry x="10" y="105" width="160" height="20" as="geometry" />
-        </mxCell>
-        <mxCell id="07VzlkhY_WpQYHfYsw3e-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" target="gPxJ6dk6Sm1LYoOYOHQH-7">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="280" y="553" />
-              <mxPoint x="336" y="553" />
-            </Array>
-            <mxPoint x="280" y="553" as="sourcePoint" />
-            <mxPoint x="610" y="510" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="07VzlkhY_WpQYHfYsw3e-2" value="Auth" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" vertex="1" connectable="0" parent="07VzlkhY_WpQYHfYsw3e-1">
-          <mxGeometry x="0.1" relative="1" as="geometry">
-            <mxPoint x="-21" y="-3" as="offset" />
-          </mxGeometry>
+        <mxCell id="hla-e8" edge="1" parent="1" source="hla-row5-ratelimit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=9;align=center;" target="hla-data-pg" value="JDBC: entities, audit partitions,&#xa;rate-limit buckets, ShedLock">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

@@ -1,0 +1,48 @@
+meta {
+  name: Upload with missing file part
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: 4a1f8c5071de06cc2542958aa773881595cf2785251863b77235cb819429bd14
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a request with no file part", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().errorCode).to.equal('INVALID_REQUEST');
+  });
+}
+
+docs {
+  Verified against the running service: this returns 400 INVALID_REQUEST ("Required part 'file' is not present"),
+  not MISSING_FILE. Spring's own multipart resolver throws MissingServletRequestPartException when a required part
+  is absent, which is caught by GlobalExceptionHandler's generic ErrorResponse handling before the controller body
+  (and therefore ValidationUtil.validateFileNotEmpty, which throws MISSING_FILE) ever runs. MISSING_FILE appears to
+  be unreachable dead code: a present-but-empty file would fail the PDF magic-number check first (which runs before
+  the not-empty check in validateFileUploadInputs), and a genuinely absent file never reaches the method at all.
+}

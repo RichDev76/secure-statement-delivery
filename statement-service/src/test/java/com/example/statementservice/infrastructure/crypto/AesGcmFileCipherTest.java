@@ -54,8 +54,7 @@ class AesGcmFileCipherTest {
 
         // When
         cipher.encrypt(new ByteArrayInputStream(plaintext), ciphertextBytes, iv, dek);
-        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()), dek)
-                .readAllBytes();
+        var decrypted = cipher.decrypt(ciphertextBytes.toByteArray(), dek);
 
         // Then
         assertThat(decrypted).isEqualTo(plaintext);
@@ -70,8 +69,7 @@ class AesGcmFileCipherTest {
 
         // When
         cipher.encrypt(new ByteArrayInputStream(new byte[0]), ciphertextBytes, iv, dek);
-        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()), dek)
-                .readAllBytes();
+        var decrypted = cipher.decrypt(ciphertextBytes.toByteArray(), dek);
 
         // Then
         assertThat(decrypted).isEmpty();
@@ -88,23 +86,33 @@ class AesGcmFileCipherTest {
 
         // When
         cipher.encrypt(new ByteArrayInputStream(plaintext), ciphertextBytes, iv, dek);
-        var decrypted = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()), dek)
-                .readAllBytes();
+        var decrypted = cipher.decrypt(ciphertextBytes.toByteArray(), dek);
 
         // Then
         assertThat(decrypted).isEqualTo(plaintext);
     }
 
     @Test
-    void GivenCiphertextShorterThanInitializationVector_WhenDecrypting_ThenIOExceptionIsThrown() {
-        var tooShort = new ByteArrayInputStream(new byte[] {1, 2, 3});
+    void GivenCiphertextShorterThanInitializationVector_WhenDecrypting_ThenThrowsFileCipherException() {
+        // Given
+        var tooShort = new byte[] {1, 2, 3};
+
+        // When / Then
         assertThatThrownBy(() -> cipher.decrypt(tooShort, cipher.generateDek()))
-                .isInstanceOf(IOException.class)
+                .isInstanceOf(FileCipherException.class)
                 .hasMessageContaining("initialization vector");
     }
 
     @Test
-    void GivenCorruptedCiphertext_WhenDecryptingAndReading_ThenIOExceptionIsThrown() throws IOException {
+    void GivenNullCiphertext_WhenDecrypting_ThenThrowsFileCipherException() {
+        // When / Then
+        assertThatThrownBy(() -> cipher.decrypt(null, cipher.generateDek()))
+                .isInstanceOf(FileCipherException.class)
+                .hasMessageContaining("initialization vector");
+    }
+
+    @Test
+    void GivenTamperedCiphertextByte_WhenDecrypting_ThenThrowsFileCipherException() throws IOException {
         // Given
         var iv = cipher.generateInitializationVector();
         var dek = cipher.generateDek();
@@ -113,15 +121,15 @@ class AesGcmFileCipherTest {
         var corrupted = ciphertextBytes.toByteArray();
         corrupted[corrupted.length - 1] ^= 0xFF;
 
-        // When
-        var decryptStream = cipher.decrypt(new ByteArrayInputStream(corrupted), dek);
-
-        // Then
-        assertThatThrownBy(decryptStream::readAllBytes).isInstanceOf(IOException.class);
+        // When / Then: the GCM tag check must fail eagerly, before any plaintext is exposed
+        assertThatThrownBy(() -> cipher.decrypt(corrupted, dek))
+                .isInstanceOf(FileCipherException.class)
+                .hasMessageContaining("integrity");
     }
 
     @Test
-    void GivenFileEncryptedWithOneDek_WhenDecryptingWithDifferentDek_ThenIOExceptionIsThrown() throws IOException {
+    void GivenFileEncryptedWithOneDek_WhenDecryptingWithDifferentDek_ThenThrowsFileCipherException()
+            throws IOException {
         // Given
         var iv = cipher.generateInitializationVector();
         var dek = cipher.generateDek();
@@ -129,11 +137,10 @@ class AesGcmFileCipherTest {
         var ciphertextBytes = new ByteArrayOutputStream();
         cipher.encrypt(new ByteArrayInputStream("some data".getBytes()), ciphertextBytes, iv, dek);
 
-        // When
-        var decryptStream = cipher.decrypt(new ByteArrayInputStream(ciphertextBytes.toByteArray()), otherDek);
-
-        // Then
-        assertThatThrownBy(decryptStream::readAllBytes).isInstanceOf(IOException.class);
+        // When / Then
+        assertThatThrownBy(() -> cipher.decrypt(ciphertextBytes.toByteArray(), otherDek))
+                .isInstanceOf(FileCipherException.class)
+                .hasMessageContaining("integrity");
     }
 
     @Test

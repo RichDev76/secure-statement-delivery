@@ -1,0 +1,42 @@
+meta {
+  name: Retrieve audit logs with wrong role
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/audit/logs?page=0&size=50
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 0
+  size: 50
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{CONSUMER_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a consumer token that lacks the AuditLogsSearch role", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().errorCode).to.equal('ACCESS_DENIED');
+  });
+}
+
+docs {
+  Confirm against the Keycloak realm config that the consumer client indeed lacks ROLE_AuditLogsSearch if this
+  assertion ever fails.
+}

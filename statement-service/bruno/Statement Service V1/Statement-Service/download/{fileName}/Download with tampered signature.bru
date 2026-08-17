@@ -1,0 +1,42 @@
+meta {
+  name: Download with tampered signature
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/download/:fileName?expires={{lastExpires}}&linkId={{lastLinkId}}&signature=tampered-signature-value
+  body: none
+  auth: none
+}
+
+params:query {
+  expires: {{lastExpires}}
+  linkId: {{lastLinkId}}
+  signature: tampered-signature-value
+}
+
+params:path {
+  fileName: {{lastFileName}}
+}
+
+headers {
+  Accept: application/octet-stream
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a signature that doesn't verify", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().errorCode).to.equal('INVALID_SIGNATURE');
+  });
+}
+
+docs {
+  Reuses the real expires/linkId/fileName from the last "Get signed download link" call but overrides the
+  signature with garbage - the HMAC check fails regardless of whether the other params are individually valid.
+}

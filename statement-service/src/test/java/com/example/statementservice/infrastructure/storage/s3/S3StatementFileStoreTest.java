@@ -186,6 +186,22 @@ class S3StatementFileStoreTest {
     }
 
     @Test
+    void GivenStorageIsUnreachable_WhenOpening_ThenStatementStorageUnavailableExceptionIsThrown() {
+        // Given: a non-NoSuchKey S3 failure during GetObject is an outage, not a decryption
+        // problem - it must surface as storage-unavailable, mirroring exists() (ADR 0021).
+        var failure = S3Exception.builder()
+                .statusCode(503)
+                .message("service unavailable")
+                .build();
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenThrow(failure);
+
+        // When / Then
+        assertThatThrownBy(() -> fileStore.open("statements/abc123/2026/07/some-id.pdf.enc"))
+                .isInstanceOf(StatementStorageUnavailableException.class)
+                .hasCause(failure);
+    }
+
+    @Test
     void GivenReferenceExists_WhenCheckingExistence_ThenTrueIsReturned() {
         // Given
         when(s3Client.headObject(any(HeadObjectRequest.class)))

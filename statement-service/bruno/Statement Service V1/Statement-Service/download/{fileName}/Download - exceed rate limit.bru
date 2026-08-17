@@ -1,0 +1,64 @@
+meta {
+  name: Download - exceed rate limit
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/download/:fileName?expires={{lastExpires}}&linkId={{lastLinkId}}&signature={{lastSignature}}
+  body: none
+  auth: none
+}
+
+params:query {
+  expires: {{lastExpires}}
+  linkId: {{lastLinkId}}
+  signature: {{lastSignature}}
+}
+
+params:path {
+  fileName: {{lastFileName}}
+}
+
+headers {
+  Accept: application/octet-stream
+}
+
+script:pre-request {
+  const attempt = Number(bru.getEnvVar('rateLimitAttempt') || '0');
+  if (attempt === 0 || attempt >= 11) {
+    await bru.runRequest('Statement-Service/{statementId}/Get signed download link by statement id');
+    bru.setEnvVar('rateLimitAttempt', '0');
+  }
+  bru.setEnvVar('rateLimitAttempt', String(Number(bru.getEnvVar('rateLimitAttempt')) + 1));
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("the 11th request within a minute is rate limited", function () {
+    const attempt = Number(bru.getEnvVar('rateLimitAttempt'));
+    if (attempt > 10) {
+      expect(res.getStatus()).to.equal(429);
+      expect(res.getBody().errorCode).to.equal('RATE_LIMITED');
+      expect(res.getHeader('retry-after')).to.equal('60');
+    }
+  });
+}
+
+docs {
+  STATEFUL, TIME-SENSITIVE, self-contained: click Send on THIS request 11 times IN QUICK SUCCESSION (or
+  --iteration-count 11). statement.signed-link.rate-limit-per-minute is 10, and the bucket refills on its own
+  schedule - if you send slowly enough for it to refill between clicks, you will legitimately never see a 429;
+  that's the rate limiter working correctly, not a broken assertion.
+
+  The pre-request script mints its own fresh link on attempt 1 of each 11-attempt cycle, so it's isolated from
+  sibling requests. The rate limiter is checked before signature/redemption validation (deliberately, to throttle
+  signature-guessing floods too), so it counts every request bearing this linkId regardless of whether the link
+  itself is still redemption-eligible - attempts 4-10 returning 404 LINK_EXPIRED (redemption cap of 3 already hit)
+  still consume rate-limit tokens, so the 11th request reliably hits 429 either way. Only the 11th+ attempt is
+  asserted; running this once as part of a plain `bru run -r` just exercises attempt 1 (a clean 200).
+}

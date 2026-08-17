@@ -77,8 +77,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should return CREATED status with upload response on success")
-    void uploadStatement_Success() {
+    void GivenValidUpload_WhenUploadStatement_ThenReturnsCreatedWithResponse() {
 
         when(statementUploadService.upload(
                         eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any()))
@@ -101,8 +100,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should pass all parameters to service")
-    void uploadStatement_PassesAllParameters() {
+    void GivenUploadRequest_WhenUploadStatement_ThenAllParametersReachService() {
 
         when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
@@ -115,8 +113,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should propagate service exceptions")
-    void uploadStatement_ServiceException() {
+    void GivenServiceThrows_WhenUploadStatement_ThenExceptionPropagates() {
 
         when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenThrow(new RuntimeException("Service error"));
@@ -131,8 +128,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should handle different file types")
-    void uploadStatement_DifferentFileTypes() {
+    void GivenDifferentFileContents_WhenUploadStatement_ThenEachIsDelegatedToService() {
 
         MultipartFile largeFile =
                 new MockMultipartFile("file", "large-statement.pdf", "application/pdf", new byte[10000]);
@@ -163,8 +159,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should handle various account numbers")
-    void uploadStatement_VariousAccountNumbers() {
+    void GivenBoundaryAccountNumbers_WhenUploadStatement_ThenEachIsDelegatedToService() {
 
         String minAccountNumber = "123456789"; // 9 digits
         String maxAccountNumber = "123456789012345"; // 15 digits
@@ -183,8 +178,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should handle various date formats")
-    void uploadStatement_VariousDates() {
+    void GivenPastAndFutureDates_WhenUploadStatement_ThenEachIsDelegatedToService() {
 
         String pastDate = "2020-01-01";
         String futureDate = "2025-12-31";
@@ -203,8 +197,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should call mapper with correct DTO")
-    void uploadStatement_MapperCalledWithCorrectDto() {
+    void GivenSuccessfulUpload_WhenUploadStatement_ThenMapperReceivesServiceDto() {
 
         when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
@@ -216,8 +209,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should return response with all fields populated")
-    void uploadStatement_ResponseFieldsPopulated() {
+    void GivenSuccessfulUpload_WhenUploadStatement_ThenResponseFieldsArePopulated() {
 
         UUID expectedId = UUID.randomUUID();
         OffsetDateTime expectedTime = OffsetDateTime.now();
@@ -252,8 +244,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should handle mapper exception")
-    void uploadStatement_MapperException() {
+    void GivenMapperThrows_WhenUploadStatement_ThenExceptionPropagates() {
 
         when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);
@@ -270,8 +261,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should handle empty file name")
-    void uploadStatement_EmptyFileName() {
+    void GivenFileWithoutName_WhenUploadStatement_ThenUploadStillSucceeds() {
 
         MultipartFile fileWithoutName = new MockMultipartFile("file", "", "application/pdf", new byte[100]);
 
@@ -289,8 +279,7 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should maintain status code as CREATED for all successful uploads")
-    void uploadStatement_AlwaysReturnsCreatedStatus() {
+    void GivenRepeatedSuccessfulUploads_WhenUploadStatement_ThenStatusIsAlwaysCreated() {
 
         when(statementUploadService.upload(anyString(), any(), anyString(), anyString(), any()))
                 .thenReturn(testDto);

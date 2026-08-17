@@ -1,0 +1,47 @@
+meta {
+  name: Upload with wrong content type
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: 4a1f8c5071de06cc2542958aa773881595cf2785251863b77235cb819429bd14
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(fixtures/statement1.pdf) @contentType(text/plain)
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a file part declared with a non-PDF content type", function () {
+    expect(res.getStatus()).to.equal(415);
+    expect(res.getHeader('content-type')).to.include('application/problem+json');
+    expect(res.getBody().errorCode).to.equal('UNSUPPORTED_MEDIA_TYPE');
+  });
+}
+
+docs {
+  Same valid PDF bytes as the happy path (passes the magic-number check), but the multipart part's declared
+  content-type is overridden to text/plain — the content-type check runs after the magic-number check and before
+  the digest check, so this is a clean 415, not a 400.
+}

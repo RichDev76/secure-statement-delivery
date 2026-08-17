@@ -13,7 +13,7 @@
         APP_DB_USER: ${APP_DB_USER}
         APP_DB_PASSWORD: ${APP_DB_PASSWORD}
       volumes:
-        - db-data:/var/lib/postgresql/data
+        - db-data:/var/lib/postgresql
         - ./db/init:/docker-entrypoint-initdb.d:ro
       healthcheck:
         test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -q || exit 1"]

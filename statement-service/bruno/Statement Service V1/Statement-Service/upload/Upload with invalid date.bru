@@ -1,0 +1,45 @@
+meta {
+  name: Upload with invalid date
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: 4a1f8c5071de06cc2542958aa773881595cf2785251863b77235cb819429bd14
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(fixtures/statement1.pdf) @contentType(application/pdf)
+  accountNumber: 123456789
+  date: 2025-13-45
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a date that doesn't parse", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getHeader('content-type')).to.include('application/problem+json');
+    expect(res.getBody().errorCode).to.equal('INVALID_DATE');
+  });
+}
+
+docs {
+  date matches the YYYY-MM-DD shape but "2025-13-45" isn't a real calendar date, so LocalDate.parse throws.
+}

@@ -1,0 +1,54 @@
+meta {
+  name: Search statements by account number and date range
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/search?accountNumber=123456789&startDate=2025-11-07&endDate=2025-11-09&page=0&size=50&sort=uploadedAt,desc
+  body: none
+  auth: bearer
+}
+
+params:query {
+  accountNumber: 123456789
+  startDate: 2025-11-07
+  endDate: 2025-11-09
+  page: 0
+  size: 50
+  sort: uploadedAt,desc
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{CONSUMER_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("returns a page of statements without download links", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body).to.have.property('content');
+    expect(body.content).to.be.an('array');
+  });
+}
+
+docs {
+  Return a page of statements for a given account number filtered by date range. Results are ordered by
+  `uploadedAt` descending. Note: despite the OpenAPI contract still documenting 404/410 `LINK_EXPIRED` on this
+  operation, the spec itself flags those as dead/historical with no current code path (scheduled for removal in
+  v2) — do not add assertions expecting them.
+
+  No "wrong role" negative case exists for this endpoint either: per infra/keycloak/realms/statement-service-
+  realm.json, the consumer client carries Search (realmRoles: Search, GenerateSignedLink) and the admin client
+  carries every role, so neither available client lacks Search.
+}

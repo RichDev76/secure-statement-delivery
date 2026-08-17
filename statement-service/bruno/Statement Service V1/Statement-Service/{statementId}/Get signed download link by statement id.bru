@@ -1,0 +1,73 @@
+meta {
+  name: Get signed download link by statement id
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/link/:statementId
+  body: none
+  auth: bearer
+}
+
+params:path {
+  statementId: {{lastStatementId}}
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.downloadLink) {
+    const [path, query] = res.body.downloadLink.split('?');
+    bru.setEnvVar('lastFileName', path.split('/').pop());
+    const params = {};
+    query.split('&').forEach((pair) => {
+      const [key, value] = pair.split('=');
+      params[key] = decodeURIComponent(value);
+    });
+    bru.setEnvVar('lastExpires', params.expires);
+    bru.setEnvVar('lastLinkId', params.linkId);
+    bru.setEnvVar('lastSignature', params.signature);
+  }
+}
+
+tests {
+  test("returns statement summary with a signed download link", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body).to.have.property('statementId');
+    expect(body).to.have.property('downloadLink');
+    expect(body.downloadLink).to.be.a('string').and.not.empty;
+  });
+}
+
+docs {
+  Creates and returns a time-limited signed download link for a statement (endpoint `getDownloadSignedLinkById`,
+  `GET /link/{statementId}`). Despite the folder name, this does not return statement metadata alone — it always
+  generates a fresh signed link, so calling it twice yields two independently valid/redeemable links.
+
+  Uses `{{lastStatementId}}`, set by "Upload PDF statement" — run that request first (or run the whole collection
+  as a folder) for this to have a real id to look up. On success, stores `lastFileName`/`lastExpires`/`lastLinkId`/
+  `lastSignature` parsed from the returned `downloadLink`, so "Download statement PDF using signed URL" can chain
+  off this response instead of using a static, eventually-stale fixture.
+
+  Note: if signed-link generation itself fails internally, the service still returns 200 with `downloadLink` absent
+  (logged as `LINK_GENERATION_FAILED` in the audit trail) rather than an error — this is intentional fail-open
+  behavior, not a bug, and there is currently no distinct Bruno-visible signal for it.
+
+  No "wrong role" negative case exists for this endpoint: per infra/keycloak/realms/statement-service-realm.json,
+  the consumer client already carries GenerateSignedLink (realmRoles: Search, GenerateSignedLink) and the admin
+  client carries every role, so neither of the two available service-account clients can produce a 403 here.
+}

@@ -1,0 +1,40 @@
+meta {
+  name: Get signed link for unknown statement id
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/link/:statementId
+  body: none
+  auth: bearer
+}
+
+params:path {
+  statementId: 00000000-0000-0000-0000-000000000000
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("returns 404 for a statement id that doesn't exist", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().errorCode).to.equal('STATEMENT_NOT_FOUND');
+  });
+}
+
+docs {
+  A well-formed but non-existent UUID.
+}

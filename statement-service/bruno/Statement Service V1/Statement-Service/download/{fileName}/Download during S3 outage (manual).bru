@@ -1,0 +1,53 @@
+meta {
+  name: Download during S3 outage (manual)
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/download/:fileName?expires={{lastExpires}}&linkId={{lastLinkId}}&signature={{lastSignature}}
+  body: none
+  auth: none
+}
+
+params:query {
+  expires: {{lastExpires}}
+  linkId: {{lastLinkId}}
+  signature: {{lastSignature}}
+}
+
+params:path {
+  fileName: {{lastFileName}}
+}
+
+headers {
+  Accept: application/octet-stream
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("returns 503 when the object store is unreachable", function () {
+    expect(res.getStatus()).to.equal(503);
+    expect(res.getBody().errorCode).to.equal('STORAGE_UNAVAILABLE');
+    expect(res.getHeader('retry-after')).to.equal('30');
+  });
+}
+
+docs {
+  MANUAL RUNBOOK - not safe to run unattended in CI. Only the S3-outage-during-download path is currently proven
+  by mocked unit tests (DownloadServiceTest), never against the real docker-compose stack. Steps:
+
+  1. `docker compose up -d` the full stack and run Upload -> Get signed download link to mint a FRESH link
+     immediately before step 2 - do not reuse a link any sibling request in this folder has already touched (the
+     server's 3-max-redemption count is shared and does not reset between requests; running the whole folder
+     back-to-back will otherwise get a false 404 LINK_EXPIRED here instead of the 503 this request is meant to
+     prove, as verified against the running service).
+  2. `docker compose stop floci` (the S3-compatible object store container) while the link is still within its
+     3-minute expiry window.
+  3. Send this request - expect 503 STORAGE_UNAVAILABLE with Retry-After: 30.
+  4. `docker compose start floci` to restore the stack afterwards.
+}

@@ -1,0 +1,45 @@
+meta {
+  name: Search with no matches
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/search?accountNumber=999999999&startDate=1999-01-01&endDate=1999-01-02&page=0&size=50
+  body: none
+  auth: bearer
+}
+
+params:query {
+  accountNumber: 999999999
+  startDate: 1999-01-01
+  endDate: 1999-01-02
+  page: 0
+  size: 50
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{CONSUMER_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("returns 200 with an empty page when nothing matches", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().content).to.be.an('array').that.is.empty;
+  });
+}
+
+docs {
+  An account number/date range unlikely to have any seeded data - proves "no results" is a normal empty page, not
+  a 404.
+}

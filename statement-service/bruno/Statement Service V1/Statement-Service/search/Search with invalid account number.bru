@@ -1,0 +1,47 @@
+meta {
+  name: Search with invalid account number
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/search?accountNumber=abc&startDate=2025-11-07&endDate=2025-11-09&page=0&size=50
+  body: none
+  auth: bearer
+}
+
+params:query {
+  accountNumber: abc
+  startDate: 2025-11-07
+  endDate: 2025-11-09
+  page: 0
+  size: 50
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{CONSUMER_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects an account number that doesn't match the pattern", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().errorCode).to.equal('INVALID_INPUT');
+  });
+}
+
+docs {
+  accountNumber must match ^[0-9]{9,15}$ per the generated @Pattern constraint on the controller parameter -
+  violations are jakarta bean-validation ConstraintViolationExceptions, handled generically by
+  GlobalExceptionHandler as 400 INVALID_INPUT (this is a different code path/errorCode than the
+  INVALID_SEARCH_PARAMETERS used for the startDate-after-endDate case in the sibling request).
+}

@@ -1,0 +1,33 @@
+meta {
+  name: Retrieve audit logs with no auth token
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/audit/logs?page=0&size=50
+  body: none
+  auth: none
+}
+
+params:query {
+  page: 0
+  size: 50
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects an unauthenticated request", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().errorCode).to.equal('UNAUTHENTICATED');
+  });
+}

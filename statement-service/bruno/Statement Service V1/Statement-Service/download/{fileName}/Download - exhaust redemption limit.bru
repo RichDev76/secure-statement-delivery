@@ -1,0 +1,63 @@
+meta {
+  name: Download - exhaust redemption limit
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/download/:fileName?expires={{lastExpires}}&linkId={{lastLinkId}}&signature={{lastSignature}}
+  body: none
+  auth: none
+}
+
+params:query {
+  expires: {{lastExpires}}
+  linkId: {{lastLinkId}}
+  signature: {{lastSignature}}
+}
+
+params:path {
+  fileName: {{lastFileName}}
+}
+
+headers {
+  Accept: application/octet-stream
+}
+
+script:pre-request {
+  const attempt = Number(bru.getEnvVar('redemptionAttempt') || '0');
+  if (attempt === 0 || attempt >= 4) {
+    await bru.runRequest('Statement-Service/{statementId}/Get signed download link by statement id');
+    bru.setEnvVar('redemptionAttempt', '0');
+  }
+  bru.setEnvVar('redemptionAttempt', String(Number(bru.getEnvVar('redemptionAttempt')) + 1));
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("redemption count is bounded at maxRedemptions (3)", function () {
+    const attempt = Number(bru.getEnvVar('redemptionAttempt'));
+    if (attempt <= 3) {
+      expect(res.getStatus()).to.equal(200);
+    } else {
+      expect(res.getStatus()).to.equal(404);
+      expect(res.getBody().errorCode).to.equal('LINK_EXPIRED');
+    }
+  });
+}
+
+docs {
+  STATEFUL, self-contained: click Send on THIS request 4 times in a row (or run with --iteration-count 4).
+  statement.signed-link.max-redemptions is 3, so attempts 1-3 succeed (200) and attempt 4 returns 404 LINK_EXPIRED -
+  by design, a redemption-exhausted link is deliberately indistinguishable from a naturally expired one, so don't
+  expect a distinct errorCode here.
+
+  The pre-request script mints its own fresh link (via bru.runRequest) on attempt 1 of each 4-attempt cycle, so it
+  no longer depends on {{lastLinkId}} being untouched by sibling requests - it owns its own link's full redemption
+  lifecycle. Running it only once as part of a plain `bru run -r` just exercises attempt 1 (a clean 200 against a
+  brand new link) rather than the full boundary; run it 4x explicitly (--iteration-count 4) to see the 404 too.
+}

@@ -1,0 +1,52 @@
+meta {
+  name: Download with expired link
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/download/:fileName?expires={{lastExpires}}&linkId={{lastLinkId}}&signature={{lastSignature}}
+  body: none
+  auth: none
+}
+
+params:query {
+  expires: {{lastExpires}}
+  linkId: {{lastLinkId}}
+  signature: {{lastSignature}}
+}
+
+params:path {
+  fileName: {{lastFileName}}
+}
+
+headers {
+  Accept: application/octet-stream
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+script:pre-request {
+  await bru.runRequest('Statement-Service/{statementId}/Get signed download link by statement id');
+  await bru.sleep(185000);
+}
+
+tests {
+  test("rejects a link past its expiry window", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody().errorCode).to.equal('LINK_EXPIRED');
+  });
+}
+
+docs {
+  SLOW (~185s): self-contained and safe to include in an unattended `bru run -r` pass, but adds real wall-clock
+  time. The pre-request script mints its OWN fresh link (via bru.runRequest, isolated from whatever sibling
+  requests in this folder have already done to {{lastLinkId}}) and then bru.sleep()s past
+  statement.signed-link.expiry (3 minutes in local/develop config) before the actual GET fires - so this is a real,
+  verified expiry, not a race against other requests' redemption counts.
+
+  If you don't want the wait in a given run, skip this specific request rather than running the whole folder.
+}

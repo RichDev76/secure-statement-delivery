@@ -1,0 +1,37 @@
+meta {
+  name: Get signed link with no auth token
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/link/:statementId
+  body: none
+  auth: none
+}
+
+params:path {
+  statementId: {{lastStatementId}}
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects an unauthenticated request", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().errorCode).to.equal('UNAUTHENTICATED');
+  });
+}
+
+docs {
+  No Authorization header. Uses {{lastStatementId}} but the id doesn't need to exist - the security filter
+  rejects before the controller looks it up.
+}

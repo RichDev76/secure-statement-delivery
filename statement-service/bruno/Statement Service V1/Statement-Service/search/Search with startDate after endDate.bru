@@ -1,0 +1,46 @@
+meta {
+  name: Search with startDate after endDate
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/search?accountNumber=123456789&startDate=2025-12-01&endDate=2025-11-01&page=0&size=50
+  body: none
+  auth: bearer
+}
+
+params:query {
+  accountNumber: 123456789
+  startDate: 2025-12-01
+  endDate: 2025-11-01
+  page: 0
+  size: 50
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{CONSUMER_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a date range where startDate is after endDate", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().errorCode).to.equal('INVALID_SEARCH_PARAMETERS');
+  });
+}
+
+docs {
+  Both dates are individually well-formed; StatementQueryService.searchPaged explicitly checks
+  startDate.isAfter(endDate) and throws InvalidInputException, mapped by SearchExceptionHandler to 400
+  INVALID_SEARCH_PARAMETERS.
+}

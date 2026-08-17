@@ -1,0 +1,41 @@
+meta {
+  name: Upload with no auth token
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  X-Message-Digest: 4a1f8c5071de06cc2542958aa773881595cf2785251863b77235cb819429bd14
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+body:multipart-form {
+  file: @file(fixtures/statement1.pdf) @contentType(application/pdf)
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects an unauthenticated upload", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().errorCode).to.equal('UNAUTHENTICATED');
+  });
+}
+
+docs {
+  No Authorization header at all. Security filter chain rejects before the controller/validation runs, so an
+  otherwise-valid body still returns 401.
+}

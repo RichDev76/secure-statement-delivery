@@ -1,0 +1,40 @@
+meta {
+  name: Get signed link with malformed statement id
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/link/:statementId
+  body: none
+  auth: bearer
+}
+
+params:path {
+  statementId: not-a-uuid
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a non-UUID statement id", function () {
+    expect(res.getStatus()).to.equal(400);
+  });
+}
+
+docs {
+  statementId is typed as a path UUID by the OpenAPI contract; a non-UUID value should fail request binding
+  before reaching the service layer.
+}

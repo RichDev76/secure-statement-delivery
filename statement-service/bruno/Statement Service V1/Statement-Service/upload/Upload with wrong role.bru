@@ -1,0 +1,45 @@
+meta {
+  name: Upload with wrong role
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: 4a1f8c5071de06cc2542958aa773881595cf2785251863b77235cb819429bd14
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+auth:bearer {
+  token: {{CONSUMER_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(fixtures/statement1.pdf) @contentType(application/pdf)
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a consumer token that lacks the Upload role", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().errorCode).to.equal('ACCESS_DENIED');
+  });
+}
+
+docs {
+  Authenticated as the consumer client, which does not carry ROLE_Upload. Confirm against the Keycloak realm
+  config that the consumer client indeed lacks this role if this assertion ever fails.
+}

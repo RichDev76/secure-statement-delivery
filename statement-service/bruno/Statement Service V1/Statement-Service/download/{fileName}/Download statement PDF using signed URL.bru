@@ -5,18 +5,19 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/download/:fileName?expires=1766332525&signature=Ckje3PnDndpErqsIy5FeO6laUomo_-a0n_-0z640DZM
+  url: {{baseUrl}}/download/:fileName?expires={{lastExpires}}&linkId={{lastLinkId}}&signature={{lastSignature}}
   body: none
   auth: none
 }
 
 params:query {
-  expires: 1766332525
-  signature: Ckje3PnDndpErqsIy5FeO6laUomo_-a0n_-0z640DZM
+  expires: {{lastExpires}}
+  linkId: {{lastLinkId}}
+  signature: {{lastSignature}}
 }
 
 params:path {
-  fileName: statement1.pdf
+  fileName: {{lastFileName}}
 }
 
 headers {
@@ -28,6 +29,22 @@ settings {
   timeout: 0
 }
 
+tests {
+  test("downloads the decrypted statement as a binary stream", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader('content-type')).to.include('application/octet-stream');
+  });
+}
+
 docs {
-  Download the encrypted statement PDF file using a filename-based signed URL with expires and signature parameters.
+  Download the encrypted statement PDF file using a filename-based signed URL. Requires `expires`, `linkId`, AND
+  `signature` query params — all three are validated server-side (`SignedLinkService.validate` cross-checks
+  `linkId` against the stored link even when the signature itself verifies).
+
+  `auth: none` is intentional, not an oversight: `/download/**` is whitelisted in `SecurityConfig` — the signed
+  URL (HMAC + expiry + bounded redemption count) is the sole authorization mechanism for this endpoint.
+
+  Chains off `{{lastFileName}}`/`{{lastExpires}}`/`{{lastLinkId}}`/`{{lastSignature}}`, set by "Get signed
+  download link by statement id" — run Upload -> Get signed download link -> Download in sequence (or run the
+  whole collection as a folder) for these to be populated with a real, currently-valid link.
 }

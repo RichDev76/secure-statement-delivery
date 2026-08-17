@@ -150,6 +150,18 @@ paths:
                 status: 415
                 detail: "Only application/pdf is supported"
                 errorCode: "UNSUPPORTED_MEDIA_TYPE"
+        '500':
+          description: Statement could not be persisted due to an unexpected server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/upload"
+                title: "Upload Failed"
+                status: 500
+                detail: "Failed to store the uploaded statement."
+                errorCode: "STATEMENT_UPLOAD_FAILED"
 
   /link/{statementId}:
     get:
@@ -288,6 +300,7 @@ paths:
       summary: Download statement PDF using signed URL
       description: Download the encrypted statement PDF file using a filename-based signed URL with expires and signature parameters.
       operationId: downloadStatementByFileName
+      security: []
       parameters:
         - $ref: '#/components/parameters/correlationIdHeader'
         - name: fileName

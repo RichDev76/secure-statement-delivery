@@ -1,0 +1,51 @@
+meta {
+  name: Upload with malformed digest header
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/upload
+  body: multipartForm
+  auth: bearer
+}
+
+headers {
+  X-Message-Digest: not-a-valid-hex-digest
+  Content-Type: multipart/form-data
+  Accept: application/json
+  x-correlation-id: {{$guid}}
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(fixtures/statement1.pdf) @contentType(application/pdf)
+  accountNumber: 123456789
+  date: 2025-11-07
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a digest header that isn't 64 hex characters", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getHeader('content-type')).to.include('application/problem+json');
+    expect(res.getBody().errorCode).to.equal('INVALID_INPUT');
+  });
+}
+
+docs {
+  Verified against the running service: this returns errorCode INVALID_INPUT, not INVALID_MESSAGE_DIGEST.
+  The generated AdminApi interface already carries @Pattern(regexp = "^[A-Fa-f0-9]{64}$") on the X-Message-Digest
+  header parameter itself, so a malformed digest is rejected by jakarta bean validation (ConstraintViolationException
+  -> GlobalExceptionHandler -> INVALID_INPUT) before the controller body - and therefore before
+  ValidationUtil.validateMessageDigest - ever runs. The format-check branch that throws InvalidMessageDigestException
+  (INVALID_MESSAGE_DIGEST) in ValidationUtil appears to be unreachable dead code via real HTTP requests; only the
+  digest-mismatch branch (see the sibling "Upload with digest mismatch" request) is actually exercised.
+}

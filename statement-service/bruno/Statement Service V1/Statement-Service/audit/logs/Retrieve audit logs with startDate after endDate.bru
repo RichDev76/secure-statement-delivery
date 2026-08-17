@@ -1,0 +1,39 @@
+meta {
+  name: Retrieve audit logs with startDate after endDate
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/audit/logs?startDate=2026-08-30&endDate=2026-08-01&page=0&size=50
+  body: none
+  auth: bearer
+}
+
+params:query {
+  startDate: 2026-08-30
+  endDate: 2026-08-01
+  page: 0
+  size: 50
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a date range where startDate is after endDate", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().errorCode).to.equal('INVALID_DATE');
+  });
+}

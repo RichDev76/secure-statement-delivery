@@ -1,0 +1,46 @@
+meta {
+  name: Retrieve audit logs with oversized page size
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/audit/logs?page=0&size=200
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 0
+  size: 200
+}
+
+headers {
+  x-correlation-id: {{$guid}}
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{ADMIN_ACCESS_TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+tests {
+  test("rejects a page size over the 100 cap", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().errorCode).to.equal('INVALID_INPUT');
+  });
+}
+
+docs {
+  Verified against the running service: size=200 returns 400 INVALID_INPUT ("must be less than or equal to 100"),
+  not a clamped 200. The generated AuditApi interface carries @Min(1) @Max(100) on the size parameter directly, so
+  bean validation rejects an oversized size before the controller body runs. AuditQueryService's own size-clamping
+  logic (covered by AuditQueryServiceTest at the unit level) appears to be unreachable dead code via real HTTP for
+  the upper bound - and by the same reasoning, its negative-page-normalized-to-0 branch is likely unreachable too,
+  since page also carries @Min(0) on the generated interface.
+}

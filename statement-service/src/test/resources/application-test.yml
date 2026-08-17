@@ -62,7 +62,7 @@ statement:
 
 security:
   endpoints:
-    admin:
+    upload:
       - method: POST
         pattern: /api/v1/statements/upload
     audit:

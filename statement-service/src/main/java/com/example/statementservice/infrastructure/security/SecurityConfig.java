@@ -57,7 +57,7 @@ public class SecurityConfig {
                         registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
                                 .permitAll();
                     }
-                    for (var group : groupByMethod(endpoints.getAdmin()).entrySet()) {
+                    for (var group : groupByMethod(endpoints.getUpload()).entrySet()) {
                         registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
                                 .hasRole(AppRole.UPLOAD.getRoleName());
                     }

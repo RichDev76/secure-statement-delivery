@@ -17,8 +17,8 @@ class SecurityEndpointsPropertiesTest {
             new ApplicationContextRunner().withUserConfiguration(TestConfig.class);
 
     private static final String[] VALID_PROPERTIES = {
-        "security.endpoints.admin[0].method=POST",
-        "security.endpoints.admin[0].pattern=/api/v1/statements/upload",
+        "security.endpoints.upload[0].method=POST",
+        "security.endpoints.upload[0].pattern=/api/v1/statements/upload",
         "security.endpoints.audit[0].method=GET",
         "security.endpoints.audit[0].pattern=/api/v1/statements/audit/logs",
         "security.endpoints.search[0].method=GET",
@@ -36,9 +36,9 @@ class SecurityEndpointsPropertiesTest {
         contextRunner.withPropertyValues(VALID_PROPERTIES).run(context -> {
             var properties = context.getBean(SecurityEndpointsProperties.class);
 
-            assertThat(properties.getAdmin()).hasSize(1);
-            assertThat(properties.getAdmin().get(0).getMethod()).isEqualTo("POST");
-            assertThat(properties.getAdmin().get(0).getPattern()).isEqualTo("/api/v1/statements/upload");
+            assertThat(properties.getUpload()).hasSize(1);
+            assertThat(properties.getUpload().get(0).getMethod()).isEqualTo("POST");
+            assertThat(properties.getUpload().get(0).getPattern()).isEqualTo("/api/v1/statements/upload");
 
             assertThat(properties.getAudit()).hasSize(1);
             assertThat(properties.getAudit().get(0).getMethod()).isEqualTo("GET");
@@ -57,12 +57,12 @@ class SecurityEndpointsPropertiesTest {
     }
 
     @Test
-    void GivenAdminGroupMissing_WhenContextBinds_ThenStartupFailsValidation() {
-        var propertiesWithoutAdmin = withoutLinesFor("admin");
+    void GivenUploadGroupMissing_WhenContextBinds_ThenStartupFailsValidation() {
+        var propertiesWithoutUpload = withoutLinesFor("upload");
 
-        contextRunner.withPropertyValues(propertiesWithoutAdmin).run(context -> {
+        contextRunner.withPropertyValues(propertiesWithoutUpload).run(context -> {
             assertThat(context).hasFailed();
-            assertThat(context.getStartupFailure()).hasStackTraceContaining("admin");
+            assertThat(context.getStartupFailure()).hasStackTraceContaining("upload");
         });
     }
 
@@ -79,7 +79,7 @@ class SecurityEndpointsPropertiesTest {
     @Test
     void GivenRuleWithBlankMethod_WhenContextBinds_ThenStartupFailsValidation() {
         var propertiesWithBlankMethod =
-                replace("security.endpoints.admin[0].method=POST", "security.endpoints.admin[0].method=");
+                replace("security.endpoints.upload[0].method=POST", "security.endpoints.upload[0].method=");
 
         contextRunner.withPropertyValues(propertiesWithBlankMethod).run(context -> {
             assertThat(context).hasFailed();
@@ -90,8 +90,8 @@ class SecurityEndpointsPropertiesTest {
     @Test
     void GivenRuleWithBlankPattern_WhenContextBinds_ThenStartupFailsValidation() {
         var propertiesWithBlankPattern = replace(
-                "security.endpoints.admin[0].pattern=/api/v1/statements/upload",
-                "security.endpoints.admin[0].pattern=");
+                "security.endpoints.upload[0].pattern=/api/v1/statements/upload",
+                "security.endpoints.upload[0].pattern=");
 
         contextRunner.withPropertyValues(propertiesWithBlankPattern).run(context -> {
             assertThat(context).hasFailed();

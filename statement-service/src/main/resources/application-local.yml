@@ -49,9 +49,6 @@ statement:
     download-path: /api/v1/statements/download/
     max-redemptions: 3
     rate-limit-per-minute: 10
-    # Pre-existing bug fixed alongside this same block: this "cleanup" section was nested under
-    # "audit" instead of "signed-link", so SignedLinkCleanupScheduler's
-    # ${statement.signed-link.cleanup.cron} placeholder never resolved against it in this profile.
     cleanup:
       enabled: true
       cron: "0 0/5 * * * *"
@@ -92,7 +89,7 @@ management:
 
 security:
   endpoints:
-    admin:
+    upload:
       - method: POST
         pattern: /api/v1/statements/upload
     audit:

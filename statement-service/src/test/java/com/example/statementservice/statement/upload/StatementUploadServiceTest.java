@@ -76,8 +76,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should successfully upload and audit statement")
-    void upload_Success() {
+    void GivenValidUpload_WhenUpload_ThenReturnsResponseAndRecordsSuccessAudit() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
@@ -98,8 +97,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should use 'admin' when performedBy is null")
-    void upload_NullPerformedBy() {
+    void GivenNullPerformedBy_WhenUpload_ThenAdminIsUsedAsActor() {
         RequestInfo infoWithNullUser = new RequestInfo("192.168.1.1", "Mozilla/5.0", null);
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
@@ -110,8 +108,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should validate all inputs before processing")
-    void upload_ValidatesInputs() {
+    void GivenUploadRequest_WhenUpload_ThenInputsAreValidatedBeforeProcessing() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
@@ -120,8 +117,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should throw exception when validation fails and audit the failure")
-    void upload_ValidationFails() {
+    void GivenValidationFailure_WhenUpload_ThenRethrowsAndRecordsFailureAudit() {
         doThrow(new InvalidMessageDigestException("Invalid digest"))
                 .when(validationUtil)
                 .validateFileUploadInputs(any(), any(), any());
@@ -224,8 +220,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should throw exception for invalid account number")
-    void upload_InvalidAccountNumber() {
+    void GivenInvalidAccountNumber_WhenUpload_ThenThrowsWithoutCallingStatementService() {
         doThrow(new InvalidAccountNumberException("Invalid account"))
                 .when(validationUtil)
                 .validateFileUploadInputs(any(), any(), any());
@@ -236,8 +231,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should throw exception for invalid date")
-    void upload_InvalidDate() {
+    void GivenInvalidDate_WhenUpload_ThenThrowsWithoutCallingStatementService() {
         doThrow(new InvalidDateException("Invalid date"))
                 .when(validationUtil)
                 .validateFileUploadInputs(any(), any(), any());
@@ -248,8 +242,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should include audit details with IP and user agent")
-    void upload_AuditDetailsIncluded() {
+    void GivenUploadRequest_WhenUpload_ThenAuditDetailsIncludeIpAndUserAgent() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
@@ -262,8 +255,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should record UPLOAD_SUCCESS action")
-    void upload_RecordsCorrectAction() {
+    void GivenSuccessfulUpload_WhenUpload_ThenRecordsUploadSuccessAction() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
@@ -279,8 +271,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should include statement ID in audit")
-    void upload_AuditIncludesStatementId() {
+    void GivenSuccessfulUpload_WhenUpload_ThenAuditIncludesStatementId() {
         UUID statementId = UUID.randomUUID();
         UploadResponseDto response = UploadResponseDto.builder()
                 .statementId(statementId)
@@ -296,8 +287,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should not fail if audit recording throws exception")
-    void upload_AuditFailureDoesNotAffectUpload() {
+    void GivenAuditRecordingThrows_WhenUpload_ThenUploadStillSucceeds() {
 
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
@@ -313,8 +303,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should parse date string to LocalDate")
-    void upload_ParsesDateCorrectly() {
+    void GivenIsoDateString_WhenUpload_ThenDateIsParsedToLocalDate() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
@@ -323,8 +312,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should pass all parameters to statementService")
-    void upload_PassesAllParameters() {
+    void GivenUploadRequest_WhenUpload_ThenAllParametersReachStatementService() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
@@ -339,8 +327,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should handle different user names")
-    void upload_DifferentUserNames() {
+    void GivenCustomPerformedBy_WhenUpload_ThenThatActorIsUsedThroughout() {
         RequestInfo customUser = new RequestInfo("10.0.0.1", "Chrome", "customUser");
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
@@ -351,8 +338,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should handle different IP addresses in audit")
-    void upload_DifferentIpAddresses() {
+    void GivenCustomClientIp_WhenUpload_ThenAuditDetailsCarryThatIp() {
         RequestInfo customInfo = new RequestInfo("203.0.113.1", "Safari", "user");
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
@@ -403,8 +389,7 @@ class StatementUploadServiceTest {
     }
 
     @Test
-    @DisplayName("upload - should set signedLinkId to null in audit")
-    void upload_SignedLinkIdIsNull() {
+    void GivenUploadAudit_WhenUpload_ThenSignedLinkIdIsNull() {
         doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);

@@ -23,8 +23,7 @@ class StatementApiMapperTest {
     private final StatementApiMapper statementApiMapper = new StatementApiMapperImpl(new DateMapper());
 
     @Test
-    @DisplayName("toApi - should map all fields from DTO to API model")
-    void toApi_AllFields() {
+    void GivenDtoWithAllFields_WhenMappingToApi_ThenAllFieldsAreMapped() {
         var statementId = UUID.randomUUID();
         var statementDate = LocalDate.of(2024, 1, 15);
         var uploadedAt = OffsetDateTime.now();
@@ -52,15 +51,13 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle null DTO")
-    void toApi_NullDto() {
+    void GivenNullDto_WhenMappingToApi_ThenReturnsNull() {
         var result = statementApiMapper.toApi(null);
         assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("toApi - should handle DTO with null fields")
-    void toApi_NullFields() {
+    void GivenDtoWithNullFields_WhenMappingToApi_ThenNullsArePreserved() {
         var dto = new StatementDto();
         dto.setStatementId(UUID.randomUUID());
         dto.setFileName("test.pdf");
@@ -76,8 +73,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should convert LocalDate to String")
-    void toApi_DateConversion() {
+    void GivenStatementDate_WhenMappingToApi_ThenDateIsConvertedToString() {
         var dto = new StatementDto();
         dto.setStatementId(UUID.randomUUID());
         dto.setStatementDate(LocalDate.of(2024, 12, 25));
@@ -87,8 +83,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle null statement date")
-    void toApi_NullStatementDate() {
+    void GivenNullStatementDate_WhenMappingToApi_ThenDateIsNull() {
         var dto = new StatementDto();
         dto.setStatementId(UUID.randomUUID());
         dto.setStatementDate(null);
@@ -98,8 +93,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle different date formats")
-    void toApi_DifferentDates() {
+    void GivenDifferentDates_WhenMappingToApi_ThenEachDateIsMapped() {
         var dto1 = createStatementDto(LocalDate.of(2024, 1, 1));
         var dto2 = createStatementDto(LocalDate.of(2024, 12, 31));
         var dto3 = createStatementDto(LocalDate.of(2024, 2, 29)); // Leap year
@@ -112,8 +106,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle zero file size")
-    void toApi_ZeroFileSize() {
+    void GivenZeroFileSize_WhenMappingToApi_ThenZeroIsMapped() {
         var dto = new StatementDto();
         dto.setStatementId(UUID.randomUUID());
         dto.setFileSize(0L);
@@ -123,8 +116,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle large file size")
-    void toApi_LargeFileSize() {
+    void GivenLargeFileSize_WhenMappingToApi_ThenExactSizeIsMapped() {
         var dto = new StatementDto();
         dto.setStatementId(UUID.randomUUID());
         dto.setFileSize(10_737_418_240L); // 10 GB
@@ -134,8 +126,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should preserve download link URI")
-    void toApi_DownloadLink() {
+    void GivenDownloadLink_WhenMappingToApi_ThenLinkIsMapped() {
         var downloadLink =
                 URI.create("https://example.com/api/v1/statements/download/file.pdf?expires=123&signature=abc");
         var dto = new StatementDto();
@@ -149,8 +140,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApis - should map list of DTOs to list of API models")
-    void toApis_MultipleItems() {
+    void GivenMultipleDtos_WhenMappingToApis_ThenAllItemsAreMapped() {
         var dto1 = createStatementDto(LocalDate.of(2024, 1, 1));
         dto1.setAccountNumber("ACC001");
         var dto2 = createStatementDto(LocalDate.of(2024, 2, 1));
@@ -169,23 +159,20 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApis - should handle null list")
-    void toApis_NullList() {
+    void GivenNullList_WhenMappingToApis_ThenReturnsNull() {
         List<StatementSummary> result = statementApiMapper.toApis(null);
         assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("toApis - should handle empty list")
-    void toApis_EmptyList() {
+    void GivenEmptyList_WhenMappingToApis_ThenReturnsEmptyList() {
         List<StatementDto> emptyList = Collections.emptyList();
         var result = statementApiMapper.toApis(emptyList);
         assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("toApis - should handle single item list")
-    void toApis_SingleItem() {
+    void GivenSingleDto_WhenMappingToApis_ThenOneItemIsMapped() {
         var dto = createStatementDto(LocalDate.of(2024, 6, 15));
         dto.setAccountNumber("ACC999");
         var dtos = Collections.singletonList(dto);
@@ -196,8 +183,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApis - should handle large list")
-    void toApis_LargeList() {
+    void GivenLargeList_WhenMappingToApis_ThenAllItemsAreMapped() {
         var dtos = new ArrayList<StatementDto>();
         for (int i = 0; i < 100; i++) {
             StatementDto dto = createStatementDto(LocalDate.of(2024, 1, 1).plusDays(i));
@@ -211,8 +197,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApis - should preserve all properties in mapped items")
-    void toApis_PreservesAllProperties() {
+    void GivenDtos_WhenMappingToApis_ThenAllPropertiesArePreserved() {
         var statementId = UUID.randomUUID();
         var date = LocalDate.of(2024, 7, 20);
         var uploadedAt = OffsetDateTime.now();
@@ -242,8 +227,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApis - should handle list with null elements")
-    void toApis_WithNullElements() {
+    void GivenListWithNullElements_WhenMappingToApis_ThenNullsAreMappedAsNull() {
         var dto1 = createStatementDto(LocalDate.of(2024, 1, 1));
         var dto2 = createStatementDto(LocalDate.of(2024, 2, 1));
         var dtos = Arrays.asList(dto1, null, dto2);
@@ -255,8 +239,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApis - should handle list with items having null dates")
-    void toApis_WithNullDates() {
+    void GivenListWithNullDates_WhenMappingToApis_ThenNullDatesArePreserved() {
         var dto1 = createStatementDto(LocalDate.of(2024, 1, 1));
         var dto2 = createStatementDto(null);
         var dto3 = createStatementDto(LocalDate.of(2024, 3, 1));
@@ -269,8 +252,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle special characters in file name")
-    void toApi_SpecialCharactersInFileName() {
+    void GivenSpecialCharacterFileName_WhenMappingToApi_ThenFileNameIsPreserved() {
         var dto = new StatementDto();
         dto.setStatementId(UUID.randomUUID());
         dto.setFileName("statement (copy) [2024].pdf");
@@ -279,8 +261,7 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle Unicode characters in account number")
-    void toApi_UnicodeInAccountNumber() {
+    void GivenUnicodeAccountNumber_WhenMappingToApi_ThenValueIsPreserved() {
         var dto = new StatementDto();
         dto.setStatementId(UUID.randomUUID());
         dto.setAccountNumber("账户123456");
@@ -290,16 +271,14 @@ class StatementApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle past dates")
-    void toApi_PastDates() {
+    void GivenPastDate_WhenMappingToApi_ThenDateIsMapped() {
         var dto = createStatementDto(LocalDate.of(2020, 1, 1));
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getDate()).isEqualTo("2020-01-01");
     }
 
     @Test
-    @DisplayName("toApi - should handle future dates")
-    void toApi_FutureDates() {
+    void GivenFutureDate_WhenMappingToApi_ThenDateIsMapped() {
         var dto = createStatementDto(LocalDate.of(2030, 12, 31));
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getDate()).isEqualTo("2030-12-31");

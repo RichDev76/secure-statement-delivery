@@ -311,6 +311,21 @@ curl -H "Authorization: Bearer $TOKEN" -X GET "http://localhost:8080/api/v1/stat
 
 ---
 
+### Tests & Coverage
+
+```bash
+cd statement-service
+mvn clean verify   # unit tests (Surefire) + integration tests (Failsafe/Testcontainers) + coverage report
+```
+
+Coverage is measured by JaCoCo across both unit and integration runs, excluding code
+generated from the OpenAPI contract. Current baseline: **93.0% line / 82.7% branch**
+(499 unit + 63 integration tests). HTML report: `statement-service/target/site/jacoco/index.html`.
+
+See `docs/TestCoverageGapAnalysis.html` for the coverage gap analysis behind these numbers.
+
+---
+
 ### Troubleshooting
 
 #### Keycloak Not Ready

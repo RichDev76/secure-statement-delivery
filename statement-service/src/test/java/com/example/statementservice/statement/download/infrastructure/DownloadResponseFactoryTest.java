@@ -34,8 +34,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should build OK response with proper headers and body")
-    void testBuild_OkOutcome() {
+    void GivenOkOutcome_WhenBuildingResponse_ThenReturnsOkWithHeadersAndBody() {
 
         var testData = "PDF content".getBytes();
         var inputStream = new ByteArrayInputStream(testData);
@@ -57,8 +56,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw DownloadRateLimitedException for RATE_LIMITED outcome")
-    void testBuild_RateLimitedOutcome() {
+    void GivenRateLimitedOutcome_WhenBuildingResponse_ThenThrowsDownloadRateLimitedException() {
 
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.RATE_LIMITED, Optional.empty());
@@ -68,8 +66,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw DownloadInvalidSignatureException for INVALID_SIGNATURE outcome")
-    void testBuild_InvalidSignatureOutcome() {
+    void GivenInvalidSignatureOutcome_WhenBuildingResponse_ThenThrowsDownloadInvalidSignatureException() {
 
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.INVALID_SIGNATURE, Optional.empty());
@@ -79,8 +76,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw DownloadLinkExpiredException for LINK_EXPIRED outcome")
-    void testBuild_LinkExpiredOutcome() {
+    void GivenLinkExpiredOutcome_WhenBuildingResponse_ThenThrowsDownloadLinkExpiredException() {
 
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.LINK_EXPIRED, Optional.empty());
@@ -90,8 +86,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw StatementNotFoundException for STATEMENT_NOT_FOUND outcome")
-    void testBuild_StatementNotFoundOutcome() {
+    void GivenStatementNotFoundOutcome_WhenBuildingResponse_ThenThrowsStatementNotFoundException() {
 
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.STATEMENT_NOT_FOUND, Optional.empty());
@@ -101,8 +96,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw DownloadFileMissingException for FILE_MISSING outcome")
-    void testBuild_FileMissingOutcome() {
+    void GivenFileMissingOutcome_WhenBuildingResponse_ThenThrowsDownloadFileMissingException() {
 
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
@@ -112,8 +106,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw DecryptionFailedException for DECRYPTION_FAILED outcome")
-    void testBuild_DecryptionFailedOutcome() {
+    void GivenDecryptionFailedOutcome_WhenBuildingResponse_ThenThrowsDecryptionFailedException() {
 
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.DECRYPTION_FAILED, Optional.empty());
@@ -121,8 +114,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should throw DownloadStorageUnavailableException for STORAGE_UNAVAILABLE outcome")
-    void testBuild_StorageUnavailableOutcome() {
+    void GivenStorageUnavailableOutcome_WhenBuildingResponse_ThenThrowsDownloadStorageUnavailableException() {
 
         DownloadService.DownloadStreamResult result =
                 new DownloadService.DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty());
@@ -132,8 +124,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should handle OK outcome with different file names")
-    void testBuild_OkOutcome_DifferentFileNames() {
+    void GivenDifferentFileNames_WhenBuildingOkResponse_ThenEachFileNameAppearsInHeaders() {
 
         var customFileName = "annual-report-2024.pdf";
         var inputStream = new ByteArrayInputStream("test".getBytes());
@@ -147,8 +138,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should handle OK outcome with file name containing special characters")
-    void testBuild_OkOutcome_SpecialCharactersInFileName() {
+    void GivenSpecialCharacterFileName_WhenBuildingOkResponse_ThenFileNameAppearsInHeaders() {
 
         var specialFileName = "statement-2023-01 (copy).pdf";
         var inputStream = new ByteArrayInputStream("data".getBytes());
@@ -162,8 +152,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should verify all required security headers are set for OK outcome")
-    void testBuild_OkOutcome_SecurityHeaders() {
+    void GivenOkOutcome_WhenBuildingResponse_ThenAllSecurityHeadersAreSet() {
 
         var inputStream = new ByteArrayInputStream("secure content".getBytes());
         DownloadService.DownloadStreamResult result =
@@ -180,8 +169,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should handle empty input stream for OK outcome")
-    void testBuild_OkOutcome_EmptyInputStream() {
+    void GivenEmptyInputStream_WhenBuildingOkResponse_ThenReturnsOkWithEmptyBody() {
 
         var emptyInputStream = new ByteArrayInputStream(new byte[0]);
         DownloadService.DownloadStreamResult result =
@@ -194,8 +182,7 @@ class DownloadResponseFactoryTest {
     }
 
     @Test
-    @DisplayName("Should set correct content type for OK outcome")
-    void testBuild_OkOutcome_ContentType() {
+    void GivenOkOutcome_WhenBuildingResponse_ThenContentTypeIsPdf() {
 
         var inputStream = new ByteArrayInputStream("content".getBytes());
         DownloadService.DownloadStreamResult result =

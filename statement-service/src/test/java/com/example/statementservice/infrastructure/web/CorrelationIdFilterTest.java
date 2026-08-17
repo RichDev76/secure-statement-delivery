@@ -18,7 +18,8 @@ class CorrelationIdFilterTest {
     private final CorrelationIdFilter filter = new CorrelationIdFilter();
 
     @Test
-    void generatesCorrelationIdWhenHeaderMissing() throws ServletException, IOException {
+    void GivenNoCorrelationIdHeader_WhenFiltering_ThenNewCorrelationIdIsGenerated()
+            throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -38,7 +39,7 @@ class CorrelationIdFilterTest {
     }
 
     @Test
-    void reusesExistingCorrelationIdHeader() throws ServletException, IOException {
+    void GivenCorrelationIdHeader_WhenFiltering_ThenExistingIdIsReused() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 

@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -105,6 +107,23 @@ class SecurityRoleMatrixIT extends AbstractIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Forbidden"))
                 .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    void GivenKeycloakShapedRealmAccessClaim_WhenCallingSearch_ThenProductionConverterGrantsAccess() throws Exception {
+        // Given: authorities derived by the real KeycloakRoleConverter from a realm_access
+        // claim, not injected directly - every other case here bypasses the converter.
+        var keycloakJwt = jwt().jwt(j -> j.claim("realm_access", Map.of("roles", List.of("Search"))))
+                .authorities(new KeycloakRoleConverter());
+
+        // When
+        var result = mockMvc.perform(get("/api/v1/statements/search").with(keycloakJwt))
+                .andReturn();
+
+        // Then
+        assertThat(result.getResponse().getStatus())
+                .as("the production role converter must grant access from realm_access.roles")
+                .isNotIn(401, 403);
     }
 
     @Test

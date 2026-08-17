@@ -16,8 +16,7 @@ class UploadResponseApiMapperTest {
     private final UploadResponseApiMapper uploadResponseApiMapper = new UploadResponseApiMapperImpl(new DateMapper());
 
     @Test
-    @DisplayName("toApi - should map all fields from DTO to API model")
-    void toApi_AllFields() {
+    void GivenDtoWithAllFields_WhenMappingToApi_ThenAllFieldsAreMapped() {
         var statementId = UUID.randomUUID();
         var uploadedAt = OffsetDateTime.now();
         var dto = UploadResponseDto.builder()
@@ -38,15 +37,13 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle null DTO")
-    void toApi_NullDto() {
+    void GivenNullDto_WhenMappingToApi_ThenReturnsNull() {
         var result = uploadResponseApiMapper.toApi(null);
         assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("toApi - should handle DTO with null fields")
-    void toApi_NullFields() {
+    void GivenDtoWithNullFields_WhenMappingToApi_ThenNullsArePreserved() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .fileName("test.pdf")
@@ -60,8 +57,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle zero file size")
-    void toApi_ZeroFileSize() {
+    void GivenZeroFileSize_WhenMappingToApi_ThenZeroIsMapped() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .uploadedAt(OffsetDateTime.now())
@@ -73,8 +69,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle large file size")
-    void toApi_LargeFileSize() {
+    void GivenLargeFileSize_WhenMappingToApi_ThenExactSizeIsMapped() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .uploadedAt(OffsetDateTime.now())
@@ -86,8 +81,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should preserve timestamp precision")
-    void toApi_TimestampPrecision() {
+    void GivenPreciseTimestamp_WhenMappingToApi_ThenPrecisionIsPreserved() {
         var now = OffsetDateTime.now();
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
@@ -101,8 +95,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle special characters in file name")
-    void toApi_SpecialCharactersInFileName() {
+    void GivenSpecialCharacterFileName_WhenMappingToApi_ThenFileNameIsPreserved() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .uploadedAt(OffsetDateTime.now())
@@ -114,8 +107,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle Unicode characters in file name")
-    void toApi_UnicodeInFileName() {
+    void GivenUnicodeFileName_WhenMappingToApi_ThenFileNameIsPreserved() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .uploadedAt(OffsetDateTime.now())
@@ -127,8 +119,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle long file name")
-    void toApi_LongFileName() {
+    void GivenLongFileName_WhenMappingToApi_ThenFileNameIsPreserved() {
         String longFileName = "very_long_statement_file_name_with_many_characters_"
                 + "and_underscores_and_numbers_12345678901234567890.pdf";
         var dto = UploadResponseDto.builder()
@@ -142,8 +133,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle different UUID values")
-    void toApi_DifferentUUIDs() {
+    void GivenDifferentStatementIds_WhenMappingToApi_ThenEachIdIsMapped() {
         var uuid1 = UUID.randomUUID();
         var uuid2 = UUID.randomUUID();
         var dto1 = UploadResponseDto.builder()
@@ -166,8 +156,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle different timestamps")
-    void toApi_DifferentTimestamps() {
+    void GivenDifferentTimestamps_WhenMappingToApi_ThenEachTimestampIsMapped() {
         var time1 = OffsetDateTime.now();
         var time2 = time1.plusHours(1);
         var dto1 = UploadResponseDto.builder()
@@ -190,8 +179,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle past timestamps")
-    void toApi_PastTimestamp() {
+    void GivenPastTimestamp_WhenMappingToApi_ThenTimestampIsMapped() {
         var pastTime = OffsetDateTime.now().minusDays(30);
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
@@ -204,8 +192,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle file name with dots")
-    void toApi_FileNameWithDots() {
+    void GivenFileNameWithDots_WhenMappingToApi_ThenFileNameIsPreserved() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .uploadedAt(OffsetDateTime.now())
@@ -217,8 +204,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle file name with spaces")
-    void toApi_FileNameWithSpaces() {
+    void GivenFileNameWithSpaces_WhenMappingToApi_ThenFileNameIsPreserved() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .uploadedAt(OffsetDateTime.now())
@@ -230,8 +216,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle minimal DTO with only required fields")
-    void toApi_MinimalDto() {
+    void GivenMinimalDto_WhenMappingToApi_ThenRequiredFieldsAreMapped() {
         var statementId = UUID.randomUUID();
         var dto = UploadResponseDto.builder()
                 .statementId(statementId)
@@ -244,8 +229,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should preserve all field values exactly")
-    void toApi_PreservesExactValues() {
+    void GivenPopulatedDto_WhenMappingToApi_ThenValuesArePreservedExactly() {
         var statementId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
         var uploadedAt = OffsetDateTime.parse("2024-01-15T10:30:45.123456789+00:00");
         var fileSize = 123456789L;
@@ -268,8 +252,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle very small file size")
-    void toApi_VerySmallFileSize() {
+    void GivenTinyFileSize_WhenMappingToApi_ThenExactSizeIsMapped() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .uploadedAt(OffsetDateTime.now())
@@ -282,8 +265,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should map DTO built with all builder methods")
-    void toApi_BuilderPattern() {
+    void GivenBuilderConstructedDto_WhenMappingToApi_ThenAllFieldsAreMapped() {
         var id = UUID.randomUUID();
         var time = OffsetDateTime.now();
         var dto = UploadResponseDto.builder()
@@ -301,8 +283,7 @@ class UploadResponseApiMapperTest {
     }
 
     @Test
-    @DisplayName("toApi - should handle file name with path separators")
-    void toApi_FileNameWithPathSeparators() {
+    void GivenFileNameWithPathSeparators_WhenMappingToApi_ThenFileNameIsPreserved() {
         var dto = UploadResponseDto.builder()
                 .statementId(UUID.randomUUID())
                 .uploadedAt(OffsetDateTime.now())

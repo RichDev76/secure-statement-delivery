@@ -113,8 +113,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should successfully upload and persist statement")
-    void uploadStatement_Success() throws Exception {
+    void GivenValidUpload_WhenUploadStatement_ThenPersistsAndReturnsResponse() throws Exception {
         String uploadedBy = "testUser";
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
@@ -133,8 +132,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should use default 'admin' when uploadedBy is null")
-    void uploadStatement_NullUploadedBy() throws Exception {
+    void GivenNullUploadedBy_WhenUploadStatement_ThenAdminIsPersistedAsUploader() throws Exception {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
@@ -149,8 +147,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("uploadStatement - should throw StatementUploadException on repository failure")
-    void uploadStatement_RepositoryFailure() throws Exception {
+    void GivenRepositoryFailure_WhenUploadStatement_ThenThrowsStatementUploadException() throws Exception {
         byte[] mockIv = new byte[] {1, 2, 3, 4};
         when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
         when(multipartFile.getSize()).thenReturn(2048L);
@@ -242,8 +239,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementById - should return statement when found")
-    void getStatementById_Found() {
+    void GivenExistingId_WhenGettingStatementById_ThenReturnsStatement() {
         when(statementRepository.findStatementById(testId)).thenReturn(Optional.of(testStatement));
         Statement result = statementService.getStatementById(testId);
         assertThat(result).isNotNull();
@@ -253,8 +249,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementById - should throw StatementNotFoundException when not found")
-    void getStatementById_NotFound() {
+    void GivenUnknownId_WhenGettingStatementById_ThenThrowsStatementNotFoundException() {
         when(statementRepository.findStatementById(testId)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> statementService.getStatementById(testId))
                 .isInstanceOf(StatementNotFoundException.class)
@@ -263,8 +258,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementsByAccountNumber (pageable) - should return page of statements")
-    void getStatementsByAccountNumber_Pageable() {
+    void GivenPageable_WhenGettingStatementsByAccountNumber_ThenReturnsPage() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Statement> page = new PageImpl<>(Arrays.asList(testStatement));
         when(statementRepository.findByAccountNumber(testAccountNumber, pageable))
@@ -277,8 +271,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementsByAccountNumber (list) - should return list of statements")
-    void getStatementsByAccountNumber_List() {
+    void GivenExistingAccount_WhenGettingStatementsByAccountNumber_ThenReturnsList() {
         List<Statement> statements = Arrays.asList(testStatement);
         when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.of(statements));
         List<Statement> result = statementService.getStatementsByAccountNumber(testAccountNumber);
@@ -289,8 +282,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementsByAccountNumber (list) - should throw exception when not found")
-    void getStatementsByAccountNumber_NotFound() {
+    void GivenUnknownAccount_WhenGettingStatementsByAccountNumber_ThenThrowsStatementNotFoundException() {
         when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> statementService.getStatementsByAccountNumber(testAccountNumber))
                 .isInstanceOf(StatementNotFoundException.class)
@@ -299,8 +291,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementByAccountNumberAndStatementDate - should return statement when found")
-    void getStatementByAccountNumberAndStatementDate_Found() {
+    void GivenExistingAccountAndDate_WhenGettingStatement_ThenReturnsIt() {
         when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
                 .thenReturn(Optional.of(testStatement));
         Optional<Statement> result =
@@ -312,8 +303,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementByAccountNumberAndStatementDate - should return empty when not found")
-    void getStatementByAccountNumberAndStatementDate_NotFound() {
+    void GivenUnknownAccountAndDate_WhenGettingStatement_ThenReturnsEmpty() {
         when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
                 .thenReturn(Optional.empty());
         Optional<Statement> result =
@@ -323,8 +313,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("toDto - should convert statement to DTO")
-    void toDto_Success() {
+    void GivenStatementEntity_WhenMappingToDto_ThenMapperResultIsReturned() {
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
         StatementDto result = statementService.toDto(testStatement);
         assertThat(result).isNotNull();
@@ -333,8 +322,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementDtoById - should return statement DTO by ID")
-    void getStatementDtoById_Success() {
+    void GivenExistingId_WhenGettingStatementDtoById_ThenReturnsDto() {
         when(statementRepository.findStatementById(testId)).thenReturn(Optional.of(testStatement));
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
         StatementDto result = statementService.getStatementDtoById(testId);
@@ -345,8 +333,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementsDtoByAccountNumber - should return list of statement DTOs")
-    void getStatementsDtoByAccountNumber_Success() {
+    void GivenExistingAccount_WhenGettingStatementDtos_ThenReturnsDtos() {
         List<Statement> statements = Arrays.asList(testStatement);
         List<StatementDto> dtos = Arrays.asList(testStatementDto);
         when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.of(statements));
@@ -360,8 +347,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementDtoByAccountNumberAndStatementDate - should return DTO when found")
-    void getStatementDtoByAccountNumberAndStatementDate_Found() {
+    void GivenExistingAccountAndDate_WhenGettingStatementDto_ThenReturnsDto() {
         when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
                 .thenReturn(Optional.of(testStatement));
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
@@ -374,8 +360,7 @@ class StatementServiceTest {
     }
 
     @Test
-    @DisplayName("getStatementDtoByAccountNumberAndStatementDate - should return empty when not found")
-    void getStatementDtoByAccountNumberAndStatementDate_NotFound() {
+    void GivenUnknownAccountAndDate_WhenGettingStatementDto_ThenReturnsEmpty() {
         when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
                 .thenReturn(Optional.empty());
         Optional<StatementDto> result =

@@ -36,24 +36,21 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateFileUploadInputs - should pass with all valid inputs")
-    void validateFileUploadInputs_Success() {
+    void GivenAllValidInputs_WhenValidatingFileUploadInputs_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateFileUploadInputs(validPdfFile, validAccountNumber, validDate))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateMessageDigest - should pass with valid digest")
-    void validateMessageDigest_Valid() {
+    void GivenMatchingDigest_WhenValidatingMessageDigest_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateMessageDigest(validMessageDigest, validMessageDigest))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateMessageDigest - should throw exception for null digest")
-    void validateMessageDigest_Null() {
+    void GivenNullHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, null))
                 .isInstanceOf(InvalidMessageDigestException.class)
@@ -61,8 +58,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateMessageDigest - should throw exception for empty digest")
-    void validateMessageDigest_Empty() {
+    void GivenEmptyHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, ""))
                 .isInstanceOf(InvalidMessageDigestException.class)
@@ -70,8 +66,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateMessageDigest - should throw exception for invalid format (too short)")
-    void validateMessageDigest_TooShort() {
+    void GivenTooShortHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "abc123"))
                 .isInstanceOf(InvalidMessageDigestException.class)
@@ -79,8 +74,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateMessageDigest - should throw exception for invalid format (too long)")
-    void validateMessageDigest_TooLong() {
+    void GivenTooLongHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "a".repeat(65)))
                 .isInstanceOf(InvalidMessageDigestException.class)
@@ -88,8 +82,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateMessageDigest - should throw exception for non-hex characters")
-    void validateMessageDigest_NonHex() {
+    void GivenNonHexHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "g".repeat(64)))
                 .isInstanceOf(InvalidMessageDigestException.class)
@@ -97,8 +90,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateMessageDigest - should throw exception when digest does not match")
-    void validateMessageDigest_Mismatch() {
+    void GivenMismatchedDigest_WhenValidatingMessageDigest_ThenThrowsDigestMismatchException() {
 
         var wrongDigest = "b".repeat(64);
         assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, wrongDigest))
@@ -107,23 +99,20 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateMessageDigest - should be case insensitive for hex comparison")
-    void validateMessageDigest_CaseInsensitive() {
+    void GivenUppercaseHeaderDigest_WhenValidatingMessageDigest_ThenComparisonIsCaseInsensitive() {
 
         assertThatCode(() -> validationUtil.validateMessageDigest(validMessageDigest, validMessageDigest.toUpperCase()))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateFileNotEmpty - should pass with valid file")
-    void validateFileNotEmpty_Valid() {
+    void GivenNonEmptyFile_WhenValidatingFileNotEmpty_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateFileNotEmpty(validPdfFile)).doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateFileNotEmpty - should throw exception for null file")
-    void validateFileNotEmpty_Null() {
+    void GivenNullFile_WhenValidatingFileNotEmpty_ThenThrowsMissingFileException() {
 
         assertThatThrownBy(() -> validationUtil.validateFileNotEmpty(null))
                 .isInstanceOf(MissingFileException.class)
@@ -131,8 +120,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateFileNotEmpty - should throw exception for empty file")
-    void validateFileNotEmpty_Empty() {
+    void GivenEmptyFile_WhenValidatingFileNotEmpty_ThenThrowsMissingFileException() {
 
         var emptyFile = new MockMultipartFile("file", "test.pdf", "application/pdf", new byte[0]);
         assertThatThrownBy(() -> validationUtil.validateFileNotEmpty(emptyFile))
@@ -141,16 +129,14 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateCorrectContentType - should pass with PDF content type")
-    void validateCorrectContentType_Valid() {
+    void GivenPdfContentType_WhenValidatingContentType_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateCorrectContentType(validPdfFile))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateCorrectContentType - should throw exception for wrong content type")
-    void validateCorrectContentType_Wrong() {
+    void GivenNonPdfContentType_WhenValidatingContentType_ThenThrowsUnsupportedContentTypeException() {
         var wrongTypeFile = new MockMultipartFile("file", "test.txt", "text/plain", "content".getBytes());
         assertThatThrownBy(() -> validationUtil.validateCorrectContentType(wrongTypeFile))
                 .isInstanceOf(UnsupportedContentTypeException.class)
@@ -158,8 +144,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateCorrectContentType - should throw exception for null content type")
-    void validateCorrectContentType_Null() {
+    void GivenNullContentType_WhenValidatingContentType_ThenThrowsUnsupportedContentTypeException() {
 
         var nullTypeFile = new MockMultipartFile("file", "test.pdf", null, "content".getBytes());
 
@@ -169,31 +154,27 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should pass with 9-digit account number")
-    void validateAccountNumber_NineDigits() {
+    void GivenNineDigitAccountNumber_WhenValidatingAccountNumber_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateAccountNumber("123456789")).doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should pass with 15-digit account number")
-    void validateAccountNumber_FifteenDigits() {
+    void GivenFifteenDigitAccountNumber_WhenValidatingAccountNumber_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateAccountNumber("123456789012345"))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should pass with 12-digit account number")
-    void validateAccountNumber_TwelveDigits() {
+    void GivenTwelveDigitAccountNumber_WhenValidatingAccountNumber_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateAccountNumber("123456789012"))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should throw exception for null")
-    void validateAccountNumber_Null() {
+    void GivenNullAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
         assertThatThrownBy(() -> validationUtil.validateAccountNumber(null))
                 .isInstanceOf(InvalidAccountNumberException.class)
@@ -201,8 +182,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should throw exception for empty string")
-    void validateAccountNumber_Empty() {
+    void GivenEmptyAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
         assertThatThrownBy(() -> validationUtil.validateAccountNumber(""))
                 .isInstanceOf(InvalidAccountNumberException.class)
@@ -210,8 +190,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should throw exception for too short (8 digits)")
-    void validateAccountNumber_TooShort() {
+    void GivenTooShortAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
         assertThatThrownBy(() -> validationUtil.validateAccountNumber("12345678"))
                 .isInstanceOf(InvalidAccountNumberException.class)
@@ -219,8 +198,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should throw exception for too long (16 digits)")
-    void validateAccountNumber_TooLong() {
+    void GivenTooLongAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
         assertThatThrownBy(() -> validationUtil.validateAccountNumber("1234567890123456"))
                 .isInstanceOf(InvalidAccountNumberException.class)
@@ -228,8 +206,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should throw exception for non-numeric characters")
-    void validateAccountNumber_NonNumeric() {
+    void GivenNonNumericAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
         assertThatThrownBy(() -> validationUtil.validateAccountNumber("12345678A"))
                 .isInstanceOf(InvalidAccountNumberException.class)
@@ -237,8 +214,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateAccountNumber - should throw exception for whitespace")
-    void validateAccountNumber_Whitespace() {
+    void GivenWhitespaceAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
         assertThatThrownBy(() -> validationUtil.validateAccountNumber("   "))
                 .isInstanceOf(InvalidAccountNumberException.class)
@@ -246,22 +222,19 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateDate - should pass with valid date")
-    void validateDate_Valid() {
+    void GivenIsoDate_WhenValidatingDate_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateDate("2024-01-15")).doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateDate - should pass with valid date on leap year")
-    void validateDate_LeapYear() {
+    void GivenLeapYearFebruary29_WhenValidatingDate_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validateDate("2024-02-29")).doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validateDate - should throw exception for null")
-    void validateDate_Null() {
+    void GivenNullDate_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
         assertThatThrownBy(() -> validationUtil.validateDate(null))
                 .isInstanceOf(InvalidDateException.class)
@@ -269,8 +242,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateDate - should throw exception for empty string")
-    void validateDate_Empty() {
+    void GivenEmptyDate_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
         assertThatThrownBy(() -> validationUtil.validateDate(""))
                 .isInstanceOf(InvalidDateException.class)
@@ -278,8 +250,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateDate - should throw exception for wrong format")
-    void validateDate_WrongFormat() {
+    void GivenWrongFormatDate_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
         assertThatThrownBy(() -> validationUtil.validateDate("01/15/2024"))
                 .isInstanceOf(InvalidDateException.class)
@@ -287,8 +258,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateDate - should throw exception for invalid date (Feb 30)")
-    void validateDate_InvalidDate() {
+    void GivenImpossibleDayOfMonth_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
         assertThatThrownBy(() -> validationUtil.validateDate("2024-02-30"))
                 .isInstanceOf(InvalidDateException.class)
@@ -296,8 +266,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateDate - should throw exception for invalid month")
-    void validateDate_InvalidMonth() {
+    void GivenInvalidMonth_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
         assertThatThrownBy(() -> validationUtil.validateDate("2024-13-01"))
                 .isInstanceOf(InvalidDateException.class)
@@ -305,8 +274,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateDate - should throw exception for Feb 29 on non-leap year")
-    void validateDate_NonLeapYear() {
+    void GivenNonLeapYearFebruary29_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
         assertThatThrownBy(() -> validationUtil.validateDate("2023-02-29"))
                 .isInstanceOf(InvalidDateException.class)
@@ -314,8 +282,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validateDate - should throw exception for whitespace")
-    void validateDate_Whitespace() {
+    void GivenWhitespaceDate_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
         assertThatThrownBy(() -> validationUtil.validateDate("   "))
                 .isInstanceOf(InvalidDateException.class)
@@ -323,16 +290,14 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validatePdfMagicNumber - should pass with valid PDF magic number")
-    void validatePdfMagicNumber_Valid() {
+    void GivenPdfMagicBytes_WhenValidatingPdfMagicNumber_ThenNoExceptionIsThrown() {
 
         assertThatCode(() -> validationUtil.validatePdfMagicNumber(validPdfFile))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("validatePdfMagicNumber - should throw exception for non-PDF file")
-    void validatePdfMagicNumber_NotPdf() {
+    void GivenNonPdfBytes_WhenValidatingPdfMagicNumber_ThenThrowsPdfValidationException() {
 
         var nonPdfFile = new MockMultipartFile("file", "test.txt", "text/plain", "This is not a PDF".getBytes());
         assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(nonPdfFile))
@@ -341,8 +306,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validatePdfMagicNumber - should throw exception for file too small")
-    void validatePdfMagicNumber_TooSmall() {
+    void GivenFileSmallerThanMagicNumber_WhenValidatingPdfMagicNumber_ThenThrowsPdfValidationException() {
 
         var smallFile = new MockMultipartFile("file", "test.pdf", "application/pdf", new byte[] {0x25, 0x50});
         assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(smallFile))
@@ -351,8 +315,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validatePdfMagicNumber - should throw exception for empty file")
-    void validatePdfMagicNumber_Empty() {
+    void GivenEmptyFile_WhenValidatingPdfMagicNumber_ThenThrowsPdfValidationException() {
 
         var emptyFile = new MockMultipartFile("file", "test.pdf", "application/pdf", new byte[0]);
         assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(emptyFile))
@@ -361,8 +324,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validatePdfMagicNumber - should throw exception for IOException")
-    void validatePdfMagicNumber_IOException() throws IOException {
+    void GivenUnreadableFile_WhenValidatingPdfMagicNumber_ThenThrowsPdfValidationException() throws IOException {
 
         var mockFile = mock(MultipartFile.class);
         when(mockFile.getInputStream()).thenThrow(new IOException("IO error"));
@@ -372,8 +334,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validatePdfMagicNumber - should throw exception for wrong first byte")
-    void validatePdfMagicNumber_WrongFirstByte() {
+    void GivenWrongFirstMagicByte_WhenValidatingPdfMagicNumber_ThenThrowsPdfValidationException() {
 
         var wrongMagic = new byte[] {0x00, 0x50, 0x44, 0x46};
         var wrongFile = new MockMultipartFile("file", "test.pdf", "application/pdf", wrongMagic);
@@ -383,8 +344,7 @@ class ValidationUtilTest {
     }
 
     @Test
-    @DisplayName("validatePdfMagicNumber - should throw exception for wrong last byte")
-    void validatePdfMagicNumber_WrongLastByte() {
+    void GivenWrongLastMagicByte_WhenValidatingPdfMagicNumber_ThenThrowsPdfValidationException() {
 
         var wrongMagic = new byte[] {0x25, 0x50, 0x44, 0x00};
         var wrongFile = new MockMultipartFile("file", "test.pdf", "application/pdf", wrongMagic);

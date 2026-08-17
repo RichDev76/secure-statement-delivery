@@ -80,8 +80,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("downloadStatementByFileName - should return OK response with file content")
-    void downloadStatementByFileName_Success() {
+    void GivenValidSignedLink_WhenDownloadByFileName_ThenReturnsOkWithFileContent() {
 
         var fileName = "statement-2024-01.pdf";
         var expires = 1234567890L;
@@ -115,8 +114,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("downloadStatementByFileName - should return FORBIDDEN for invalid signature")
-    void downloadStatementByFileName_InvalidSignature() {
+    void GivenInvalidSignature_WhenDownloadByFileName_ThenReturnsForbiddenWithoutBody() {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
@@ -142,8 +140,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("downloadStatementByFileName - should return NOT_FOUND for expired link")
-    void downloadStatementByFileName_ExpiredLink() {
+    void GivenExpiredLink_WhenDownloadByFileName_ThenReturnsNotFound() {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
@@ -168,8 +165,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("downloadStatementByFileName - should use request info from provider")
-    void downloadStatementByFileName_UsesRequestInfo() {
+    void GivenDownloadRequest_WhenDownloadByFileName_ThenRequestInfoFromProviderIsUsed() {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
@@ -195,8 +191,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("downloadStatementByFileName - should pass signature to download service")
-    void downloadStatementByFileName_PassesSignature() {
+    void GivenDownloadRequest_WhenDownloadByFileName_ThenSignatureIsPassedToService() {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
@@ -221,8 +216,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("downloadStatementByFileName - should handle statement not found")
-    void downloadStatementByFileName_StatementNotFound() {
+    void GivenUnknownStatement_WhenDownloadByFileName_ThenReturnsNotFound() {
 
         var fileName = "statement.pdf";
         var expires = 1234567890L;
@@ -247,8 +241,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("getDownloadSignedLinkById - should return OK with statement summary when found")
-    void getDownloadSignedLinkById_Found() {
+    void GivenExistingStatement_WhenGettingSignedLinkById_ThenReturnsOkWithSummary() {
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo))
@@ -268,8 +261,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("getDownloadSignedLinkById - should throw StatementNotFoundException when not found")
-    void getDownloadSignedLinkById_NotFound() {
+    void GivenUnknownStatement_WhenGettingSignedLinkById_ThenThrowsStatementNotFoundException() {
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo))
@@ -283,8 +275,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("getDownloadSignedLinkById - should pass correct statement ID to service")
-    void getDownloadSignedLinkById_PassesCorrectId() {
+    void GivenSpecificStatementId_WhenGettingSignedLinkById_ThenThatIdReachesService() {
 
         var specificId = UUID.randomUUID();
         var dto = new StatementDto();
@@ -305,8 +296,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("getDownloadSignedLinkById - should propagate service exceptions")
-    void getDownloadSignedLinkById_ServiceException() {
+    void GivenServiceThrows_WhenGettingSignedLinkById_ThenExceptionPropagates() {
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(statementQueryService.getStatementWithSignedDownloadLinkById(any(), any()))
@@ -324,8 +314,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("searchStatements - should return OK with results when all mandatory parameters provided")
-    void searchStatements_WithAllMandatoryParameters() {
+    void GivenMandatoryParameters_WhenSearchingStatements_ThenReturnsOkPage() {
 
         var accountNumber = "123456789";
         var startDate = "2024-01-01";
@@ -342,8 +331,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("searchStatements - should pass pagination parameters to service")
-    void searchStatements_WithPagination() {
+    void GivenPaginationParameters_WhenSearchingStatements_ThenTheyReachTheService() {
 
         var accountNumber = "123456789";
         var startDate = "2024-01-01";
@@ -361,8 +349,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("searchStatements - should pass sort parameter to service")
-    void searchStatements_WithSort() {
+    void GivenSortParameter_WhenSearchingStatements_ThenItReachesTheService() {
 
         var accountNumber = "123456789";
         var startDate = "2024-01-01";
@@ -379,8 +366,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("searchStatements - should pass all parameters to service")
-    void searchStatements_AllParameters() {
+    void GivenAllParameters_WhenSearchingStatements_ThenAllReachTheService() {
 
         var accountNumber = "123456789";
         var startDate = "2024-01-15";
@@ -400,8 +386,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("searchStatements - should propagate service exceptions")
-    void searchStatements_ServiceException() {
+    void GivenServiceThrows_WhenSearchingStatements_ThenExceptionPropagates() {
 
         var accountNumber = "123456789";
         var startDate = "2024-01-01";
@@ -418,8 +403,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("searchStatements - should handle empty result page")
-    void searchStatements_EmptyResults() {
+    void GivenNoMatches_WhenSearchingStatements_ThenReturnsOkWithEmptyPage() {
 
         var accountNumber = "123456789";
         var startDate = "2024-01-01";
@@ -439,8 +423,7 @@ class StatementsControllerTest {
     }
 
     @Test
-    @DisplayName("searchStatements - should handle large result sets")
-    void searchStatements_LargeResults() {
+    void GivenLargeResultSet_WhenSearchingStatements_ThenPageMetadataIsMapped() {
 
         var accountNumber = "123456789";
         var startDate = "2024-01-01";

@@ -9,8 +9,7 @@ import org.junit.jupiter.api.Test;
 class RequestInfoTest {
 
     @Test
-    @DisplayName("Should create RequestInfo with no-arg constructor")
-    void testNoArgConstructor() {
+    void GivenNoArgConstructor_WhenCreatingRequestInfo_ThenAllFieldsAreNull() {
         var requestInfo = new RequestInfo();
         assertNotNull(requestInfo);
         assertNull(requestInfo.getClientIp());
@@ -19,8 +18,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should create RequestInfo with all-args constructor")
-    void testAllArgsConstructor() {
+    void GivenAllArguments_WhenCreatingRequestInfo_ThenAllFieldsAreAssigned() {
         var clientIp = "192.168.1.100";
         var userAgent = "Mozilla/5.0";
         var performedBy = "john.doe";
@@ -32,8 +30,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should set and get clientIp")
-    void testSetAndGetClientIp() {
+    void GivenRequestInfo_WhenSettingClientIp_ThenGetterReturnsIt() {
         var requestInfo = new RequestInfo();
         var clientIp = "10.0.0.5";
         requestInfo.setClientIp(clientIp);
@@ -41,8 +38,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should set and get userAgent")
-    void testSetAndGetUserAgent() {
+    void GivenRequestInfo_WhenSettingUserAgent_ThenGetterReturnsIt() {
         var requestInfo = new RequestInfo();
         var userAgent = "Chrome/90.0.4430.93";
         requestInfo.setUserAgent(userAgent);
@@ -50,8 +46,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should set and get performedBy")
-    void testSetAndGetPerformedBy() {
+    void GivenRequestInfo_WhenSettingPerformedBy_ThenGetterReturnsIt() {
         var requestInfo = new RequestInfo();
         var performedBy = "admin";
         requestInfo.setPerformedBy(performedBy);
@@ -59,8 +54,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should handle null values in all-args constructor")
-    void testAllArgsConstructor_NullValues() {
+    void GivenNullArguments_WhenCreatingRequestInfo_ThenNullsAreAccepted() {
         var requestInfo = new RequestInfo(null, null, null);
         assertNotNull(requestInfo);
         assertNull(requestInfo.getClientIp());
@@ -69,8 +63,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should allow setting null values via setters")
-    void testSetters_NullValues() {
+    void GivenPopulatedRequestInfo_WhenSettingNulls_ThenNullsAreStored() {
         var requestInfo = new RequestInfo("192.168.1.1", "Firefox", "user");
         requestInfo.setClientIp(null);
         requestInfo.setUserAgent(null);
@@ -81,8 +74,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should allow updating values via setters")
-    void testUpdateValues() {
+    void GivenPopulatedRequestInfo_WhenSettingNewValues_ThenValuesAreReplaced() {
         var requestInfo = new RequestInfo("192.168.1.1", "Firefox", "user");
         requestInfo.setClientIp("10.0.0.1");
         requestInfo.setUserAgent("Chrome");
@@ -93,8 +85,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should handle empty strings")
-    void testEmptyStrings() {
+    void GivenEmptyStrings_WhenCreatingRequestInfo_ThenEmptyValuesAreStored() {
         var requestInfo = new RequestInfo("", "", "");
         assertNotNull(requestInfo);
         assertEquals("", requestInfo.getClientIp());
@@ -103,8 +94,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should handle special characters in fields")
-    void testSpecialCharacters() {
+    void GivenSpecialCharacterValues_WhenCreatingRequestInfo_ThenValuesAreStoredUnchanged() {
         var clientIp = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"; // IPv6
         var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
         var performedBy = "user@example.com";
@@ -115,8 +105,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should handle long strings")
-    void testLongStrings() {
+    void GivenLongValues_WhenCreatingRequestInfo_ThenValuesAreStoredUnchanged() {
         var longUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                 + "Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59";
         var requestInfo = new RequestInfo();
@@ -125,8 +114,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should maintain independence between instances")
-    void testInstanceIndependence() {
+    void GivenTwoInstances_WhenMutatingOne_ThenOtherIsUnaffected() {
         var info1 = new RequestInfo("192.168.1.1", "Firefox", "user1");
         var info2 = new RequestInfo("192.168.1.2", "Chrome", "user2");
         info1.setClientIp("10.0.0.1");
@@ -136,8 +124,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should create multiple instances with same values")
-    void testMultipleInstancesSameValues() {
+    void GivenSameValues_WhenCreatingMultipleInstances_ThenEachHoldsTheValues() {
         var clientIp = "192.168.1.100";
         var userAgent = "Safari";
         var performedBy = "testuser";
@@ -150,8 +137,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should handle system default values")
-    void testSystemDefaultValues() {
+    void GivenSystemStyleValues_WhenCreatingRequestInfo_ThenValuesAreStored() {
         var requestInfo = new RequestInfo("unknown", "unknown", "system");
         assertEquals("unknown", requestInfo.getClientIp());
         assertEquals("unknown", requestInfo.getUserAgent());
@@ -159,8 +145,7 @@ class RequestInfoTest {
     }
 
     @Test
-    @DisplayName("Should handle localhost scenarios")
-    void testLocalhostScenarios() {
+    void GivenLocalhostAddresses_WhenCreatingRequestInfo_ThenValuesAreStored() {
         var requestInfo = new RequestInfo("127.0.0.1", "PostmanRuntime/7.28.0", "developer");
         assertEquals("127.0.0.1", requestInfo.getClientIp());
         assertEquals("PostmanRuntime/7.28.0", requestInfo.getUserAgent());

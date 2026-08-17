@@ -19,8 +19,7 @@ class CommonUtilTest {
     private HttpServletRequest request;
 
     @Test
-    @DisplayName("Should build URI with HTTP and default port 80")
-    void testBuildProblemDetailTypeURI_HttpDefaultPort() {
+    void GivenHttpDefaultPort_WhenBuildingProblemTypeUri_ThenPortIsOmitted() {
 
         when(request.getScheme()).thenReturn("http");
         when(request.getServerName()).thenReturn("example.com");
@@ -31,8 +30,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with HTTPS and default port 443")
-    void testBuildProblemDetailTypeURI_HttpsDefaultPort() {
+    void GivenHttpsDefaultPort_WhenBuildingProblemTypeUri_ThenPortIsOmitted() {
 
         when(request.getScheme()).thenReturn("https");
         when(request.getServerName()).thenReturn("example.com");
@@ -43,8 +41,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with HTTP and custom port")
-    void testBuildProblemDetailTypeURI_HttpCustomPort() {
+    void GivenHttpCustomPort_WhenBuildingProblemTypeUri_ThenPortIsIncluded() {
 
         when(request.getScheme()).thenReturn("http");
         when(request.getServerName()).thenReturn("example.com");
@@ -55,8 +52,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with HTTPS and custom port")
-    void testBuildProblemDetailTypeURI_HttpsCustomPort() {
+    void GivenHttpsCustomPort_WhenBuildingProblemTypeUri_ThenPortIsIncluded() {
 
         when(request.getScheme()).thenReturn("https");
         when(request.getServerName()).thenReturn("example.com");
@@ -67,8 +63,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with context path")
-    void testBuildProblemDetailTypeURI_WithContextPath() {
+    void GivenContextPath_WhenBuildingProblemTypeUri_ThenContextPathIsIncluded() {
 
         when(request.getScheme()).thenReturn("http");
         when(request.getServerName()).thenReturn("example.com");
@@ -80,8 +75,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with context path and custom port")
-    void testBuildProblemDetailTypeURI_WithContextPathAndCustomPort() {
+    void GivenContextPathAndCustomPort_WhenBuildingProblemTypeUri_ThenBothAreIncluded() {
 
         when(request.getScheme()).thenReturn("https");
         when(request.getServerName()).thenReturn("api.example.com");
@@ -93,8 +87,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with empty context path")
-    void testBuildProblemDetailTypeURI_EmptyContextPath() {
+    void GivenEmptyContextPath_WhenBuildingProblemTypeUri_ThenUriHasNoContextPath() {
 
         when(request.getScheme()).thenReturn("http");
         when(request.getServerName()).thenReturn("localhost");
@@ -106,8 +99,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with localhost")
-    void testBuildProblemDetailTypeURI_Localhost() {
+    void GivenLocalhostHost_WhenBuildingProblemTypeUri_ThenLocalhostUriIsBuilt() {
 
         when(request.getScheme()).thenReturn("http");
         when(request.getServerName()).thenReturn("localhost");
@@ -118,8 +110,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with IP address")
-    void testBuildProblemDetailTypeURI_IpAddress() {
+    void GivenIpAddressHost_WhenBuildingProblemTypeUri_ThenIpUriIsBuilt() {
 
         when(request.getScheme()).thenReturn("http");
         when(request.getServerName()).thenReturn("192.168.1.100");
@@ -130,8 +121,7 @@ class CommonUtilTest {
     }
 
     @Test
-    @DisplayName("Should build URI with subdomain")
-    void testBuildProblemDetailTypeURI_Subdomain() {
+    void GivenSubdomainHost_WhenBuildingProblemTypeUri_ThenSubdomainUriIsBuilt() {
 
         when(request.getScheme()).thenReturn("https");
         when(request.getServerName()).thenReturn("api.dev.example.com");

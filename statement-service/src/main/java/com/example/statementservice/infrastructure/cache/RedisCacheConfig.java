@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 @EnableCaching
@@ -26,7 +27,13 @@ public class RedisCacheConfig implements CachingConfigurer {
         // TTL matched to the signed-link expiry: bounded, self-evicting, no manual cleanup job -
         // an entry is never worth more than the link that could still be redeeming it.
         var cacheConfig = RedisCacheConfiguration.defaultCacheConfig().entryTtl(signedLinkProperties.getExpiry());
-        return RedisCacheManager.builder(connectionFactory)
+        // Since Spring Data Redis 4.0, writes are deferred/async by default against a reactive-capable
+        // connection factory (Lettuce always is) - a put() can return before Redis has acknowledged it,
+        // so an immediately-following get() for the same key can race and miss. immediateWrites() opts
+        // back into blocking writes, which is required here: caching only pays off if a redemption of
+        // the same link moments later reliably hits.
+        var cacheWriter = RedisCacheWriter.create(connectionFactory, config -> config.immediateWrites(true));
+        return RedisCacheManager.builder(cacheWriter)
                 .cacheDefaults(cacheConfig)
                 .withCacheConfiguration(STATEMENT_CIPHERTEXT_CACHE, cacheConfig)
                 .build();

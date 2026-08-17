@@ -396,3 +396,30 @@ In production, these components may be deployed as separate containers or on Kub
 - Config Server and Vault simplify environment‑specific overrides without code changes
 
 ---
+
+### Considered but Deferred
+
+Three capabilities were deliberately evaluated and scoped out. Each is recorded here with the reasoning and the adoption path, so a future decision starts from the tradeoff, not from scratch. In every case the current design keeps the door open rather than closing it.
+
+#### Master Encryption Key (MEK) Rotation
+
+- **Considered because**: for real financial data, a static master key is a liability — compliance regimes and key-compromise response both eventually demand rotation.
+- **Deferred because**: rotation machinery (key versioning, a dual-key decrypt window, a re-wrap job, and realistically a managed KMS/HSM rather than a Vault-sourced static key) is speculative complexity for a single-key deployment at this scale. Building it now would trade real scope elsewhere for a capability with no current trigger.
+- **The door is open**: envelope encryption was chosen partly for this. Rotation means **re-wrapping small per-file DEKs, never re-encrypting ciphertext in S3** — cost is proportional to row count, not stored bytes. The wrapped-DEK format already carries a leading version byte (`AesGcmFileCipher.DEK_WRAP_VERSION_GCM`, validated on unwrap), giving a ready discriminator for "wrapped under key vN".
+- **Adoption path**: persist a key-version identifier alongside each wrapped DEK → unwrap with old-or-new during a transition window → background job re-wraps DEKs under the new MEK → retire the old key. Swapping the env-var master key for KMS-held keys touches only `MasterKeyProvider` behind its existing port.
+
+#### Observability Stack (Prometheus, Grafana, Zipkin)
+
+- **Considered because**: production operation of this service would need dashboards, alerting, and request tracing.
+- **Deferred because**: the compose stack is already seven containers; adding a metrics server, a dashboard UI, and a tracing backend grows the reviewer's footprint without changing what the *service* demonstrates. And with a single service in the call chain, distributed tracing adds infrastructure to reconstruct what correlation-ID'd logs already show.
+- **The door is open**: the app-side instrumentation exists now — `/actuator/prometheus` is exposed and scrape-ready, health is split into readiness/liveness groups (ADR-0021), logs are structured with a `correlationId` on every line, and audit events already capture the business-level signal.
+- **Adoption path**: point a Prometheus scrape config at the existing endpoint and build Grafana dashboards on it — zero code change. For tracing, add the Micrometer Tracing bridge (OTLP or Zipkin exporter) when a second service enters the call chain; trace/span IDs then supersede the hand-rolled correlation ID in MDC.
+
+#### Kubernetes Deployment
+
+- **Considered because**: it is the assumed production runtime for a service like this, and the SE3 context explicitly values container orchestration.
+- **Deferred because**: Docker Compose gives a reviewer a reproducible, single-command environment on a laptop; Kubernetes adds cluster provisioning, manifests, and secret-delivery plumbing that improve nothing about the submission's actual signal.
+- **The door is open**: the workload is already Kubernetes-shaped — stateless app (horizontal scaling needs no session affinity), split readiness/liveness endpoints that map one-to-one onto k8s probes, ShedLock guarding scheduled jobs against multi-replica double-runs, a non-root container with an image-level health check, and fully externalised configuration.
+- **Adoption path**: Deployment + Service + Ingress (TLS at the edge) manifests or a Helm chart; probes point at the existing `/actuator/health/{readiness,liveness}` endpoints; secrets move from Config Server env-injection to External Secrets / CSI against the same Vault; an HPA can key off the already-exported Prometheus metrics.
+
+---

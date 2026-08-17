@@ -30,7 +30,9 @@ For detailed information about the system architecture, components, and design d
 - Java 25 (for running locally via Maven)
 - Maven 3.9+
 - Docker and Docker Compose
-- `curl` or HTTP client (Bruno, Postman, HTTPie) for exercising the API
+- `curl` or an HTTP client for exercising the API; the [Bruno CLI](https://docs.usebruno.com/bru-cli/overview)
+  (`bru`) is needed only if you want to run the collection under `statement-service/bruno/` (see
+  Tests & Coverage below)
 
 ---
 
@@ -91,6 +93,11 @@ openssl rand -base64 32
 ```
 #### Step 2: Initial Bootstrap (First Time Only)
 
+> **⚠️ Destructive.** This runs `clean_env.sh` first, which does `docker compose down -v`, explicitly
+> removes the `vault-data`, `db-data`, and `keycloak-data` volumes, and deletes `./vault/init`
+> (including the Vault root token and unseal key). If you already have a running environment with
+> data you want to keep, skip this step and go straight to Step 3.
+
 Run this **only once** when setting up a new environment or to start fresh:
 
 ```bash
@@ -99,7 +106,7 @@ cd infra
 ```
 
 This script will:
-1. Clean any existing environment (`clean_env.sh`)
+1. Clean any existing environment (`clean_env.sh`) — **wipes all local volumes and Vault state, see warning above**
 2. Bootstrap Vault (`bootstrap_vault.sh`)
 3. Start all services (`start_services.sh`)
 
@@ -319,10 +326,41 @@ mvn clean verify   # unit tests (Surefire) + integration tests (Failsafe/Testcon
 ```
 
 Coverage is measured by JaCoCo across both unit and integration runs, excluding code
-generated from the OpenAPI contract. Current baseline: **93.0% line / 82.7% branch**
-(499 unit + 63 integration tests). HTML report: `statement-service/target/site/jacoco/index.html`.
+generated from the OpenAPI contract. Current baseline: **93% line / 82.7% branch**
+(506 unit + 63 integration tests). HTML report: `statement-service/target/site/jacoco/index.html`.
 
 See `docs/TestCoverageGapAnalysis.html` for the coverage gap analysis behind these numbers.
+
+#### API Test Collection (Bruno)
+
+`statement-service/bruno/Statement Service V1/` is a runnable Bruno collection that exercises the
+live HTTP API end-to-end — a smoke/regression pass against a real running stack, complementary to
+the Maven test suite rather than a duplicate of it. Requires the [Bruno CLI](https://docs.usebruno.com/bru-cli/overview)
+(`brew install bruno-cli` or `npm i -g @usebruno/cli`) and the full stack up (Option 1 or 2 above).
+
+```bash
+cd "statement-service/bruno/Statement Service V1"
+bru run --env local -r \
+  --env-var ADMIN_CLIENT_SECRET=<KEYCLOAK_ADMIN_CLIENT_SECRET> \
+  --env-var CONSUMER_CLIENT_SECRET=<KEYCLOAK_CONSUMER_CLIENT_SECRET>
+```
+
+This runs the full collection recursively: auth token retrieval, an upload → signed-link → download
+chain (each request feeds the next via post-response scripts), and negative-path coverage per
+endpoint (validation failures, wrong role, no auth, digest mismatch, oversized upload, tampered
+signature, rate limiting). Every request asserts on status code and `errorCode`, so a clean run
+means something, not just "no connection errors."
+
+Two requests are intentionally excluded from a fast pass and worth knowing about before a full
+`-r` run surprises you:
+
+- **`Download with expired link`** takes ~185s on its own — it mints a fresh link and genuinely
+  waits out the real 3-minute signed-link expiry rather than faking it, so it's slow but
+  deterministic.
+- **`Download during S3 outage (manual)`** cannot pass via `bru run` alone — Bruno's script
+  sandbox has no docker access. Run `./verify-s3-outage.sh` from the same directory instead: it
+  uploads a statement, mints a link, stops the `floci` container, exercises the download (expects
+  `503 STORAGE_UNAVAILABLE`), and restarts `floci` on exit even if the assertion fails.
 
 ---
 

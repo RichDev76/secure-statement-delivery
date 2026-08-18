@@ -14,20 +14,20 @@
 
     <properties>
         <java.version>25</java.version>
-        <spring.boot.version>4.0.7</spring.boot.version>
+        <spring.boot.version>4.1.0</spring.boot.version>
         <spring-cloud.version>2025.1.2</spring-cloud.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <lombok.version>1.18.46</lombok.version>
         <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <archunit.version>1.5.0</archunit.version>
-        <awssdk.version>2.46.7</awssdk.version>
+        <awssdk.version>2.53.0</awssdk.version>
         <uuid-creator.version>6.1.1</uuid-creator.version>
-        <bucket4j.version>8.13.1</bucket4j.version>
-        <jackson-databind-nullable.version>0.2.4</jackson-databind-nullable.version>
-        <spotless.version>3.0.0</spotless.version>
-        <openapi-generator.version>7.0.1</openapi-generator.version>
-        <build-helper-maven-plugin.version>3.4.0</build-helper-maven-plugin.version>
+        <bucket4j.version>8.19.0</bucket4j.version>
+        <jackson-databind-nullable.version>0.2.11</jackson-databind-nullable.version>
+        <spotless.version>3.9.0</spotless.version>
+        <openapi-generator.version>7.24.0</openapi-generator.version>
+        <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>25</maven.compiler.source>
@@ -77,22 +77,22 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-codec-http</artifactId>
-                <version>4.2.16.Final</version>
+                <version>4.2.17.Final</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-codec-http2</artifactId>
-                <version>4.2.16.Final</version>
+                <version>4.2.17.Final</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-codec-compression</artifactId>
-                <version>4.2.16.Final</version>
+                <version>4.2.17.Final</version>
             </dependency>
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
-                <version>42.7.12</version>
+                <version>42.7.13</version>
             </dependency>
             <dependency>
                 <groupId>org.mapstruct</groupId>
@@ -151,7 +151,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.14.1</version>
+                    <version>3.15.0</version>
                     <configuration>
                         <source>${java.version}</source>
                         <target>${java.version}</target>

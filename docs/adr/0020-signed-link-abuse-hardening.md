@@ -24,23 +24,19 @@ redeemed, not how fast — so a rate limiter alone doesn't reduce exposure, only
    `maxRedemptions = 3` — tight because it now doubles as the resource-cost ceiling per leaked
    link, not just retry-tolerance. Exhausted redemptions return the *existing* expired-link result,
    not a distinguishable one.
-2. **Per-link rate limiting is Postgres-backed (`bucket4j-postgresql`), not Redis.** Reasoning
-   revised mid-design: an in-memory limiter was ruled out by horizontal scaling; Redis was then
-   proposed as the "textbook" distributed backend, reasoning that a Postgres-backed check would
-   overload the primary database — but `validate()` and the redemption-count update already touch
-   Postgres on every request regardless, so the marginal cost of also checking there is small.
-   "Must scale horizontally" only ruled out in-process state, not Postgres specifically. Bucket
-   state lives in `signed_link_rate_limit_buckets`, a dedicated table (Bucket4j's primary-key
-   column is `text`, `signed_links.id` is `uuid` — Postgres foreign keys require matching types, so
-   no FK/cascade is possible); stale rows are swept by the existing `SignedLinkCleanupService`
-   rather than a new scheduled job.
+2. **Per-link rate limiting is Postgres-backed (`bucket4j-postgresql`), not Redis.**
+   `validate()` and the redemption-count update already touch Postgres on every request, so the
+   marginal cost of also checking the bucket there is small; horizontal scaling rules out
+   in-process state, not Postgres. Bucket state lives in `signed_link_rate_limit_buckets`, a
+   dedicated table (Bucket4j's primary-key column is `text`, `signed_links.id` is `uuid` —
+   matching types are required for an FK, so no FK/cascade is possible); stale rows are swept by
+   the existing `SignedLinkCleanupService` rather than a new scheduled job.
 3. **Ciphertext caching is Redis-backed, and that's a different justification than the one
    rejected for the rate limiter.** With `maxRedemptions` allowing up to 3 identical S3 GETs of the
    same object for one link, that's genuine, bounded reuse. `EncryptedFileFetcher` (a port in
-   `statement`, implemented by `CachingEncryptedFileFetcher` in `infrastructure.cache` — a
-   dedicated bean, not a method on `StatementService` calling itself, since `@Cacheable` only takes
-   effect through Spring's proxy) caches only ciphertext, TTL-bound to the link expiry; DEK unwrap
-   and decryption still run on every call, preserving 0015's plaintext-exposure boundary exactly.
+   `statement`, implemented by `CachingEncryptedFileFetcher` in `infrastructure.cache`) caches
+   only ciphertext, TTL-bound to the link expiry; DEK unwrap and decryption still run on every
+   call, preserving 0015's plaintext-exposure boundary exactly.
 4. **Anomaly logging is detection-only.** Before recording `DOWNLOAD_SUCCESS`, check for a prior
    successful redemption of the same link from a different `ip`/`userAgent` and log at `WARN` —
    reads audit data this codebase already collects and never queried, closing the "no signal" gap

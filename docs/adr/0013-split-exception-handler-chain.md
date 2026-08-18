@@ -46,11 +46,6 @@ and add the missing test coverage — without changing any response that was alr
   400 for server-side failures; duplicate AOP logging across the service/controller boundary is
   cosmetic; a few pre-existing bare `catch (Exception ignored) {}` sites are out of scope.
 
-## Implementation Notes
-
-Four phases (safety-net → structural split → targeted fixes → contract test), each gated on
-`mvn clean verify`.
-
 ## References
 
 - docs/standards/security.md, docs/standards/testing.md

@@ -44,11 +44,6 @@ could silently downgrade an endpoint's required role.
 - All three yml profiles carry the new shape, updated together since a missed environment is
   exactly the failure mode this ADR closes.
 
-## Implementation Notes
-
-Three phases (property model → wiring → integration tests), each TDD and gated on
-`mvn clean verify`.
-
 ## References
 
 - docs/standards/security.md

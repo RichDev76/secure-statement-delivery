@@ -530,7 +530,8 @@ In production, these components may be deployed as separate containers or on Kub
 
 - A GitHub Actions pipeline (`.github/workflows/ci.yml`) gates every push/PR: **format** (`spotless:check`, invoked as a direct goal so it can actually fail — see ADR-0024), **build**, **unit tests** (incl. an ArchUnit architecture suite and a naming-convention check), **integration tests** (Testcontainers: Postgres, Redis, Floci), **dependency scan** (Trivy, HIGH/CRITICAL, offline-scan to avoid Maven Central rate limits), and PR-only **API compatibility** (`oasdiff` against the base branch's OpenAPI contract).
 - Every third-party action is pinned to a full commit SHA and the workflow's own invariants (pinning, least-privilege `permissions: contents: read`, per-job timeouts, safe triggers, Dependabot coverage) are enforced by a dedicated `CiWorkflowConventionsTest`, not just documented.
-- A black-box API-regression job (Bruno pack against the live compose stack) and mutation testing (PIT) are planned follow-up phases, not yet wired into the pipeline.
+- A black-box **API-regression job** runs the Bruno request pack against the full live compose stack on every push/PR: ephemeral secrets are generated and masked per run (nothing stored as repository secrets), service health is polled with a bounded budget, per-service compose logs are captured as an artifact on failure, and the stack is torn down unconditionally.
+- Mutation testing (PIT) remains a planned follow-up phase, not yet wired into the pipeline.
 
 ---
 

@@ -4,12 +4,12 @@
 
 Uploads held up to three full copies of the file in heap: two `getBytes()` reads for
 digest checking/persistence, plus the buffered ciphertext in the S3 adapter. The 10MB
-cap (ADR-0022 follow-up) bounds this at ~30MB per request. Full analysis and designed
-fix: `docs/StreamingUploadAndConcurrencyBulkheadPlan.html`.
+cap (ADR-0022 follow-up) bounds this at ~30MB per request.
 
 ## Problem
 
-How much of that plan to implement now, given the cap already bounds the risk.
+How much of the full streaming redesign (streamed ciphertext to S3, upload concurrency
+bulkhead) to implement now, given the cap already bounds the risk.
 
 ## Decision
 
@@ -20,7 +20,7 @@ Streaming ciphertext to S3 and a concurrency bulkhead are deferred.
 
 ## Alternatives
 
-- Full plan now — rejected: a wrong computed Content-Length silently corrupts uploads,
+- Full streaming redesign now — rejected: a wrong computed Content-Length silently corrupts uploads,
   and a misordered bulkhead filter is an unauthenticated DoS vector; not worth it at 10MB.
 - Do nothing — rejected: the duplicate reads were pure waste, removable safely.
 - Hash inside `ValidationUtil` — rejected: validators shouldn't do file I/O.
@@ -29,7 +29,7 @@ Streaming ciphertext to S3 and a concurrency bulkhead are deferred.
 
 - Per-upload heap drops from ~3x to ~1x file size (the S3 adapter's ciphertext buffer).
 - Accepted limitation: ciphertext still buffered; upload concurrency unbounded under
-  virtual threads. Raising the size cap without the deferred phases reopens OOM risk.
+  virtual threads. Raising the size cap without the deferred streaming work reopens OOM risk.
 - Externally observable behavior unchanged (validation order, error codes, audit reasons).
 
 ## Implementation Notes
@@ -42,5 +42,4 @@ Streaming ciphertext to S3 and a concurrency bulkhead are deferred.
 
 ## References
 
-- `docs/StreamingUploadAndConcurrencyBulkheadPlan.html`
 - ADR-0020 (rate limiting), ADR-0022 (10MB cap + 413)

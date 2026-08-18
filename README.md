@@ -330,8 +330,11 @@ mvn clean verify   # unit tests (Surefire) + integration tests (Failsafe/Testcon
 ```
 
 Coverage is measured by JaCoCo across both unit and integration runs, excluding code
-generated from the OpenAPI contract. Current baseline: **93% line / 82.7% branch**
-(506 unit + 63 integration tests). HTML report: `statement-service/target/site/jacoco/index.html`.
+generated from the OpenAPI contract, and gated at `verify` (`jacoco:check`, 90% instruction /
+80% branch — see `statement-service/pom.xml`); a coverage drop below that fails the build.
+Test counts change as the suite grows, so they aren't hardcoded here — after `mvn verify`, see
+the Surefire/Failsafe summary in the console output, or the generated report at
+`statement-service/target/site/jacoco/index.html` for the current coverage percentage.
 
 #### API Test Collection (Bruno)
 

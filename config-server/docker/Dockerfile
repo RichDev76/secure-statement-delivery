@@ -1,5 +1,5 @@
 # ---- Build stage (JDK 25) ----
-FROM maven:3.9-eclipse-temurin-25 AS build
+FROM maven:3-eclipse-temurin-26 AS build
 WORKDIR /workspace
 
 # Copy entire repository so Maven can resolve parent POMs and sibling modules

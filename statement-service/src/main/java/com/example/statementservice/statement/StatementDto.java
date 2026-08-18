@@ -4,23 +4,20 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class StatementDto {
-    private UUID statementId;
-    private String accountNumber;
-    private LocalDate statementDate;
-    private OffsetDateTime uploadedAt;
-    private Long fileSize;
-    private String fileName;
-    private URI downloadLink;
+@Builder(toBuilder = true)
+public record StatementDto(
+        UUID statementId,
+        String accountNumber,
+        LocalDate statementDate,
+        OffsetDateTime uploadedAt,
+        Long fileSize,
+        String fileName,
+        URI downloadLink) {
+
+    public StatementDto withDownloadLink(URI downloadLink) {
+        return new StatementDto(
+                statementId, accountNumber, statementDate, uploadedAt, fileSize, fileName, downloadLink);
+    }
 }

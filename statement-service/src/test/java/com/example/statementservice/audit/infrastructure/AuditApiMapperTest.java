@@ -25,15 +25,16 @@ class AuditApiMapperTest {
         details.put("key1", "value1");
         details.put("key2", 123);
 
-        var dto = new AuditLogDto();
-        dto.setId(id);
-        dto.setAccountNumber("123456789");
-        dto.setStatementId(statementId);
-        dto.setAction("DOWNLOAD_SUCCESS");
-        dto.setPerformedAt(performedAt);
-        dto.setIpAddress("192.168.1.1");
-        dto.setUserAgent("Mozilla/5.0");
-        dto.setDetails(details);
+        var dto = AuditLogDto.builder()
+                .id(id)
+                .accountNumber("123456789")
+                .statementId(statementId)
+                .action("DOWNLOAD_SUCCESS")
+                .performedAt(performedAt)
+                .ipAddress("192.168.1.1")
+                .userAgent("Mozilla/5.0")
+                .details(details)
+                .build();
 
         var result = auditApiMapper.toApi(dto);
 
@@ -60,9 +61,10 @@ class AuditApiMapperTest {
 
     @Test
     void GivenDtoWithNullFields_WhenMappingToApi_ThenNullsArePreserved() {
-        var dto = new AuditLogDto();
-        dto.setId(UUID.randomUUID());
-        dto.setAction("TEST_ACTION");
+        var dto = AuditLogDto.builder()
+                .id(UUID.randomUUID())
+                .action("TEST_ACTION")
+                .build();
 
         var result = auditApiMapper.toApi(dto);
 
@@ -81,10 +83,11 @@ class AuditApiMapperTest {
 
     @Test
     void GivenEmptyDetails_WhenMappingToApi_ThenDetailsAreEmpty() {
-        var dto = new AuditLogDto();
-        dto.setId(UUID.randomUUID());
-        dto.setAction("TEST_ACTION");
-        dto.setDetails(new HashMap<>());
+        var dto = AuditLogDto.builder()
+                .id(UUID.randomUUID())
+                .action("TEST_ACTION")
+                .details(new HashMap<>())
+                .build();
 
         var result = auditApiMapper.toApi(dto);
 
@@ -95,10 +98,11 @@ class AuditApiMapperTest {
     @Test
     void GivenPerformedAtTimestamp_WhenMappingToApi_ThenTimestampIsMapped() {
         var now = OffsetDateTime.now();
-        var dto = new AuditLogDto();
-        dto.setId(UUID.randomUUID());
-        dto.setAction("TEST_ACTION");
-        dto.setPerformedAt(now);
+        var dto = AuditLogDto.builder()
+                .id(UUID.randomUUID())
+                .action("TEST_ACTION")
+                .performedAt(now)
+                .build();
 
         var result = auditApiMapper.toApi(dto);
 
@@ -175,15 +179,16 @@ class AuditApiMapperTest {
         var timestamp = OffsetDateTime.now();
         Map<String, Object> details = Collections.singletonMap("reason", "test");
 
-        var dto = new AuditLogDto();
-        dto.setId(id);
-        dto.setAccountNumber("ACC999");
-        dto.setStatementId(statementId);
-        dto.setAction("UPLOAD_SUCCESS");
-        dto.setPerformedAt(timestamp);
-        dto.setIpAddress("10.0.0.1");
-        dto.setUserAgent("TestAgent");
-        dto.setDetails(details);
+        var dto = AuditLogDto.builder()
+                .id(id)
+                .accountNumber("ACC999")
+                .statementId(statementId)
+                .action("UPLOAD_SUCCESS")
+                .performedAt(timestamp)
+                .ipAddress("10.0.0.1")
+                .userAgent("TestAgent")
+                .details(details)
+                .build();
 
         List<AuditLogDto> dtos = Collections.singletonList(dto);
 
@@ -228,10 +233,11 @@ class AuditApiMapperTest {
         complexDetails.put("nested", Collections.singletonMap("key", "value"));
         complexDetails.put("list", Arrays.asList(1, 2, 3));
 
-        var dto = new AuditLogDto();
-        dto.setId(UUID.randomUUID());
-        dto.setAction("COMPLEX_ACTION");
-        dto.setDetails(complexDetails);
+        var dto = AuditLogDto.builder()
+                .id(UUID.randomUUID())
+                .action("COMPLEX_ACTION")
+                .details(complexDetails)
+                .build();
 
         var result = auditApiMapper.toApi(dto);
 
@@ -242,13 +248,14 @@ class AuditApiMapperTest {
     }
 
     private AuditLogDto createAuditLogDto(String action, String accountNumber) {
-        var dto = new AuditLogDto();
-        dto.setId(UUID.randomUUID());
-        dto.setAction(action);
-        dto.setAccountNumber(accountNumber);
-        dto.setPerformedAt(OffsetDateTime.now());
-        dto.setIpAddress("192.168.1.1");
-        dto.setUserAgent("TestAgent");
+        var dto = AuditLogDto.builder()
+                .id(UUID.randomUUID())
+                .action(action)
+                .accountNumber(accountNumber)
+                .performedAt(OffsetDateTime.now())
+                .ipAddress("192.168.1.1")
+                .userAgent("TestAgent")
+                .build();
         return dto;
     }
 }

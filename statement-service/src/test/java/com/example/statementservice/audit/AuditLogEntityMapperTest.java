@@ -40,15 +40,15 @@ class AuditLogEntityMapperTest {
         entity.setDetails(details);
         var result = auditLogEntityMapper.toDto(entity);
         assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(id);
-        assertThat(result.getAccountNumber()).isEqualTo("123456789");
-        assertThat(result.getStatementId()).isEqualTo(statementId);
-        assertThat(result.getAction()).isEqualTo("DOWNLOAD_FAILED");
-        assertThat(result.getPerformedAt()).isEqualTo(performedAt);
-        assertThat(result.getIpAddress()).isEqualTo("192.168.1.1");
-        assertThat(result.getUserAgent()).isEqualTo("Mozilla/5.0");
-        assertThat(result.getDetails()).containsOnlyKeys("reason");
-        assertThat(result.getDetails().get("reason")).isEqualTo("Link expired");
+        assertThat(result.id()).isEqualTo(id);
+        assertThat(result.accountNumber()).isEqualTo("123456789");
+        assertThat(result.statementId()).isEqualTo(statementId);
+        assertThat(result.action()).isEqualTo("DOWNLOAD_FAILED");
+        assertThat(result.performedAt()).isEqualTo(performedAt);
+        assertThat(result.ipAddress()).isEqualTo("192.168.1.1");
+        assertThat(result.userAgent()).isEqualTo("Mozilla/5.0");
+        assertThat(result.details()).containsOnlyKeys("reason");
+        assertThat(result.details().get("reason")).isEqualTo("Link expired");
     }
 
     @Test
@@ -67,7 +67,7 @@ class AuditLogEntityMapperTest {
         entity.setDetails(details);
         entity.setPerformedAt(OffsetDateTime.now());
         var result = auditLogEntityMapper.toDto(entity);
-        assertThat(result.getIpAddress()).isEqualTo("10.0.0.1");
+        assertThat(result.ipAddress()).isEqualTo("10.0.0.1");
     }
 
     @Test
@@ -82,7 +82,7 @@ class AuditLogEntityMapperTest {
 
         AuditLogDto result = auditLogEntityMapper.toDto(entity);
 
-        assertThat(result.getUserAgent()).isEqualTo("Chrome/90.0");
+        assertThat(result.userAgent()).isEqualTo("Chrome/90.0");
     }
 
     @Test
@@ -93,9 +93,9 @@ class AuditLogEntityMapperTest {
         entity.setDetails(null);
         entity.setPerformedAt(OffsetDateTime.now());
         var result = auditLogEntityMapper.toDto(entity);
-        assertThat(result.getIpAddress()).isNull();
-        assertThat(result.getUserAgent()).isNull();
-        assertThat(result.getDetails()).isEmpty();
+        assertThat(result.ipAddress()).isNull();
+        assertThat(result.userAgent()).isNull();
+        assertThat(result.details()).isEmpty();
     }
 
     @Test
@@ -106,9 +106,9 @@ class AuditLogEntityMapperTest {
         entity.setDetails(new HashMap<>());
         entity.setPerformedAt(OffsetDateTime.now());
         var result = auditLogEntityMapper.toDto(entity);
-        assertThat(result.getIpAddress()).isNull();
-        assertThat(result.getUserAgent()).isNull();
-        assertThat(result.getDetails()).isEmpty();
+        assertThat(result.ipAddress()).isNull();
+        assertThat(result.userAgent()).isNull();
+        assertThat(result.details()).isEmpty();
     }
 
     @Test
@@ -125,8 +125,8 @@ class AuditLogEntityMapperTest {
         entity.setDetails(details);
         entity.setPerformedAt(OffsetDateTime.now());
         var result = auditLogEntityMapper.toDto(entity);
-        assertThat(result.getDetails()).containsOnlyKeys("reason");
-        assertThat(result.getDetails().get("reason")).isEqualTo("Invalid signature");
+        assertThat(result.details()).containsOnlyKeys("reason");
+        assertThat(result.details().get("reason")).isEqualTo("Invalid signature");
     }
 
     @Test
@@ -141,7 +141,7 @@ class AuditLogEntityMapperTest {
         entity.setDetails(details);
         entity.setPerformedAt(OffsetDateTime.now());
         var result = auditLogEntityMapper.toDto(entity);
-        assertThat(result.getDetails()).isEmpty();
+        assertThat(result.details()).isEmpty();
     }
 
     @Test
@@ -155,8 +155,8 @@ class AuditLogEntityMapperTest {
         entity.setDetails(details);
         entity.setPerformedAt(OffsetDateTime.now());
         var result = auditLogEntityMapper.toDto(entity);
-        assertThat(result.getIpAddress()).isEqualTo("12345");
-        assertThat(result.getUserAgent()).isEqualTo("true");
+        assertThat(result.ipAddress()).isEqualTo("12345");
+        assertThat(result.userAgent()).isEqualTo("true");
     }
 
     @Test
@@ -169,9 +169,9 @@ class AuditLogEntityMapperTest {
         List<AuditLogDto> result = auditLogEntityMapper.toDtos(entities);
 
         assertThat(result).hasSize(3);
-        assertThat(result.get(0).getAction()).isEqualTo("ACTION1");
-        assertThat(result.get(1).getAction()).isEqualTo("ACTION2");
-        assertThat(result.get(2).getAction()).isEqualTo("ACTION3");
+        assertThat(result.get(0).action()).isEqualTo("ACTION1");
+        assertThat(result.get(1).action()).isEqualTo("ACTION2");
+        assertThat(result.get(2).action()).isEqualTo("ACTION3");
     }
 
     @Test
@@ -193,8 +193,8 @@ class AuditLogEntityMapperTest {
         List<AuditLog> entities = Collections.singletonList(entity);
         var result = auditLogEntityMapper.toDtos(entities);
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getAction()).isEqualTo("SINGLE_ACTION");
-        assertThat(result.get(0).getAccountNumber()).isEqualTo("ACC123");
+        assertThat(result.get(0).action()).isEqualTo("SINGLE_ACTION");
+        assertThat(result.get(0).accountNumber()).isEqualTo("ACC123");
     }
 
     @Test
@@ -215,13 +215,13 @@ class AuditLogEntityMapperTest {
         var result = auditLogEntityMapper.toDtos(entities);
         assertThat(result).hasSize(1);
         var dto = result.get(0);
-        assertThat(dto.getId()).isEqualTo(id);
-        assertThat(dto.getAccountNumber()).isEqualTo("ACC999");
-        assertThat(dto.getAction()).isEqualTo("UPLOAD_SUCCESS");
-        assertThat(dto.getPerformedAt()).isEqualTo(timestamp);
-        assertThat(dto.getIpAddress()).isEqualTo("203.0.113.1");
-        assertThat(dto.getUserAgent()).isEqualTo("Safari");
-        assertThat(dto.getDetails()).containsOnlyKeys("reason");
+        assertThat(dto.id()).isEqualTo(id);
+        assertThat(dto.accountNumber()).isEqualTo("ACC999");
+        assertThat(dto.action()).isEqualTo("UPLOAD_SUCCESS");
+        assertThat(dto.performedAt()).isEqualTo(timestamp);
+        assertThat(dto.ipAddress()).isEqualTo("203.0.113.1");
+        assertThat(dto.userAgent()).isEqualTo("Safari");
+        assertThat(dto.details()).containsOnlyKeys("reason");
     }
 
     @Test

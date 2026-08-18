@@ -99,10 +99,11 @@ class StatementServiceTest {
         testStatement.setUploadedBy("admin");
         testStatement.setEncrypted(true);
         testStatement.setContentHash("abc123");
-        testStatementDto = new StatementDto();
-        testStatementDto.setStatementId(testId);
-        testStatementDto.setAccountNumber(testAccountNumber);
-        testStatementDto.setStatementDate(testStatementDate);
+        testStatementDto = StatementDto.builder()
+                .statementId(testId)
+                .accountNumber(testAccountNumber)
+                .statementDate(testStatementDate)
+                .build();
     }
 
     private void stubSuccessfulEncryptAndStore(byte[] iv, byte[] content) throws Exception {
@@ -129,10 +130,10 @@ class StatementServiceTest {
         UploadResponseDto result = statementService.uploadStatement(
                 testAccountNumber, testStatementDate, multipartFile, uploadedBy, testContentHash);
         assertThat(result).isNotNull();
-        assertThat(result.getStatementId()).isNotNull();
-        assertThat(result.getFileName()).isEqualTo("statement.pdf");
-        assertThat(result.getFileSize()).isEqualTo(2048L);
-        assertThat(result.getUploadedAt()).isNotNull();
+        assertThat(result.statementId()).isNotNull();
+        assertThat(result.fileName()).isEqualTo("statement.pdf");
+        assertThat(result.fileSize()).isEqualTo(2048L);
+        assertThat(result.uploadedAt()).isNotNull();
         verify(fileStore).store(any(UUID.class), eq(testAccountNumber), eq(testStatementDate), any());
         verify(statementRepository).saveAndFlush(any(Statement.class));
     }
@@ -370,7 +371,7 @@ class StatementServiceTest {
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
         StatementDto result = statementService.toDto(testStatement);
         assertThat(result).isNotNull();
-        assertThat(result.getStatementId()).isEqualTo(testId);
+        assertThat(result.statementId()).isEqualTo(testId);
         verify(statementEntityMapper).toDto(testStatement);
     }
 
@@ -380,7 +381,7 @@ class StatementServiceTest {
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
         StatementDto result = statementService.getStatementDtoById(testId);
         assertThat(result).isNotNull();
-        assertThat(result.getStatementId()).isEqualTo(testId);
+        assertThat(result.statementId()).isEqualTo(testId);
         verify(statementRepository).findStatementById(testId);
         verify(statementEntityMapper).toDto(testStatement);
     }
@@ -394,7 +395,7 @@ class StatementServiceTest {
         List<StatementDto> result = statementService.getStatementsDtoByAccountNumber(testAccountNumber);
         assertThat(result).isNotNull();
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getStatementId()).isEqualTo(testId);
+        assertThat(result.get(0).statementId()).isEqualTo(testId);
         verify(statementRepository).findAllByAccountNumber(testAccountNumber);
         verify(statementEntityMapper).toDtos(statements);
     }
@@ -407,7 +408,7 @@ class StatementServiceTest {
         Optional<StatementDto> result =
                 statementService.getStatementDtoByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
         assertThat(result).isPresent();
-        assertThat(result.get().getStatementId()).isEqualTo(testId);
+        assertThat(result.get().statementId()).isEqualTo(testId);
         verify(statementRepository).findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
         verify(statementEntityMapper).toDto(testStatement);
     }

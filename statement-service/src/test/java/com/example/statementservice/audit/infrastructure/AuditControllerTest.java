@@ -40,10 +40,11 @@ class AuditControllerTest {
 
     @BeforeEach
     void setUp() {
-        auditLogDto = new AuditLogDto();
-        auditLogDto.setId(UUID.randomUUID());
-        auditLogDto.setAccountNumber("123456789");
-        auditLogDto.setAction("DOWNLOAD");
+        auditLogDto = AuditLogDto.builder()
+                .id(UUID.randomUUID())
+                .accountNumber("123456789")
+                .action("DOWNLOAD")
+                .build();
 
         auditLogEntry = new AuditLogEntry();
         auditLogEntry.setAccountNumber("123456789");

@@ -55,10 +55,11 @@ class AuditQueryServiceTest {
         testAuditLog.setPerformedAt(OffsetDateTime.now());
         testAuditLog.setPerformedBy("testUser");
 
-        testAuditLogDto = new AuditLogDto();
-        testAuditLogDto.setId(UUID.randomUUID());
-        testAuditLogDto.setAccountNumber("123456789");
-        testAuditLogDto.setAction("DOWNLOAD");
+        testAuditLogDto = AuditLogDto.builder()
+                .id(UUID.randomUUID())
+                .accountNumber("123456789")
+                .action("DOWNLOAD")
+                .build();
     }
 
     private void stubRepositoryPage(List<AuditLog> auditLogs, List<AuditLogDto> dtos, long totalElements) {

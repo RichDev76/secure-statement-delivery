@@ -26,7 +26,7 @@ login_with_approle() {
   return 1
 }
 
-if [ -f "$ROLE_ID_FILE" ] && [ -f "$SECRET_ID_FILE" ]; then
+if [ -r "$ROLE_ID_FILE" ] && [ -r "$SECRET_ID_FILE" ]; then
   if login_with_approle; then
     echo "AppRole login successful."
     export SPRING_CLOUD_CONFIG_SERVER_VAULT_TOKEN="$VAULT_TOKEN"
@@ -34,6 +34,8 @@ if [ -f "$ROLE_ID_FILE" ] && [ -f "$SECRET_ID_FILE" ]; then
   else
     echo "AppRole login failed after retries."
   fi
+else
+  echo "WARNING: AppRole files at $ROLE_ID_FILE / $SECRET_ID_FILE missing or unreadable; Vault-backed config will fail."
 fi
 
 if [ -z "${VAULT_TOKEN:-}" ] && [ -f "$TOKEN_FILE" ]; then
@@ -43,4 +45,8 @@ if [ -z "${VAULT_TOKEN:-}" ] && [ -f "$TOKEN_FILE" ]; then
   echo "Using fallback token file at $TOKEN_FILE"
 fi
 
+# Secrets are read; the JVM itself never runs as root.
+if [ "$(id -u)" = "0" ]; then
+  exec setpriv --reuid=config-server --regid=config-server --init-groups "$@"
+fi
 exec "$@"

@@ -15,10 +15,10 @@ RUN mvn -B -DskipTests package -pl config-server -am
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 
-# curl & jq: entrypoint's Vault AppRole login.
+# curl & jq: entrypoint's Vault AppRole login. Pebble is unused; drop it and its CVE surface.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl jq ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /usr/bin/pebble
 
 # Dedicated, unprivileged user - this process holds a Vault token and must not run as root.
 RUN groupadd --gid 10002 config-server \
@@ -27,7 +27,8 @@ RUN groupadd --gid 10002 config-server \
 COPY --from=build --chown=config-server:config-server /app/config-server/target/*.jar /app/app.jar
 COPY --chown=config-server:config-server --chmod=755 config-server/docker/config-server-entrypoint.sh /app/config-server-entrypoint.sh
 
-USER config-server
+# No USER here: the entrypoint must read root-only mounted Vault secrets, then drops to
+# config-server via setpriv before exec'ing the JVM.
 
 # Self-sufficient outside docker-compose too (compose's healthcheck block takes precedence).
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=6 \

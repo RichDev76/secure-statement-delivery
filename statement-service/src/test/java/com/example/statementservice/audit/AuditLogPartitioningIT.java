@@ -32,13 +32,11 @@ class AuditLogPartitioningIT extends AbstractIntegrationTest {
     @Test
     void Given_MigrationsHaveRun_When_InspectingPartitions_Then_SeededAndDefaultPartitionsExist() {
         // When
-        var partitionNames = jdbcTemplate.queryForList(
-                """
+        var partitionNames = jdbcTemplate.queryForList("""
                 SELECT c.relname FROM pg_inherits pi
                 JOIN pg_class c ON c.oid = pi.inhrelid
                 WHERE pi.inhparent = 'audit_logs'::regclass
-                """,
-                String.class);
+                """, String.class);
 
         // Then
         assertThat(partitionNames)

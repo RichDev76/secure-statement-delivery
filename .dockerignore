@@ -1,0 +1,23 @@
+# Version control
+.git/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Build artifacts - not needed as build context, the Dockerfile builds from source
+target/
+**/target/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Local secrets - never send these to the Docker daemon as build context
+.env
+*.env
+infra/vault/init/
+
+# Bruno collection - test fixtures only, not part of the image build
+statement-service/bruno/

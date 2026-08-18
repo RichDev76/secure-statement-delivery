@@ -82,6 +82,12 @@ class AuditLogPartitioningIT extends AbstractIntegrationTest {
 
         // Cleanup: other ITs (AuditPartitionMaintenanceServiceIT) assert audit_logs_default stays
         // empty against the same shared, non-rolled-back Testcontainers database.
-        auditLogRepository.delete(log);
+        // audit_logs is append-only; cleanup needs the trigger escape hatch.
+        jdbcTemplate.execute("ALTER TABLE audit_logs DISABLE TRIGGER audit_logs_append_only");
+        try {
+            jdbcTemplate.update("DELETE FROM audit_logs WHERE id = ?", log.getId());
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE audit_logs ENABLE TRIGGER audit_logs_append_only");
+        }
     }
 }

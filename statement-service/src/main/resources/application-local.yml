@@ -52,7 +52,7 @@ statement:
     cleanup:
       enabled: true
       cron: "0 0/5 * * * *"
-      retention-period: "PT0S"
+      retention-period: "PT24H"
       batch-size: 500
       lock-at-most-for: "PT5M"
       lock-at-least-for: "PT10S"

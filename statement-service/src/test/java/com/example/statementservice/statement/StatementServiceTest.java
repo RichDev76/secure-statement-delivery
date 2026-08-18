@@ -8,10 +8,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.api.StatementsApi;
 import com.example.statementservice.shared.IdGeneratorPort;
 import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.upload.UploadResponseDto;
+import jakarta.validation.constraints.Pattern;
 import java.io.ByteArrayOutputStream;
 import java.time.Clock;
 import java.time.Instant;
@@ -20,16 +22,20 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -157,6 +163,53 @@ class StatementServiceTest {
                         testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
                 .isInstanceOf(StatementUploadException.class)
                 .hasMessageContaining("Failed to persist statement metadata");
+    }
+
+    @Test
+    void GivenStatementForSameAccountAndDateExists_WhenUploadStatement_ThenThrowsDuplicateStatementException()
+            throws Exception {
+        // Given
+        when(statementRepository.existsByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
+                .thenReturn(true);
+
+        // When / Then
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
+                .isInstanceOf(DuplicateStatementException.class);
+        verify(fileStore, never()).store(any(UUID.class), any(), any(), any());
+        verify(statementRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void GivenConcurrentDuplicateInsert_WhenUploadStatement_ThenThrowsDuplicateStatementException() throws Exception {
+        // Given: the pre-check misses but the unique index fires on save
+        byte[] mockIv = new byte[] {1, 2, 3, 4};
+        when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
+        stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
+        when(statementRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException(
+                        "duplicate key value violates unique constraint \"idx_statements_account_date\""));
+
+        // When / Then
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
+                .isInstanceOf(DuplicateStatementException.class);
+    }
+
+    @Test
+    void GivenUnrelatedIntegrityViolation_WhenUploadStatement_ThenThrowsStatementUploadException() throws Exception {
+        // Given: an integrity failure that is not the account/date unique index
+        byte[] mockIv = new byte[] {1, 2, 3, 4};
+        when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
+        stubSuccessfulEncryptAndStore(mockIv, "file-content".getBytes());
+        when(statementRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException(
+                        "null value in column \"content_hash\" violates not-null constraint"));
+
+        // When / Then
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
+                .isInstanceOf(StatementUploadException.class);
     }
 
     @Test
@@ -368,5 +421,40 @@ class StatementServiceTest {
         assertThat(result).isEmpty();
         verify(statementRepository).findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
         verify(statementEntityMapper, never()).toDto(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "statement.pdf",
+                "My.Statement.PDF",
+                "a..b.pdf",
+                "state ment.pdf",
+                "ümlaut-März.PDF",
+                "statement-2026-01.PDF",
+                "no-extension",
+                ".pdf",
+                "report.bin"
+            })
+    void GivenAnyOriginalFilename_WhenSanitized_ThenOutputMatchesDownloadContractPattern(String originalFilename) {
+        // When
+        var sanitized = StatementService.sanitizeFileName(originalFilename);
+
+        // Then
+        assertThat(sanitized).matches(DOWNLOAD_FILE_NAME_CONTRACT_PATTERN);
+    }
+
+    private static final String DOWNLOAD_FILE_NAME_CONTRACT_PATTERN = downloadFileNameContractPattern();
+
+    private static String downloadFileNameContractPattern() {
+        return Arrays.stream(StatementsApi.class.getMethods())
+                .filter(method -> method.getName().equals("downloadStatementByFileName"))
+                .flatMap(method -> Arrays.stream(method.getParameters()))
+                .map(parameter -> parameter.getAnnotation(Pattern.class))
+                .filter(Objects::nonNull)
+                .map(Pattern::regexp)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "No @Pattern found on downloadStatementByFileName fileName parameter"));
     }
 }

@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
+import com.example.statementservice.UploadDownloadSteps;
 import com.example.statementservice.shared.Sha256Digest;
 import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
@@ -74,5 +75,47 @@ class StatementUploadDownloadIT extends AbstractIntegrationTest {
 
         // Then
         assertThat(downloadResult.getResponse().getContentAsByteArray()).isEqualTo(originalBytes);
+    }
+
+    @Test
+    void GivenAccountNumberOutsidePattern_WhenUploaded_ThenBeanValidationRejectsWithInvalidInputCode()
+            throws Exception {
+        // Given: an account number shorter than the 9-digit minimum, with a digest that matches the file
+        var originalBytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
+        var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, originalBytes);
+        var digest = Sha256Digest.hexOf(originalBytes);
+        var uploadRole = jwt().authorities(new SimpleGrantedAuthority("ROLE_Upload"));
+
+        // When
+        var responseBody = mockMvc.perform(multipart("/api/v1/statements/upload")
+                        .file(file)
+                        .param("accountNumber", "123")
+                        .param("date", "2026-07-01")
+                        .header("X-Message-Digest", digest)
+                        .with(uploadRole))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        // Then: contract @Pattern rejects before service validation, so the framework code wins
+        String errorCode = JsonPath.read(responseBody, "$.errorCode");
+        assertThat(errorCode).isEqualTo("INVALID_INPUT");
+    }
+
+    @Test
+    void GivenDottedUppercaseFilename_WhenUploadedThenLinkedThenDownloaded_ThenDownloadSucceeds() throws Exception {
+        // Given: a filename the download contract's pattern would reject verbatim
+        var uploaded = UploadDownloadSteps.uploadPdf(
+                mockMvc, "My.Statement.PDF", UploadDownloadSteps.uniqueAccountNumber("2"));
+
+        // When
+        var linkUri = UploadDownloadSteps.mintDownloadLink(mockMvc, uploaded.statementId());
+        var downloadResult = mockMvc.perform(UploadDownloadSteps.downloadRequest(linkUri))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        // Then
+        assertThat(downloadResult.getResponse().getContentAsByteArray()).isEqualTo(uploaded.content());
     }
 }

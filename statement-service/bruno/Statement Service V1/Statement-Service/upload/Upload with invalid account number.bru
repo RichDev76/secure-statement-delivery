@@ -36,11 +36,14 @@ tests {
   test("rejects an account number outside the 9-15 digit pattern", function () {
     expect(res.getStatus()).to.equal(400);
     expect(res.getHeader('content-type')).to.include('application/problem+json');
-    expect(res.getBody().errorCode).to.equal('INVALID_ACCOUNT_NUMBER');
+    expect(res.getBody().errorCode).to.equal('INVALID_INPUT');
   });
 }
 
 docs {
   accountNumber must match ^[0-9]{9,15}$; "123" is too short. Uses the correct digest for fixtures/statement1.pdf
-  since account-number validation runs before the digest check and would otherwise mask this case.
+  so the digest check cannot mask this case.
+  Verified against the running service: the generated controller's Bean Validation @Pattern rejects the value
+  before service-level validation runs, so this returns errorCode INVALID_INPUT, not INVALID_ACCOUNT_NUMBER
+  (same framework-first behaviour as the malformed digest header case).
 }

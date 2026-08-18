@@ -34,8 +34,9 @@ public class Bucket4jSignedLinkRateLimiter implements SignedLinkRateLimiterPort 
             var bucket = proxyManager.getProxy(linkId.toString(), this::configuration);
             return bucket.tryConsume(1);
         } catch (Exception e) {
-            log.warn("Rate limiter unavailable, failing open for linkId={}", linkId, e);
-            return true;
+            // Fail closed: sole abuse control on an unauthenticated endpoint.
+            log.error("Rate limiter unavailable, failing closed for linkId={}", linkId, e);
+            return false;
         }
     }
 

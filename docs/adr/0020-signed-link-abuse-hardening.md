@@ -65,6 +65,15 @@ redeemed, not how fast — so a rate limiter alone doesn't reduce exposure, only
   industry-standard trade-off for a bare, one-click link (matching S3/GCS/Azure SAS presigned
   URLs); these measures bound its consequences rather than removing the vector.
 
+## Addendum — Limiter failure posture
+
+The limiter originally failed open on any error, silently removing the only abuse control on an
+unauthenticated endpoint exactly when the system was degraded. It now fails closed (429 +
+`Retry-After`): the limiter is Postgres-backed, so a limiter outage implies link validation would
+fail moments later anyway — almost no legitimate traffic is sacrificed, while outage-window
+signature-guessing floods are throttled to zero. Alternative (configurable posture) rejected:
+one more knob for a decision with a clear right answer here.
+
 ## References
 
 - [0008 — Scheduled signed-link cleanup with ShedLock](0008-scheduled-cleanup-shedlock.md)

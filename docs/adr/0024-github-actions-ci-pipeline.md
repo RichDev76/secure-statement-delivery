@@ -72,6 +72,17 @@ review. PIT mutation testing is deferred — see Consequences.
   to populate `.m2` first and sets `TRIVY_OFFLINE_SCAN: true`.
 - Rollback: revert the `.github/` directory; no other code path depends on it.
 
+## Addendum — Image job and coverage gate
+
+- New `image-build` job builds both Dockerfiles from a clean context and Trivy-scans the
+  resulting images (HIGH/CRITICAL, ignore-unfixed): the images are what actually ships, and the
+  fs scan alone left base-layer CVEs invisible.
+- JaCoCo now runs `check` at `verify` with 90% instruction / 80% branch bundle thresholds — the
+  "report-only until a baseline" condition above is met (verified baseline 93%/82.7%), and the
+  thresholds sit just below it so the gate protects the status quo without flaking.
+- Publish/deploy stages remain deliberately absent: this project has no registry or environment
+  to deploy to, and a fake stage would be pipeline theater.
+
 ## References
 
 - `docs/standards/ai-review-checklist.md`

@@ -1,6 +1,7 @@
 package com.example.statementservice.audit;
 
 import com.example.statementservice.shared.IdGeneratorPort;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -17,10 +18,16 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuditService {
 
+    // Alertable signal that audit entries are actually being lost.
+    public static final String AUDIT_DROPPED_METRIC = "statement.audit.dropped";
+
+    private static final String ACTION_TAG = "action";
+
     private final AuditLogRepository auditLogRepository;
     private final ExecutorService auditExecutor;
     private final IdGeneratorPort idGenerator;
     private final Clock clock;
+    private final MeterRegistry meterRegistry;
 
     public void record(
             String action,
@@ -35,6 +42,7 @@ public class AuditService {
                 try {
                     auditLogRepository.save(auditLog);
                 } catch (Exception e) {
+                    recordDroppedAudit(auditLog);
                     log.error(
                             "Failed to save audit log: id={}, action={}, statementId={}",
                             auditLog.getId(),
@@ -44,6 +52,7 @@ public class AuditService {
                 }
             });
         } catch (RejectedExecutionException e) {
+            recordDroppedAudit(auditLog);
             // A shutting-down executor must not turn in-flight requests into 500s.
             log.warn(
                     "Audit executor rejected task - action={}, statementId={}",
@@ -51,6 +60,12 @@ public class AuditService {
                     auditLog.getStatementId(),
                     e);
         }
+    }
+
+    private void recordDroppedAudit(AuditLog auditLog) {
+        meterRegistry
+                .counter(AUDIT_DROPPED_METRIC, ACTION_TAG, auditLog.getAction())
+                .increment();
     }
 
     public List<AuditLog> getAllAuditLogs() {

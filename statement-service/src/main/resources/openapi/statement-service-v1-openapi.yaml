@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Statement Upload & Search API
-  version: 1.12.0
+  version: 1.13.0
   description: >
     Upload a PDF account statement with metadata and strict validation rules.
     Also provides search endpoints to retrieve statements by statementId,
@@ -126,6 +126,19 @@ paths:
                 status: 403
                 detail: "You do not have permission to access this resource"
                 errorCode: "ACCESS_DENIED"
+        '409':
+          description: A statement already exists for this account number and statement date
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/upload"
+                title: "Statement Already Exists"
+                status: 409
+                detail: "A statement already exists for this account number and statement date"
+                instance: "/api/v1/statements/upload"
+                errorCode: "STATEMENT_ALREADY_EXISTS"
         '413':
           description: Uploaded file exceeds the maximum allowed size
           content:

@@ -7,10 +7,6 @@ spring:
   config:
     activate:
       on-profile: develop
-      import: optional:configserver:http://localhost:8888
-      cloud:
-        config:
-          enabled: true
   jpa:
     hibernate:
       ddl-auto: none
@@ -57,12 +53,14 @@ statement:
   signed-link:
     expiry: 3m
     download-path: /api/v1/statements/download/
+    # Set explicitly when behind a proxy, e.g.:
+    # external-base-url: https://statements.example.com
     max-redemptions: 3
     rate-limit-per-minute: 10
     cleanup:
       enabled: true
       cron: "0 0/5 * * * *"          # every 5 minutes
-      retention-period: "PT0S"       # ISO-8601 duration; extra grace period after expiry
+      retention-period: "PT24H"      # ISO-8601 grace period after expiry so late clickers get LINK_EXPIRED, not STATEMENT_NOT_FOUND
       batch-size: 500                 # max rows to delete per run
       lock-at-most-for: "PT5M"       # ShedLock max lock time
       lock-at-least-for: "PT10S"     # ShedLock min lock time

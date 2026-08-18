@@ -6,6 +6,7 @@ import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
+import com.example.statementservice.statement.DuplicateStatementException;
 import com.example.statementservice.statement.StatementService;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -112,6 +113,7 @@ public class StatementUploadService {
             case PdfValidationException ignored -> UploadFailureReason.VALIDATION_FAILED;
             case DigestComputationException ignored -> UploadFailureReason.VALIDATION_FAILED;
             case StatementUploadException ignored -> UploadFailureReason.UPLOAD_ERROR;
+            case DuplicateStatementException ignored -> UploadFailureReason.DUPLICATE_STATEMENT;
             default -> UploadFailureReason.UNEXPECTED;
         };
     }

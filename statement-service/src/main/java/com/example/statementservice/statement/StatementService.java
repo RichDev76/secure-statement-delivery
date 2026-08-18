@@ -10,11 +10,13 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,7 +28,13 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class StatementService {
 
-    public static final String FILE_NAME_SANITIZATION_REGEX = "[^a-zA-Z0-9._-]";
+    public static final String FILE_NAME_SANITIZATION_REGEX = "[^a-zA-Z0-9_-]";
+
+    private static final String PDF_EXTENSION = ".pdf";
+    private static final String FALLBACK_FILE_NAME_STEM = "statement";
+    private static final String DUPLICATE_STATEMENT_MESSAGE =
+            "A statement already exists for this account number and statement date";
+    private static final String ACCOUNT_DATE_UNIQUE_INDEX = "idx_statements_account_date";
 
     private final StatementRepository statementRepository;
     private final StatementFileStore fileStore;
@@ -39,6 +47,10 @@ public class StatementService {
     @Transactional
     public UploadResponseDto uploadStatement(
             String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy, String contentHash) {
+        // Pre-check avoids orphaning an S3 object on the common duplicate path.
+        if (statementRepository.existsByAccountNumberAndStatementDate(accountNumber, statementDate)) {
+            throw new DuplicateStatementException(DUPLICATE_STATEMENT_MESSAGE);
+        }
         var id = idGenerator.newId();
         var initializationVector = fileCipher.generateInitializationVector();
         byte[] dek;
@@ -73,6 +85,11 @@ public class StatementService {
                 contentHash);
         try {
             this.statementRepository.saveAndFlush(statement);
+        } catch (DataIntegrityViolationException e) {
+            if (isAccountDateUniqueViolation(e)) {
+                throw new DuplicateStatementException(DUPLICATE_STATEMENT_MESSAGE, e);
+            }
+            throw new StatementUploadException("Failed to persist statement metadata", e);
         } catch (RuntimeException e) {
             throw new StatementUploadException("Failed to persist statement metadata", e);
         }
@@ -173,7 +190,16 @@ public class StatementService {
                 .build();
     }
 
-    private String sanitizeFileName(String fileName) {
-        return fileName.replaceAll(FILE_NAME_SANITIZATION_REGEX, "_");
+    private static boolean isAccountDateUniqueViolation(DataIntegrityViolationException e) {
+        return String.valueOf(e.getMostSpecificCause().getMessage()).contains(ACCOUNT_DATE_UNIQUE_INDEX);
+    }
+
+    // Output must match the download contract's fileName pattern.
+    static String sanitizeFileName(String fileName) {
+        var stem = fileName.toLowerCase(Locale.ROOT).endsWith(PDF_EXTENSION)
+                ? fileName.substring(0, fileName.length() - PDF_EXTENSION.length())
+                : fileName;
+        var sanitizedStem = stem.replaceAll(FILE_NAME_SANITIZATION_REGEX, "_");
+        return (sanitizedStem.isEmpty() ? FALLBACK_FILE_NAME_STEM : sanitizedStem) + PDF_EXTENSION;
     }
 }

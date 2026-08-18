@@ -13,6 +13,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.example.statementservice.shared.IdGeneratorPort;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -49,6 +50,7 @@ class AuditServiceTest {
     private IdGeneratorPort idGenerator;
 
     private AuditService auditService;
+    private SimpleMeterRegistry meterRegistry;
 
     private UUID testStatementId;
     private UUID testSignedLinkId;
@@ -63,11 +65,13 @@ class AuditServiceTest {
 
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
         auditService = new AuditService(
                 auditLogRepository,
                 Executors.newVirtualThreadPerTaskExecutor(),
                 idGenerator,
-                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
+                Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC),
+                meterRegistry);
         lenient().when(idGenerator.newId()).thenAnswer(invocation -> UUID.randomUUID());
 
         testStatementId = UUID.randomUUID();
@@ -113,13 +117,17 @@ class AuditServiceTest {
         });
     }
 
+    private AuditService auditServiceWithShutDownExecutor() {
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        executor.shutdown();
+        return new AuditService(
+                auditLogRepository, executor, idGenerator, Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC), meterRegistry);
+    }
+
     @Test
     void GivenShutDownExecutor_WhenRecord_ThenLogsWarningAndDoesNotThrow() {
         // Given: an audit write racing a graceful shutdown
-        var executor = Executors.newVirtualThreadPerTaskExecutor();
-        executor.shutdown();
-        var serviceWithShutDownExecutor =
-                new AuditService(auditLogRepository, executor, idGenerator, Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC));
+        var serviceWithShutDownExecutor = auditServiceWithShutDownExecutor();
 
         // When
         serviceWithShutDownExecutor.record(
@@ -131,6 +139,38 @@ class AuditServiceTest {
             assertThat(event.getFormattedMessage()).contains("Audit executor rejected task");
         });
         verify(auditLogRepository, times(0)).save(any());
+    }
+
+    @Test
+    void GivenShutDownExecutor_WhenRecord_ThenIncrementsAuditDroppedCounter() {
+        // Given
+        var serviceWithShutDownExecutor = auditServiceWithShutDownExecutor();
+
+        // When
+        serviceWithShutDownExecutor.record(
+                testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
+
+        // Then
+        assertThat(meterRegistry
+                        .counter(AuditService.AUDIT_DROPPED_METRIC, "action", testAction)
+                        .count())
+                .isEqualTo(1.0);
+    }
+
+    @Test
+    void GivenRepositorySaveFails_WhenRecord_ThenIncrementsAuditDroppedCounter() {
+        // Given
+        when(auditLogRepository.save(any(AuditLog.class))).thenThrow(new RuntimeException("db down"));
+
+        // When
+        auditService.record(
+                testAction, testStatementId, testAccountNumber, testSignedLinkId, testPerformedBy, testDetails);
+
+        // Then
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> assertThat(meterRegistry
+                        .counter(AuditService.AUDIT_DROPPED_METRIC, "action", testAction)
+                        .count())
+                .isEqualTo(1.0));
     }
 
     @Test

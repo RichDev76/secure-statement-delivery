@@ -21,6 +21,8 @@ spring:
 
 server:
   port: 8080
+  # Trust X-Forwarded-* for audited IPs and minted link URLs; set to none where directly exposed.
+  forward-headers-strategy: framework
 
 logging:
   level:

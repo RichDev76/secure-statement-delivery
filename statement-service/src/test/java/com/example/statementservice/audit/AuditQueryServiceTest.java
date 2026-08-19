@@ -9,7 +9,9 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
 import com.example.statementservice.shared.InvalidDateException;
+import com.example.statementservice.support.LogCapture;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collections;
@@ -55,10 +57,11 @@ class AuditQueryServiceTest {
         testAuditLog.setPerformedAt(OffsetDateTime.now());
         testAuditLog.setPerformedBy("testUser");
 
-        testAuditLogDto = new AuditLogDto();
-        testAuditLogDto.setId(UUID.randomUUID());
-        testAuditLogDto.setAccountNumber("123456789");
-        testAuditLogDto.setAction("DOWNLOAD");
+        testAuditLogDto = AuditLogDto.builder()
+                .id(UUID.randomUUID())
+                .accountNumber("123456789")
+                .action("DOWNLOAD")
+                .build();
     }
 
     private void stubRepositoryPage(List<AuditLog> auditLogs, List<AuditLogDto> dtos, long totalElements) {
@@ -75,6 +78,42 @@ class AuditQueryServiceTest {
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(auditLogRepository).findAll(any(Specification.class), captor.capture());
         return captor.getValue();
+    }
+
+    @Test
+    void GivenAccountNumber_WhenQueryingAuditLogs_ThenDebugLogNeverContainsAccountNumberOnlyPresenceFlag() {
+        // Given
+        stubEmptyRepositoryPage();
+        var accountNumber = "123456789";
+
+        try (var logs = LogCapture.forClassAtLevel(AuditQueryService.class, Level.DEBUG)) {
+            // When
+            auditQueryService.getFilteredAuditLogs(accountNumber, null, null, 0, 50);
+
+            // Then
+            assertThat(logs.lines())
+                    .as("the query must still log something - a guard only checking absence "
+                            + "would pass trivially if the log statement were deleted")
+                    .isNotEmpty()
+                    .as("the account number must never reach a log line")
+                    .noneMatch(line -> line.contains(accountNumber))
+                    .as("presence, not value, is the diagnostic signal that replaces it")
+                    .anyMatch(line -> line.contains("accountFilter=present"));
+        }
+    }
+
+    @Test
+    void GivenNoAccountNumber_WhenQueryingAuditLogs_ThenDebugLogReportsFilterAbsent() {
+        // Given
+        stubEmptyRepositoryPage();
+
+        try (var logs = LogCapture.forClassAtLevel(AuditQueryService.class, Level.DEBUG)) {
+            // When
+            auditQueryService.getFilteredAuditLogs(null, null, null, 0, 50);
+
+            // Then
+            assertThat(logs.lines()).anyMatch(line -> line.contains("accountFilter=absent"));
+        }
     }
 
     @Test

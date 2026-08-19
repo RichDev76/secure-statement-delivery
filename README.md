@@ -78,7 +78,11 @@ APP_DB=statementdb
 APP_DB_USER=statementuser
 APP_DB_PASSWORD=<your-app-db-password>
 
-# Statement Service (S3-compatible storage via Floci - see ADR 0026)
+# Config Server basic auth (statement-service authenticates with these; health stays open)
+CONFIG_SERVER_USER=config-user
+CONFIG_SERVER_PASSWORD=<your-config-server-password>
+
+# Statement Service (S3-compatible storage via Floci - see ADR 0014)
 S3_BUCKET=statements
 AWS_S3_REGION=eu-west-1
 AWS_ACCESS_KEY_ID=test
@@ -326,10 +330,11 @@ mvn clean verify   # unit tests (Surefire) + integration tests (Failsafe/Testcon
 ```
 
 Coverage is measured by JaCoCo across both unit and integration runs, excluding code
-generated from the OpenAPI contract. Current baseline: **93% line / 82.7% branch**
-(506 unit + 63 integration tests). HTML report: `statement-service/target/site/jacoco/index.html`.
-
-See `docs/TestCoverageGapAnalysis.html` for the coverage gap analysis behind these numbers.
+generated from the OpenAPI contract, and gated at `verify` (`jacoco:check`, 90% instruction /
+80% branch — see `statement-service/pom.xml`); a coverage drop below that fails the build.
+Test counts change as the suite grows, so they aren't hardcoded here — after `mvn verify`, see
+the Surefire/Failsafe summary in the console output, or the generated report at
+`statement-service/target/site/jacoco/index.html` for the current coverage percentage.
 
 #### API Test Collection (Bruno)
 
@@ -358,9 +363,10 @@ Two requests are intentionally excluded from a fast pass and worth knowing about
   waits out the real 3-minute signed-link expiry rather than faking it, so it's slow but
   deterministic.
 - **`Download during S3 outage (manual)`** cannot pass via `bru run` alone — Bruno's script
-  sandbox has no docker access. Run `./verify-s3-outage.sh` from the same directory instead: it
-  uploads a statement, mints a link, stops the `floci` container, exercises the download (expects
-  `503 STORAGE_UNAVAILABLE`), and restarts `floci` on exit even if the assertion fails.
+  sandbox has no docker access. Verify it manually instead: upload a statement and mint a signed
+  link, stop the object store with `docker compose -f infra/docker-compose.yml stop floci`, run
+  the download request (expect `503` with `errorCode: STORAGE_UNAVAILABLE` and a `Retry-After`
+  header), then restart it with `docker compose -f infra/docker-compose.yml start floci`.
 
 ---
 

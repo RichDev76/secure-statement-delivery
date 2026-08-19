@@ -16,6 +16,8 @@ public interface StatementRepository extends JpaRepository<Statement, UUID> {
 
     Optional<Statement> findByAccountNumberAndStatementDate(String accountNumber, LocalDate statementDate);
 
+    boolean existsByAccountNumberAndStatementDate(String accountNumber, LocalDate statementDate);
+
     Optional<Statement> findStatementById(UUID id);
 
     @Query("SELECT s FROM Statement s WHERE s.accountNumber = :accountNumber ORDER BY s.statementDate DESC")

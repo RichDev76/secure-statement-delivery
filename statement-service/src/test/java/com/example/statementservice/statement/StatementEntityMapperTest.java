@@ -35,13 +35,13 @@ class StatementEntityMapperTest {
         entity.setUploadedAt(uploadedAt);
         var result = statementEntityMapper.toDto(entity);
         assertThat(result).isNotNull();
-        assertThat(result.getStatementId()).isEqualTo(id);
-        assertThat(result.getAccountNumber()).isEqualTo("123456789");
-        assertThat(result.getStatementDate()).isEqualTo(statementDate);
-        assertThat(result.getFileName()).isEqualTo("statement.pdf");
-        assertThat(result.getFileSize()).isEqualTo(2048L);
-        assertThat(result.getUploadedAt()).isEqualTo(uploadedAt);
-        assertThat(result.getDownloadLink()).isNull();
+        assertThat(result.statementId()).isEqualTo(id);
+        assertThat(result.accountNumber()).isEqualTo("123456789");
+        assertThat(result.statementDate()).isEqualTo(statementDate);
+        assertThat(result.fileName()).isEqualTo("statement.pdf");
+        assertThat(result.fileSize()).isEqualTo(2048L);
+        assertThat(result.uploadedAt()).isEqualTo(uploadedAt);
+        assertThat(result.downloadLink()).isNull();
     }
 
     @Test
@@ -59,7 +59,7 @@ class StatementEntityMapperTest {
         entity.setSizeBytes(1024L);
         entity.setUploadedAt(OffsetDateTime.now());
         var result = statementEntityMapper.toDto(entity);
-        assertThat(result.getStatementId()).isEqualTo(id);
+        assertThat(result.statementId()).isEqualTo(id);
     }
 
     @Test
@@ -70,7 +70,7 @@ class StatementEntityMapperTest {
         entity.setSizeBytes(1024L);
         entity.setUploadedAt(OffsetDateTime.now());
         var result = statementEntityMapper.toDto(entity);
-        assertThat(result.getFileName()).isEqualTo("original-name.pdf");
+        assertThat(result.fileName()).isEqualTo("original-name.pdf");
     }
 
     @Test
@@ -81,7 +81,7 @@ class StatementEntityMapperTest {
         entity.setSizeBytes(4096L);
         entity.setUploadedAt(OffsetDateTime.now());
         var result = statementEntityMapper.toDto(entity);
-        assertThat(result.getFileSize()).isEqualTo(4096L);
+        assertThat(result.fileSize()).isEqualTo(4096L);
     }
 
     @Test
@@ -92,15 +92,15 @@ class StatementEntityMapperTest {
         var entities = Arrays.asList(entity1, entity2, entity3);
         var result = statementEntityMapper.toDtos(entities);
         assertThat(result).hasSize(3);
-        assertThat(result.get(0).getAccountNumber()).isEqualTo("ACC001");
-        assertThat(result.get(0).getFileName()).isEqualTo("file1.pdf");
-        assertThat(result.get(0).getDownloadLink()).isNull();
-        assertThat(result.get(1).getAccountNumber()).isEqualTo("ACC002");
-        assertThat(result.get(1).getFileName()).isEqualTo("file2.pdf");
-        assertThat(result.get(1).getDownloadLink()).isNull();
-        assertThat(result.get(2).getAccountNumber()).isEqualTo("ACC003");
-        assertThat(result.get(2).getFileName()).isEqualTo("file3.pdf");
-        assertThat(result.get(2).getDownloadLink()).isNull();
+        assertThat(result.get(0).accountNumber()).isEqualTo("ACC001");
+        assertThat(result.get(0).fileName()).isEqualTo("file1.pdf");
+        assertThat(result.get(0).downloadLink()).isNull();
+        assertThat(result.get(1).accountNumber()).isEqualTo("ACC002");
+        assertThat(result.get(1).fileName()).isEqualTo("file2.pdf");
+        assertThat(result.get(1).downloadLink()).isNull();
+        assertThat(result.get(2).accountNumber()).isEqualTo("ACC003");
+        assertThat(result.get(2).fileName()).isEqualTo("file3.pdf");
+        assertThat(result.get(2).downloadLink()).isNull();
     }
 
     @Test
@@ -122,9 +122,9 @@ class StatementEntityMapperTest {
         var entities = Collections.singletonList(entity);
         var result = statementEntityMapper.toDtos(entities);
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getAccountNumber()).isEqualTo("ACC123");
-        assertThat(result.get(0).getFileName()).isEqualTo("single.pdf");
-        assertThat(result.get(0).getDownloadLink()).isNull();
+        assertThat(result.get(0).accountNumber()).isEqualTo("ACC123");
+        assertThat(result.get(0).fileName()).isEqualTo("single.pdf");
+        assertThat(result.get(0).downloadLink()).isNull();
     }
 
     @Test
@@ -143,13 +143,13 @@ class StatementEntityMapperTest {
         var result = statementEntityMapper.toDtos(entities);
         assertThat(result).hasSize(1);
         var dto = result.get(0);
-        assertThat(dto.getStatementId()).isEqualTo(id);
-        assertThat(dto.getAccountNumber()).isEqualTo("ACC777");
-        assertThat(dto.getStatementDate()).isEqualTo(date);
-        assertThat(dto.getFileName()).isEqualTo("full.pdf");
-        assertThat(dto.getFileSize()).isEqualTo(16384L);
-        assertThat(dto.getUploadedAt()).isEqualTo(uploadedAt);
-        assertThat(dto.getDownloadLink()).isNull();
+        assertThat(dto.statementId()).isEqualTo(id);
+        assertThat(dto.accountNumber()).isEqualTo("ACC777");
+        assertThat(dto.statementDate()).isEqualTo(date);
+        assertThat(dto.fileName()).isEqualTo("full.pdf");
+        assertThat(dto.fileSize()).isEqualTo(16384L);
+        assertThat(dto.uploadedAt()).isEqualTo(uploadedAt);
+        assertThat(dto.downloadLink()).isNull();
     }
 
     @Test
@@ -160,8 +160,8 @@ class StatementEntityMapperTest {
         }
         var result = statementEntityMapper.toDtos(entities);
         assertThat(result).hasSize(100);
-        assertThat(result.get(0).getAccountNumber()).isEqualTo("ACC0");
-        assertThat(result.get(99).getAccountNumber()).isEqualTo("ACC99");
+        assertThat(result.get(0).accountNumber()).isEqualTo("ACC0");
+        assertThat(result.get(99).accountNumber()).isEqualTo("ACC99");
     }
 
     @Test
@@ -173,10 +173,10 @@ class StatementEntityMapperTest {
         entity.setUploadedAt(OffsetDateTime.now());
         var result = statementEntityMapper.toDto(entity);
         assertThat(result).isNotNull();
-        assertThat(result.getStatementId()).isNotNull();
-        assertThat(result.getFileName()).isEqualTo("test.pdf");
-        assertThat(result.getAccountNumber()).isNull();
-        assertThat(result.getStatementDate()).isNull();
+        assertThat(result.statementId()).isNotNull();
+        assertThat(result.fileName()).isEqualTo("test.pdf");
+        assertThat(result.accountNumber()).isNull();
+        assertThat(result.statementDate()).isNull();
     }
 
     @Test
@@ -187,7 +187,7 @@ class StatementEntityMapperTest {
         entity.setSizeBytes(0L);
         entity.setUploadedAt(OffsetDateTime.now());
         var result = statementEntityMapper.toDto(entity);
-        assertThat(result.getFileSize()).isEqualTo(0L);
+        assertThat(result.fileSize()).isEqualTo(0L);
     }
 
     @Test
@@ -198,7 +198,7 @@ class StatementEntityMapperTest {
         entity.setSizeBytes(1024L);
         entity.setUploadedAt(OffsetDateTime.now());
         var result = statementEntityMapper.toDto(entity);
-        assertThat(result.getFileName()).isEqualTo("statement (2024) [final].pdf");
+        assertThat(result.fileName()).isEqualTo("statement (2024) [final].pdf");
     }
 
     private Statement createStatement(String accountNumber, String fileName, Long fileSize) {

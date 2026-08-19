@@ -70,9 +70,10 @@ class StatementsControllerTest {
         testRequestInfo = new RequestInfo("192.168.1.1", "Mozilla/5.0", "testUser");
         testStatementId = UUID.randomUUID();
 
-        testStatementDto = new StatementDto();
-        testStatementDto.setStatementId(testStatementId);
-        testStatementDto.setAccountNumber("123456789");
+        testStatementDto = StatementDto.builder()
+                .statementId(testStatementId)
+                .accountNumber("123456789")
+                .build();
 
         testStatementSummary = new StatementSummary();
         testStatementSummary.setStatementId(testStatementId);
@@ -278,8 +279,7 @@ class StatementsControllerTest {
     void GivenSpecificStatementId_WhenGettingSignedLinkById_ThenThatIdReachesService() {
 
         var specificId = UUID.randomUUID();
-        var dto = new StatementDto();
-        dto.setStatementId(specificId);
+        var dto = StatementDto.builder().statementId(specificId).build();
         var summary = new StatementSummary();
         summary.setStatementId(specificId);
 

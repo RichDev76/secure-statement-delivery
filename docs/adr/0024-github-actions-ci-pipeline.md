@@ -6,29 +6,29 @@ No CI existed: no `.github/` directory, no automated quality gates. Spotless's
 `apply`+`check` are both bound to `validate`, so `apply` silently fixes formatting
 before `check` ever runs — no lifecycle build can fail on it. The AI review checklist
 already names `api-compat`, `dependency-scan`, and Trivy as required gates that had no
-implementation. Full design: `docs/CiPipelineImplementationPlan.html`.
+implementation.
 
 ## Problem
 
 How to introduce CI with parity to the reference pipeline
-(`RichDev76/statement-service-platform`) without a big-bang rollout, and how to gate
-formatting given the `apply`-on-`validate` binding.
+(`RichDev76/statement-service-platform`), and how to gate formatting given the
+`apply`-on-`validate` binding.
 
 ## Decision
 
-GitHub Actions, phased rollout. This ADR covers Phases 0–2: Maven wrapper pinned to
-3.9.11; a `format` job invoking `spotless:check` directly (bypasses the lifecycle, so
-the bound `apply` never fires — one job owns the formatting verdict; every other job
-passes `-Dspotless.skip=true`); `build`, `unit-tests`, `integration-tests` (plain
-`./mvnw verify`, Testcontainers on the runner's own Docker daemon, Ryuk disabled);
-`dependency-scan` (Trivy `vuln,secret`, HIGH/CRITICAL, fail-closed) and PR-only
-`api-compat` (oasdiff, skip-with-notice when the contract is absent on the base
-branch). Every `uses:` is pinned to a full commit SHA; the workflow grants only
-`permissions: contents: read`; every job has a timeout; in-progress runs cancel except
-on `main`. `CiWorkflowConventionsTest` (Surefire, no Docker) makes those invariants a
-regression test rather than a one-time review. Phase 3 (Bruno API regression against
-the live compose stack) and Phase 4 (PIT mutation testing) are deferred to follow-up
-ADRs/PRs — see Consequences.
+GitHub Actions, seven jobs, Maven wrapper pinned to 3.9.11: `format` invokes
+`spotless:check` directly (bypasses the lifecycle, so the bound `apply` never fires —
+one job owns the formatting verdict; every other job passes `-Dspotless.skip=true`);
+`build`, `unit-tests`, `integration-tests` (plain `./mvnw verify`, Testcontainers on
+the runner's own Docker daemon, Ryuk disabled); `dependency-scan` (Trivy `vuln,secret`,
+HIGH/CRITICAL, fail-closed); PR-only `api-compat` (oasdiff, skip-with-notice when the
+contract is absent on the base branch); and `api-regression` (Bruno pack against the
+live compose stack: ephemeral masked secrets per run, bounded health polling,
+compose-logs artifact on failure, unconditional teardown). Every `uses:` is pinned to a
+full commit SHA; the workflow grants only `permissions: contents: read`; every job has
+a timeout; in-progress runs cancel except on `main`. `CiWorkflowConventionsTest`
+(Surefire, no Docker) makes those invariants a regression test rather than a one-time
+review. PIT mutation testing is deferred — see Consequences.
 
 ## Alternatives
 
@@ -45,9 +45,9 @@ ADRs/PRs — see Consequences.
   (Testcontainers), dependency-scan, and contract-compatibility gates.
 - Formatting can now actually fail a build; local `mvn verify` still auto-formats
   (unchanged developer experience).
-- Accepted for now: Phase 3 (`api-regression`) and Phase 4 (`mutation-testing`) are not
-  yet implemented — this pipeline does not yet match full reference parity. Branch
-  protection is intentionally not tightened until each phase has proven stable.
+- PIT mutation testing is not implemented. `api-regression` runs on every push/PR but
+  joins branch protection only after a sustained stretch of green runs — a flaky
+  required check is worse than none.
 - Docker Hub rate limits on unauthenticated pulls are mitigated by pre-pull-with-retry,
   not eliminated (see Implementation Notes).
 - `permissions: contents: read` makes "CI never writes to the repo" structural.
@@ -56,13 +56,12 @@ ADRs/PRs — see Consequences.
 
 - `mvnw`, `mvnw.cmd`, `.mvn/wrapper/`: generated via `mvn wrapper:wrapper -Dmaven=3.9.11`.
 - `.github/workflows/ci.yml`: `format`, `build`, `unit-tests`, `integration-tests`,
-  `dependency-scan`, `api-compat`.
+  `dependency-scan`, `api-compat`, `api-regression`.
 - `.github/dependabot.yml`: weekly, `github-actions`, `maven`, `docker` (both
   Dockerfile directories), minor+patch grouped.
 - `.trivyignore`: empty; every future entry needs a CVE ID, justification, and expiry.
 - `statement-service/pom.xml`: `jackson-dataformat-yaml` (test scope) for
-  `CiWorkflowConventionsTest`; JaCoCo was already present from prior work (unrelated to
-  this ADR).
+  `CiWorkflowConventionsTest`.
 - `statement-service/src/test/java/.../CiWorkflowConventionsTest.java`: parses `ci.yml`
   and `dependabot.yml`; asserts SHA pinning, least-privilege permissions, per-job
   timeouts, ref-conditional concurrency cancellation, no `pull_request_target`, and
@@ -73,8 +72,18 @@ ADRs/PRs — see Consequences.
   to populate `.m2` first and sets `TRIVY_OFFLINE_SCAN: true`.
 - Rollback: revert the `.github/` directory; no other code path depends on it.
 
+## Addendum — Image job and coverage gate
+
+- New `image-build` job builds both Dockerfiles from a clean context and Trivy-scans the
+  resulting images (HIGH/CRITICAL, ignore-unfixed): the images are what actually ships, and the
+  fs scan alone left base-layer CVEs invisible.
+- JaCoCo now runs `check` at `verify` with 90% instruction / 80% branch bundle thresholds — the
+  "report-only until a baseline" condition above is met (verified baseline 93%/82.7%), and the
+  thresholds sit just below it so the gate protects the status quo without flaking.
+- Publish/deploy stages remain deliberately absent: this project has no registry or environment
+  to deploy to, and a fake stage would be pipeline theater.
+
 ## References
 
-- `docs/CiPipelineImplementationPlan.html`
 - `docs/standards/ai-review-checklist.md`
 - ADR-0002 (contract-first API development)

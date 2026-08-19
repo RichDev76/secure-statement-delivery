@@ -32,9 +32,8 @@ public class AuditHelper {
             String clientIp,
             String userAgent) {
         log.info(
-                "Link generated successfully - statementId: {}, accountNumber: {}, signedLinkId: {}, performedBy: {}",
+                "Link generated successfully - statementId: {}, signedLinkId: {}, performedBy: {}",
                 statementId,
-                accountNumber,
                 signedLinkId,
                 performedBy);
 
@@ -57,12 +56,7 @@ public class AuditHelper {
             Exception ex,
             String clientIp,
             String userAgent) {
-        log.error(
-                "Failed to generate download link - statementId: {}, accountNumber: {}, performedBy: {}",
-                statementId,
-                accountNumber,
-                performedBy,
-                ex);
+        log.error("Failed to generate download link - statementId: {}, performedBy: {}", statementId, performedBy, ex);
 
         auditService.record(
                 AuditAction.LINK_GENERATION_FAILED.getValue(),
@@ -99,9 +93,8 @@ public class AuditHelper {
             String clientIp,
             String userAgent) {
         log.error(
-                "Unexpected error during link generation - statementId: {}, accountNumber: {}, performedBy: {}",
+                "Unexpected error during link generation - statementId: {}, performedBy: {}",
                 statementId,
-                accountNumber,
                 performedBy,
                 ex);
 

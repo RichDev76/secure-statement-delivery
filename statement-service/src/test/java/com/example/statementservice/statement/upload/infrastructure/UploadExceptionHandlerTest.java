@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.StatementUploadException;
+import com.example.statementservice.statement.DuplicateStatementException;
 import com.example.statementservice.statement.upload.DigestComputationException;
 import com.example.statementservice.statement.upload.DigestMismatchException;
 import com.example.statementservice.statement.upload.InvalidAccountNumberException;
@@ -120,5 +121,21 @@ class UploadExceptionHandlerTest {
         assertThat(response.getDetail())
                 .isEqualTo("Uploaded file exceeds the maximum allowed size")
                 .doesNotContain("10485760");
+    }
+
+    @Test
+    void GivenDuplicateStatementException_WhenHandled_ThenReturns409WithStatementAlreadyExistsCode() {
+        // Given
+        var ex = new DuplicateStatementException(
+                "A statement already exists for this account number and statement date");
+
+        // When
+        var response = handler.handleDuplicateStatement(ex, request);
+
+        // Then
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(response.getTitle()).isEqualTo("Statement Already Exists");
+        assertThat(response.getDetail()).isEqualTo(ex.getMessage());
+        assertThat(response.getProperties()).containsEntry("errorCode", "STATEMENT_ALREADY_EXISTS");
     }
 }

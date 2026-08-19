@@ -6,6 +6,7 @@ import static com.example.statementservice.infrastructure.web.CommonUtil.createP
 import com.example.statementservice.infrastructure.web.ExceptionMetadata;
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.StatementUploadException;
+import com.example.statementservice.statement.DuplicateStatementException;
 import com.example.statementservice.statement.upload.DigestComputationException;
 import com.example.statementservice.statement.upload.DigestMismatchException;
 import com.example.statementservice.statement.upload.InvalidAccountNumberException;
@@ -40,6 +41,7 @@ public class UploadExceptionHandler {
     private static final String TITLE_DESCRIPTION_DIGEST_COMPUTATION_FAILED = "Digest Computation Failed";
     private static final String TITLE_DESCRIPTION_PDF_VALIDATION_FAILED = "PDF Validation Failed";
     private static final String TITLE_DESCRIPTION_STATEMENT_UPLOAD_FAILED = "Statement Upload Failed";
+    private static final String TITLE_DESCRIPTION_STATEMENT_ALREADY_EXISTS = "Statement Already Exists";
     private static final String TITLE_DESCRIPTION_UNSUPPORTED_MEDIA_TYPE = "Unsupported Media Type";
     private static final String TITLE_DESCRIPTION_UPLOAD_TOO_LARGE = "Upload Too Large";
     private static final String DETAIL_UPLOAD_TOO_LARGE = "Uploaded file exceeds the maximum allowed size";
@@ -52,6 +54,7 @@ public class UploadExceptionHandler {
     private static final String ERROR_CODE_DIGEST_ERROR = "DIGEST_ERROR";
     private static final String ERROR_CODE_PDF_VALIDATION_FAILED = "PDF_VALIDATION_FAILED";
     private static final String ERROR_CODE_UPLOAD_FAILED = "STATEMENT_UPLOAD_FAILED";
+    private static final String ERROR_CODE_STATEMENT_ALREADY_EXISTS = "STATEMENT_ALREADY_EXISTS";
     private static final String ERROR_CODE_UNSUPPORTED_MEDIA = "UNSUPPORTED_MEDIA_TYPE";
     private static final String ERROR_CODE_UPLOAD_TOO_LARGE = "UPLOAD_TOO_LARGE";
 
@@ -92,6 +95,16 @@ public class UploadExceptionHandler {
                 metadata.title(),
                 ex.getMessage(),
                 metadata.errorCode());
+    }
+
+    @ExceptionHandler(DuplicateStatementException.class)
+    public ProblemDetail handleDuplicateStatement(DuplicateStatementException ex, HttpServletRequest request) {
+        return createProblemDetail(
+                HttpStatus.CONFLICT,
+                buildProblemDetailTypeURI(request, TYPE_UPLOAD),
+                TITLE_DESCRIPTION_STATEMENT_ALREADY_EXISTS,
+                ex.getMessage(),
+                ERROR_CODE_STATEMENT_ALREADY_EXISTS);
     }
 
     @ExceptionHandler(StatementUploadException.class)

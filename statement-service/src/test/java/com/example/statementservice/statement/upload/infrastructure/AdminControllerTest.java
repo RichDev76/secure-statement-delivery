@@ -68,10 +68,10 @@ class AdminControllerTest {
                 .build();
 
         testApiResponse = new UploadResponse();
-        testApiResponse.setStatementId(testDto.getStatementId());
-        testApiResponse.setUploadedAt(testDto.getUploadedAt());
-        testApiResponse.setFileSize(testDto.getFileSize());
-        testApiResponse.setFileName(testDto.getFileName());
+        testApiResponse.setStatementId(testDto.statementId());
+        testApiResponse.setUploadedAt(testDto.uploadedAt());
+        testApiResponse.setFileSize(testDto.fileSize());
+        testApiResponse.setFileName(testDto.fileName());
 
         when(requestInfoProvider.get()).thenReturn(new RequestInfo("192.168.1.1", "Mozilla/5.0", "testUser"));
     }
@@ -90,9 +90,9 @@ class AdminControllerTest {
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatementId()).isEqualTo(testDto.getStatementId());
-        assertThat(response.getBody().getFileName()).isEqualTo(testDto.getFileName());
-        assertThat(response.getBody().getFileSize()).isEqualTo(testDto.getFileSize());
+        assertThat(response.getBody().getStatementId()).isEqualTo(testDto.statementId());
+        assertThat(response.getBody().getFileName()).isEqualTo(testDto.fileName());
+        assertThat(response.getBody().getFileSize()).isEqualTo(testDto.fileSize());
 
         verify(statementUploadService)
                 .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
@@ -141,7 +141,7 @@ class AdminControllerTest {
                 .build();
 
         UploadResponse largeResponse = new UploadResponse();
-        largeResponse.setStatementId(largeDto.getStatementId());
+        largeResponse.setStatementId(largeDto.statementId());
         largeResponse.setFileSize(10000L);
 
         when(statementUploadService.upload(

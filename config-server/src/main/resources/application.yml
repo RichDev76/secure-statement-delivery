@@ -6,6 +6,11 @@ spring:
     allow-bean-definition-overriding: true
   application:
     name: config-server
+  security:
+    user:
+      # No defaults on purpose: missing credentials must fail startup, not serve secrets openly.
+      name: ${CONFIG_SERVER_USER}
+      password: ${CONFIG_SERVER_PASSWORD}
   profiles:
     active: composite
   cloud:

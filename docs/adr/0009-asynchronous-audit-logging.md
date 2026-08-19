@@ -36,6 +36,16 @@ in a try/catch so an audit failure never fails the response being audited.
 
 `AuditService.record` submits to an injected `ExecutorService`.
 
-## References
+## Addendum — Loss made measurable, trail made append-only
 
-- `docs/standards/observability.md`
+Audit stays best-effort by design, but two hardening pieces close its sharpest edges:
+
+- Every dropped write (executor rejection or save failure) now increments the
+  `statement.audit.dropped` counter — the alertable signal that entries are actually being lost,
+  which the ERROR log alone could not provide. A sustained nonzero rate is the trigger for
+  upgrading to a transactional outbox; if a regulator ever requires every download to be
+  evidenced, that upgrade stops being optional.
+- `audit_logs` is append-only at the database layer (V12): a row trigger on the partitioned
+  parent rejects UPDATE/DELETE on every current and future partition. A REVOKE was rejected
+  because the single application role owns the schema, making it self-revocable; genuine
+  migration-owner vs. runtime role separation is deferred as infra work.

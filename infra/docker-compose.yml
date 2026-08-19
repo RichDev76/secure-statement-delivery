@@ -112,6 +112,8 @@
         - VAULT_ADDR=http://vault:8200
         - APPROLE_ROLE_ID_FILE=/vault/init/approle-role-id
         - APPROLE_SECRET_ID_FILE=/vault/init/approle-secret-id
+        - CONFIG_SERVER_USER=${CONFIG_SERVER_USER}
+        - CONFIG_SERVER_PASSWORD=${CONFIG_SERVER_PASSWORD}
       volumes:
         - ./vault/init:/vault/init:ro
         - ./config-repo:/config-repo:ro
@@ -161,7 +163,7 @@
         - "4566:4566"
       healthcheck:
         # Checking the actual dependency (bucket reachable via the S3 API) rather than an
-        # internal health-JSON endpoint - see docs/StorageFlociMigrationPlan.html §3.7.
+        # internal health-JSON endpoint - see docs/adr/0014-local-storage-to-floci-s3-migration.md.
         test: ["CMD-SHELL", "aws s3api head-bucket --bucket ${S3_BUCKET:-statements}"]
         interval: 10s
         timeout: 5s
@@ -178,6 +180,8 @@
       environment:
         - SPRING_PROFILES_ACTIVE=develop
         - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+        - SPRING_CLOUD_CONFIG_USERNAME=${CONFIG_SERVER_USER}
+        - SPRING_CLOUD_CONFIG_PASSWORD=${CONFIG_SERVER_PASSWORD}
         - CONFIG_URL=http://config-server:8888/actuator/health
         - APP_DB_USER=${APP_DB_USER}
         - APP_DB_PASSWORD=${APP_DB_PASSWORD}

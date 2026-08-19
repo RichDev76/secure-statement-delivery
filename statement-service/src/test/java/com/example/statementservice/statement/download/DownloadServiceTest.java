@@ -26,6 +26,7 @@ import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
 import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
+import com.example.statementservice.support.LogCapture;
 import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.time.LocalDate;
@@ -140,6 +141,34 @@ class DownloadServiceTest {
                         eq(testLinkId),
                         eq(testPerformedBy),
                         any(Map.class));
+    }
+
+    @Test
+    void GivenValidLink_WhenValidateAndStreamDetailed_ThenSuccessLogNeverContainsAccountNumber() throws Exception {
+        // Given
+        var validResult = LinkValidationResult.valid(testLink);
+        when(signedLinkService.validate(testToken, testExpires, testLinkId, FILE_NAME))
+                .thenReturn(validResult);
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
+        when(statementService.openDecryptedFile(testStatement))
+                .thenReturn(new ByteArrayInputStream("decrypted content".getBytes()));
+
+        try (var logs = LogCapture.forClass(DownloadService.class)) {
+            // When
+            downloadService.validateAndStreamDetailed(
+                    testToken, testExpires, testLinkId, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
+
+            // Then
+            assertThat(logs.lines())
+                    .as("the success path must still log something - a guard only checking absence "
+                            + "would pass trivially if the log statement were deleted")
+                    .isNotEmpty()
+                    .as("the account number must never reach a log line")
+                    .noneMatch(line -> line.contains(testStatement.getAccountNumber()))
+                    .as("statementId is the non-sensitive join key that replaces it")
+                    .anyMatch(line -> line.contains(testStatementId.toString()));
+        }
     }
 
     @Test

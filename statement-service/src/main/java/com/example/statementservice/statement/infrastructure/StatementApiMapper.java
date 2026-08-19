@@ -25,7 +25,7 @@ public interface StatementApiMapper {
         @Mapping(target = "downloadLink", source = "downloadLink"),
         @Mapping(
                 target = "date",
-                expression = "java(dto.getStatementDate() != null ? dto.getStatementDate().toString() : null)")
+                expression = "java(dto.statementDate() != null ? dto.statementDate().toString() : null)")
     })
     StatementSummary toApi(StatementDto dto);
 
@@ -39,7 +39,7 @@ public interface StatementApiMapper {
         @Mapping(target = "fileName", source = "fileName"),
         @Mapping(
                 target = "date",
-                expression = "java(dto.getStatementDate() != null ? dto.getStatementDate().toString() : null)")
+                expression = "java(dto.statementDate() != null ? dto.statementDate().toString() : null)")
     })
     BaseStatement toBase(StatementDto dto);
 

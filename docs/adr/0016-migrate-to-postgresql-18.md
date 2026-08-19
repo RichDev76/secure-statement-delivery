@@ -9,7 +9,7 @@ current stable release.
 
 ## Problem
 
-None of the pins were on a current, consistent version, and the work planned next (UUIDv7
+None of the pins were on a current, consistent version, and the upcoming work (UUIDv7
 primary keys, `audit_logs` partitioning) benefits from being built against the version the
 project will actually run in production.
 

@@ -27,9 +27,9 @@ RUN mvn -DskipTests clean package -pl statement-service -am
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 
-# Install curl for health checks
+# curl: health checks. Pebble is unused; drop it and its CVE surface.
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /usr/bin/pebble
 
 # Dedicated, unprivileged user - the JVM never needs root, and this is a security-sensitive service
 RUN groupadd --gid 10001 statement-service \

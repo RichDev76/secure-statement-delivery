@@ -56,16 +56,19 @@
           <mxGeometry height="90" width="1400" x="20" y="40" as="geometry" />
         </mxCell>
         <mxCell id="hla-row1-1" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Security Filter Chain&#xa;(JWT Resource Server +&#xa;KeycloakRoleConverter)" vertex="1">
-          <mxGeometry height="50" width="325" x="20" y="30" as="geometry" />
+          <mxGeometry height="50" width="260" x="20" y="30" as="geometry" />
         </mxCell>
         <mxCell id="hla-row1-2" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Global Exception Handling&#xa;(RFC 9457 ProblemDetail)" vertex="1">
-          <mxGeometry height="50" width="325" x="365" y="30" as="geometry" />
+          <mxGeometry height="50" width="260" x="295" y="30" as="geometry" />
         </mxCell>
         <mxCell id="hla-row1-3" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Correlation ID + Logging&#xa;(AOP, virtual threads)" vertex="1">
-          <mxGeometry height="50" width="325" x="710" y="30" as="geometry" />
+          <mxGeometry height="50" width="260" x="570" y="30" as="geometry" />
         </mxCell>
         <mxCell id="hla-row1-4" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Rate-Limit Enforcement&#xa;(Bucket4j token bucket)" vertex="1">
-          <mxGeometry height="50" width="325" x="1055" y="30" as="geometry" />
+          <mxGeometry height="50" width="260" x="845" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hla-row1-5" parent="hla-row1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="Actuator &amp; Health Groups&#xa;readiness: db + s3 · liveness: process&#xa;(Redis excluded from readiness)" vertex="1">
+          <mxGeometry height="50" width="260" x="1120" y="30" as="geometry" />
         </mxCell>
         <mxCell id="hla-row2" parent="hla-svc" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;startSize=24" value="REST Controllers (contract-first, generated from OpenAPI)" vertex="1">
           <mxGeometry height="100" width="1400" x="20" y="140" as="geometry" />

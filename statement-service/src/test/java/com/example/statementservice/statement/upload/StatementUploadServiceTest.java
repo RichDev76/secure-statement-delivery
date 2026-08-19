@@ -17,6 +17,7 @@ import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
+import com.example.statementservice.statement.DuplicateStatementException;
 import com.example.statementservice.statement.StatementService;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -171,6 +172,24 @@ class StatementUploadServiceTest {
         verify(auditService)
                 .record(eq("UPLOAD_FAILED"), isNull(), eq(testAccountNumber), isNull(), any(), detailsCaptor.capture());
         assertThat(detailsCaptor.getValue()).containsEntry("reason", "upload_error");
+    }
+
+    @Test
+    void GivenDuplicateStatement_WhenUpload_ThenRecordsUploadFailedAuditWithDuplicateStatementReason() {
+        // Given
+        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        when(statementService.uploadStatement(any(), any(), any(), any(), any()))
+                .thenThrow(new DuplicateStatementException(
+                        "A statement already exists for this account number and statement date"));
+
+        // When / Then
+        assertThatThrownBy(() -> statementUploadService.upload(
+                        testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
+                .isInstanceOf(DuplicateStatementException.class);
+        ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(auditService)
+                .record(eq("UPLOAD_FAILED"), isNull(), eq(testAccountNumber), isNull(), any(), detailsCaptor.capture());
+        assertThat(detailsCaptor.getValue()).containsEntry("reason", "duplicate_statement");
     }
 
     @Test

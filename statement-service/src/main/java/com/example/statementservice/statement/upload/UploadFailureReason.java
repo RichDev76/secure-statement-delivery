@@ -8,6 +8,7 @@ public enum UploadFailureReason {
     DIGEST_MISMATCH("digest_mismatch"),
     UNSUPPORTED_MEDIA_TYPE("unsupported_media_type"),
     UPLOAD_ERROR("upload_error"),
+    DUPLICATE_STATEMENT("duplicate_statement"),
     UNEXPECTED("unexpected");
 
     private final String value;

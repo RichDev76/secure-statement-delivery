@@ -40,7 +40,8 @@ metadata for every handled type.
 ## Alternatives
 
 - **Advice-level upload auditing** - no business context there; double-audit risk.
-- **Streaming decrypt with trailer verification** - correct long-term; owned by the streaming plan.
+- **Streaming decrypt with trailer verification** - correct long-term; deferred with the broader
+  streaming work (ADR-0023).
 - **Parameter-name log masking** - fails open without `-parameters`; type allowlist fails closed.
 
 ## Consequences
@@ -52,8 +53,8 @@ metadata for every handled type.
 
 ## Implementation Notes
 
-Spec 1.11.0 → 1.12.0 (additive). Plan: `docs/ErrorHandlingGapsAndFixPlan.html`. Keystone test:
-`CorruptCiphertextDownloadIT` (tampered byte → 500 `DECRYPTION_FAILED`, no `DOWNLOAD_SUCCESS` row).
+Spec 1.11.0 → 1.12.0 (additive). Keystone test: `CorruptCiphertextDownloadIT`
+(tampered byte → 500 `DECRYPTION_FAILED`, no `DOWNLOAD_SUCCESS` row).
 
 ## References
 

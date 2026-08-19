@@ -60,13 +60,14 @@ class StatementQueryServiceTest {
         testAccountNumber = "123456789";
         testDate = LocalDate.of(2024, 1, 15);
 
-        testStatementDto = new StatementDto();
-        testStatementDto.setStatementId(testStatementId);
-        testStatementDto.setAccountNumber(testAccountNumber);
-        testStatementDto.setStatementDate(testDate);
-        testStatementDto.setFileName("statement.pdf");
-        testStatementDto.setFileSize(1024L);
-        testStatementDto.setUploadedAt(OffsetDateTime.now());
+        testStatementDto = StatementDto.builder()
+                .statementId(testStatementId)
+                .accountNumber(testAccountNumber)
+                .statementDate(testDate)
+                .fileName("statement.pdf")
+                .fileSize(1024L)
+                .uploadedAt(OffsetDateTime.now())
+                .build();
 
         testStatement = new Statement();
         testStatement.setId(testStatementId);
@@ -81,7 +82,7 @@ class StatementQueryServiceTest {
     void GivenExistingStatement_WhenGettingSignedDownloadLink_ThenDtoWithDownloadLinkIsReturned() {
         when(statementService.getStatementDtoById(testStatementId)).thenReturn(testStatementDto);
 
-        String fileName = testStatementDto.getFileName();
+        String fileName = testStatementDto.fileName();
         SignedLink signedLink = new SignedLink();
         signedLink.setId(UUID.randomUUID());
         signedLink.setStatementId(testStatementId);
@@ -95,9 +96,9 @@ class StatementQueryServiceTest {
                 statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
 
         assertThat(result).isPresent();
-        assertThat(result.get()).isEqualTo(testStatementDto);
-        assertThat(result.get().getDownloadLink())
-                .isEqualTo(java.net.URI.create("http://localhost/download/statement.pdf"));
+        assertThat(result.get())
+                .isEqualTo(testStatementDto.withDownloadLink(
+                        java.net.URI.create("http://localhost/download/statement.pdf")));
         verify(statementService).getStatementDtoById(testStatementId);
         verify(auditHelper)
                 .recordLinkGenerated(
@@ -114,7 +115,7 @@ class StatementQueryServiceTest {
             GivenSignedLinkCreationFails_WhenGettingSignedDownloadLink_ThenDtoWithoutDownloadLinkIsReturnedAndFailureAudited() {
         // Given
         when(statementService.getStatementDtoById(testStatementId)).thenReturn(testStatementDto);
-        String fileName = testStatementDto.getFileName();
+        String fileName = testStatementDto.fileName();
         RuntimeException linkFailure = new RuntimeException("signing key unavailable");
         when(signedLinkService.createSignedLink(testStatementId, "test-user", fileName))
                 .thenThrow(linkFailure);
@@ -125,7 +126,7 @@ class StatementQueryServiceTest {
 
         // Then
         assertThat(result).isPresent();
-        assertThat(result.get().getDownloadLink()).isNull();
+        assertThat(result.get().downloadLink()).isNull();
         verify(auditHelper)
                 .recordLinkGenerationFailed(
                         eq(testStatementId),
@@ -324,9 +325,10 @@ class StatementQueryServiceTest {
     private List<StatementDto> createMultipleDtos(int count) {
         List<StatementDto> dtos = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            StatementDto dto = new StatementDto();
-            dto.setStatementId(UUID.randomUUID());
-            dto.setAccountNumber(testAccountNumber);
+            StatementDto dto = StatementDto.builder()
+                    .statementId(UUID.randomUUID())
+                    .accountNumber(testAccountNumber)
+                    .build();
             dtos.add(dto);
         }
         return dtos;

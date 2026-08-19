@@ -71,7 +71,7 @@ class Bucket4jSignedLinkRateLimiterTest {
     }
 
     @Test
-    void GivenProxyManagerThrows_WhenTryConsume_ThenFailsOpenAndReturnsTrue() {
+    void GivenProxyManagerThrows_WhenTryConsume_ThenFailsClosedAndReturnsFalse() {
         // Given
         when(proxyManager.getProxy(eq(linkId.toString()), any())).thenThrow(new RuntimeException("db unavailable"));
 
@@ -79,7 +79,7 @@ class Bucket4jSignedLinkRateLimiterTest {
         var result = rateLimiter.tryConsume(linkId);
 
         // Then
-        assertThat(result).isTrue();
+        assertThat(result).isFalse();
     }
 
     @Test

@@ -32,4 +32,10 @@ public class SignedLinkProperties {
 
     @Min(value = 1, message = "statement.signed-link.rate-limit-per-minute must be at least 1")
     private int rateLimitPerMinute = 10;
+
+    // Public base for minted links; unset derives it from the request (dev only).
+    @Pattern(
+            regexp = "^https?://\\S+$",
+            message = "statement.signed-link.external-base-url must be an absolute http(s) URL")
+    private String externalBaseUrl;
 }

@@ -28,14 +28,15 @@ class StatementApiMapperTest {
         var statementDate = LocalDate.of(2024, 1, 15);
         var uploadedAt = OffsetDateTime.now();
         var downloadLink = URI.create("https://example.com/download/statement.pdf");
-        var dto = new StatementDto();
-        dto.setStatementId(statementId);
-        dto.setAccountNumber("123456789");
-        dto.setStatementDate(statementDate);
-        dto.setUploadedAt(uploadedAt);
-        dto.setFileSize(2048L);
-        dto.setFileName("statement.pdf");
-        dto.setDownloadLink(downloadLink);
+        var dto = StatementDto.builder()
+                .statementId(statementId)
+                .accountNumber("123456789")
+                .statementDate(statementDate)
+                .uploadedAt(uploadedAt)
+                .fileSize(2048L)
+                .fileName("statement.pdf")
+                .downloadLink(downloadLink)
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result).isNotNull();
         assertThat(result.getStatementId()).isEqualTo(statementId);
@@ -58,9 +59,10 @@ class StatementApiMapperTest {
 
     @Test
     void GivenDtoWithNullFields_WhenMappingToApi_ThenNullsArePreserved() {
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setFileName("test.pdf");
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .fileName("test.pdf")
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result).isNotNull();
         assertThat(result.getStatementId()).isNotNull();
@@ -74,20 +76,22 @@ class StatementApiMapperTest {
 
     @Test
     void GivenStatementDate_WhenMappingToApi_ThenDateIsConvertedToString() {
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setStatementDate(LocalDate.of(2024, 12, 25));
-        dto.setFileName("test.pdf");
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .statementDate(LocalDate.of(2024, 12, 25))
+                .fileName("test.pdf")
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getDate()).isEqualTo("2024-12-25");
     }
 
     @Test
     void GivenNullStatementDate_WhenMappingToApi_ThenDateIsNull() {
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setStatementDate(null);
-        dto.setFileName("test.pdf");
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .statementDate(null)
+                .fileName("test.pdf")
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getDate()).isNull();
     }
@@ -107,20 +111,22 @@ class StatementApiMapperTest {
 
     @Test
     void GivenZeroFileSize_WhenMappingToApi_ThenZeroIsMapped() {
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setFileSize(0L);
-        dto.setFileName("empty.pdf");
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .fileSize(0L)
+                .fileName("empty.pdf")
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getFileSize()).isEqualTo(0L);
     }
 
     @Test
     void GivenLargeFileSize_WhenMappingToApi_ThenExactSizeIsMapped() {
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setFileSize(10_737_418_240L); // 10 GB
-        dto.setFileName("large.pdf");
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .fileSize(10_737_418_240L) // 10 GB
+                .fileName("large.pdf")
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getFileSize()).isEqualTo(10_737_418_240L);
     }
@@ -129,10 +135,11 @@ class StatementApiMapperTest {
     void GivenDownloadLink_WhenMappingToApi_ThenLinkIsMapped() {
         var downloadLink =
                 URI.create("https://example.com/api/v1/statements/download/file.pdf?expires=123&signature=abc");
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setDownloadLink(downloadLink);
-        dto.setFileName("file.pdf");
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .downloadLink(downloadLink)
+                .fileName("file.pdf")
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getDownloadLink()).isEqualTo(downloadLink);
         assertThat(result.getDownloadLink().toString()).contains("expires=123");
@@ -141,12 +148,15 @@ class StatementApiMapperTest {
 
     @Test
     void GivenMultipleDtos_WhenMappingToApis_ThenAllItemsAreMapped() {
-        var dto1 = createStatementDto(LocalDate.of(2024, 1, 1));
-        dto1.setAccountNumber("ACC001");
-        var dto2 = createStatementDto(LocalDate.of(2024, 2, 1));
-        dto2.setAccountNumber("ACC002");
-        var dto3 = createStatementDto(LocalDate.of(2024, 3, 1));
-        dto3.setAccountNumber("ACC003");
+        var dto1 = createStatementDto(LocalDate.of(2024, 1, 1)).toBuilder()
+                .accountNumber("ACC001")
+                .build();
+        var dto2 = createStatementDto(LocalDate.of(2024, 2, 1)).toBuilder()
+                .accountNumber("ACC002")
+                .build();
+        var dto3 = createStatementDto(LocalDate.of(2024, 3, 1)).toBuilder()
+                .accountNumber("ACC003")
+                .build();
         var dtos = Arrays.asList(dto1, dto2, dto3);
         var result = statementApiMapper.toApis(dtos);
         assertThat(result).hasSize(3);
@@ -173,8 +183,9 @@ class StatementApiMapperTest {
 
     @Test
     void GivenSingleDto_WhenMappingToApis_ThenOneItemIsMapped() {
-        var dto = createStatementDto(LocalDate.of(2024, 6, 15));
-        dto.setAccountNumber("ACC999");
+        var dto = createStatementDto(LocalDate.of(2024, 6, 15)).toBuilder()
+                .accountNumber("ACC999")
+                .build();
         var dtos = Collections.singletonList(dto);
         var result = statementApiMapper.toApis(dtos);
         assertThat(result).hasSize(1);
@@ -186,8 +197,9 @@ class StatementApiMapperTest {
     void GivenLargeList_WhenMappingToApis_ThenAllItemsAreMapped() {
         var dtos = new ArrayList<StatementDto>();
         for (int i = 0; i < 100; i++) {
-            StatementDto dto = createStatementDto(LocalDate.of(2024, 1, 1).plusDays(i));
-            dto.setAccountNumber("ACC" + i);
+            StatementDto dto = createStatementDto(LocalDate.of(2024, 1, 1).plusDays(i)).toBuilder()
+                    .accountNumber("ACC" + i)
+                    .build();
             dtos.add(dto);
         }
         List<StatementSummary> result = statementApiMapper.toApis(dtos);
@@ -202,14 +214,15 @@ class StatementApiMapperTest {
         var date = LocalDate.of(2024, 7, 20);
         var uploadedAt = OffsetDateTime.now();
         var downloadLink = URI.create("https://example.com/download/test.pdf");
-        var dto = new StatementDto();
-        dto.setStatementId(statementId);
-        dto.setAccountNumber("ACC555");
-        dto.setStatementDate(date);
-        dto.setUploadedAt(uploadedAt);
-        dto.setFileSize(4096L);
-        dto.setFileName("test.pdf");
-        dto.setDownloadLink(downloadLink);
+        var dto = StatementDto.builder()
+                .statementId(statementId)
+                .accountNumber("ACC555")
+                .statementDate(date)
+                .uploadedAt(uploadedAt)
+                .fileSize(4096L)
+                .fileName("test.pdf")
+                .downloadLink(downloadLink)
+                .build();
         var dtos = Collections.singletonList(dto);
         var result = statementApiMapper.toApis(dtos);
         assertThat(result).hasSize(1);
@@ -253,19 +266,21 @@ class StatementApiMapperTest {
 
     @Test
     void GivenSpecialCharacterFileName_WhenMappingToApi_ThenFileNameIsPreserved() {
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setFileName("statement (copy) [2024].pdf");
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .fileName("statement (copy) [2024].pdf")
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getFileName()).isEqualTo("statement (copy) [2024].pdf");
     }
 
     @Test
     void GivenUnicodeAccountNumber_WhenMappingToApi_ThenValueIsPreserved() {
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setAccountNumber("账户123456");
-        dto.setFileName("test.pdf");
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .accountNumber("账户123456")
+                .fileName("test.pdf")
+                .build();
         var result = statementApiMapper.toApi(dto);
         assertThat(result.getAccountNumber()).isEqualTo("账户123456");
     }
@@ -286,14 +301,15 @@ class StatementApiMapperTest {
 
     // Helper method
     private StatementDto createStatementDto(LocalDate statementDate) {
-        var dto = new StatementDto();
-        dto.setStatementId(UUID.randomUUID());
-        dto.setAccountNumber("123456789");
-        dto.setStatementDate(statementDate);
-        dto.setUploadedAt(OffsetDateTime.now());
-        dto.setFileSize(1024L);
-        dto.setFileName("statement.pdf");
-        dto.setDownloadLink(URI.create("https://example.com/download/statement.pdf"));
+        var dto = StatementDto.builder()
+                .statementId(UUID.randomUUID())
+                .accountNumber("123456789")
+                .statementDate(statementDate)
+                .uploadedAt(OffsetDateTime.now())
+                .fileSize(1024L)
+                .fileName("statement.pdf")
+                .downloadLink(URI.create("https://example.com/download/statement.pdf"))
+                .build();
         return dto;
     }
 }

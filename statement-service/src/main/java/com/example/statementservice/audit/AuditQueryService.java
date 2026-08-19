@@ -29,8 +29,8 @@ public class AuditQueryService {
             String accountNumber, String startDate, String endDate, Integer page, Integer size) {
 
         log.debug(
-                "Querying audit logs: account={}, start={}, end={}, page={}, size={}",
-                accountNumber,
+                "Querying audit logs: accountFilter={}, start={}, end={}, page={}, size={}",
+                accountNumber != null ? "present" : "absent",
                 startDate,
                 endDate,
                 page,

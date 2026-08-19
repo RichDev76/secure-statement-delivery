@@ -29,3 +29,4 @@ for format and process.
 | 0022 | [Fail-closed error delivery with audit-on-failure for statement transfer paths](0022-fail-closed-error-delivery-and-audit-on-failure.md) | Accepted |
 | 0023 | [Compute the upload content hash in one streaming pass; defer upload streaming and bulkhead](0023-single-streaming-digest-pass-and-deferred-upload-streaming.md) | Accepted |
 | 0024 | [GitHub Actions CI pipeline](0024-github-actions-ci-pipeline.md) | Accepted |
+| 0025 | [Structured JSON logging and no-PII-in-logs policy](0025-structured-json-logging-and-no-pii-policy.md) | Accepted |

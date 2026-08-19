@@ -10,14 +10,12 @@ import com.example.statementservice.statement.download.infrastructure.DownloadRe
 import com.example.statementservice.statement.search.StatementQueryService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Slf4j
 @Validated
 @RestController
 @RequestMapping("/api/v1/statements")
@@ -33,7 +31,6 @@ public class StatementsController implements StatementsApi {
     @Override
     public ResponseEntity<Resource> downloadStatementByFileName(
             String fileName, Long expires, UUID linkId, String signature, String xCorrelationId) {
-        log.info("downloadStatementByFileName - fileName: {}", fileName);
         var requestInfo = requestInfoProvider.get();
         var result = downloadService.validateAndStreamDetailed(
                 signature,

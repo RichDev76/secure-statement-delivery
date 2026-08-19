@@ -203,10 +203,7 @@ public class DownloadService {
         try {
             var decrypted = statementService.openDecryptedFile(statement);
 
-            log.info(
-                    "Download successful - statementId: {}, account: {}",
-                    statement.getId(),
-                    statement.getAccountNumber());
+            log.info("Download successful - statementId: {}", statement.getId());
 
             checkForSuspiciousRedemption(link, clientIp, userAgent);
 

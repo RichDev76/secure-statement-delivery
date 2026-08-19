@@ -3,6 +3,7 @@ package com.example.statementservice.infrastructure.security;
 import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
 import static com.example.statementservice.infrastructure.web.CommonUtil.createProblemDetail;
 
+import com.example.statementservice.infrastructure.web.EndpointLabel;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
@@ -105,7 +106,10 @@ public class SecurityConfig {
     @Bean
     public AuthenticationEntryPoint problemDetailAuthEntryPoint(JsonMapper jsonMapper) {
         return (request, response, authException) -> {
-            log.warn("Unauthenticated access - path={}, method={}", request.getRequestURI(), request.getMethod());
+            log.warn(
+                    "Unauthenticated access - path={}, method={}",
+                    EndpointLabel.of(request.getRequestURI()),
+                    request.getMethod());
 
             var pd = createProblemDetail(
                     HttpStatus.UNAUTHORIZED,
@@ -128,7 +132,10 @@ public class SecurityConfig {
     @Bean
     public AccessDeniedHandler problemDetailAccessDeniedHandler(JsonMapper jsonMapper) {
         return (request, response, accessDeniedException) -> {
-            log.warn("Access denied - path={}, method={}", request.getRequestURI(), request.getMethod());
+            log.warn(
+                    "Access denied - path={}, method={}",
+                    EndpointLabel.of(request.getRequestURI()),
+                    request.getMethod());
 
             var pd = createProblemDetail(
                     HttpStatus.FORBIDDEN,

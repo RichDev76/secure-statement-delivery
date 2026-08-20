@@ -1,15 +1,12 @@
 package com.example.statementservice.infrastructure.security;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+// Constants, not an enum: @PreAuthorize needs a compile-time constant expression.
+public final class AppRole {
 
-@Getter
-@RequiredArgsConstructor
-public enum AppRole {
-    UPLOAD("Upload"),
-    SEARCH("Search"),
-    GENERATE_SIGNED_LINK("GenerateSignedLink"),
-    AUDIT_LOGS_SEARCH("AuditLogsSearch");
+    public static final String UPLOAD = "Upload";
+    public static final String SEARCH = "Search";
+    public static final String GENERATE_SIGNED_LINK = "GenerateSignedLink";
+    public static final String AUDIT_LOGS_SEARCH = "AuditLogsSearch";
 
-    private final String roleName;
+    private AppRole() {}
 }

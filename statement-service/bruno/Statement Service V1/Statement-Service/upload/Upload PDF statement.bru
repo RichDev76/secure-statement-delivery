@@ -39,6 +39,7 @@ script:pre-request {
 script:post-response {
   if (res.status === 201) {
     bru.setEnvVar('lastStatementId', res.body.statementId);
+    bru.setEnvVar('lastAccountNumber', bru.getVar('uploadAccountNumber'));
   }
 }
 
@@ -65,5 +66,7 @@ docs {
   run after the first. Keeping the date fixed and only the account number unique is sufficient to avoid the
   collision.
 
-  On success, stores `statementId` as `lastStatementId` so "Get signed download link by statement id" can chain off it.
+  On success, stores `statementId` as `lastStatementId` and the generated `accountNumber` as `lastAccountNumber`
+  so "Get signed download link by statement id" can chain off both - the account number must match the one this
+  statement was actually uploaded under, or the link endpoint treats the request as not found.
 }

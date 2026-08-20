@@ -61,7 +61,7 @@ class AuditControllerTest {
         when(auditApiMapper.toPage(List.of(auditLogDto))).thenReturn(apiPage);
 
         // When
-        var response = auditController.getFilteredAuditLogs(null, "123456789", "2024-01-01", "2024-01-31", 1, 50);
+        var response = auditController.getFilteredAuditLogs("123456789", null, "2024-01-01", "2024-01-31", 1, 50);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -83,7 +83,7 @@ class AuditControllerTest {
         when(auditApiMapper.toPage(List.of())).thenReturn(new AuditLogPage().content(List.of()));
 
         // When
-        auditController.getFilteredAuditLogs("corr-id", "987654321", "2024-02-01", "2024-02-28", 2, 25);
+        auditController.getFilteredAuditLogs("987654321", "corr-id", "2024-02-01", "2024-02-28", 2, 25);
 
         // Then
         verify(auditQueryService).getFilteredAuditLogs("987654321", "2024-02-01", "2024-02-28", 2, 25);
@@ -97,7 +97,7 @@ class AuditControllerTest {
 
         // When / Then
         assertThatThrownBy(
-                        () -> auditController.getFilteredAuditLogs(null, "123456789", "bad-date", "2024-01-31", 0, 50))
+                        () -> auditController.getFilteredAuditLogs("123456789", null, "bad-date", "2024-01-31", 0, 50))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("Invalid date format");
     }

@@ -1,6 +1,8 @@
 package com.example.statementservice.statement.infrastructure;
 
 import com.example.statementservice.api.StatementsApi;
+import com.example.statementservice.infrastructure.security.AppRole;
+import com.example.statementservice.infrastructure.security.PublicEndpoint;
 import com.example.statementservice.infrastructure.web.RequestInfoProvider;
 import com.example.statementservice.model.api.StatementSummary;
 import com.example.statementservice.model.api.StatementSummaryPage;
@@ -12,6 +14,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +32,7 @@ public class StatementsController implements StatementsApi {
     private final DownloadResponseFactory downloadResponseFactory;
 
     @Override
+    @PublicEndpoint(reason = "The HMAC-signed, expiring link is the authorization - see ADR 0003")
     public ResponseEntity<Resource> downloadStatementByFileName(
             String fileName, Long expires, UUID linkId, String signature, String xCorrelationId) {
         var requestInfo = requestInfoProvider.get();
@@ -44,10 +48,12 @@ public class StatementsController implements StatementsApi {
     }
 
     @Override
-    public ResponseEntity<StatementSummary> getDownloadSignedLinkById(UUID statementId, String xCorrelationId) {
+    @PreAuthorize("hasRole('" + AppRole.GENERATE_SIGNED_LINK + "')")
+    public ResponseEntity<StatementSummary> getDownloadSignedLinkById(
+            UUID statementId, String accountNumber, String xCorrelationId) {
         var requestInfo = requestInfoProvider.get();
         return statementQueryService
-                .getStatementWithSignedDownloadLinkById(statementId, requestInfo)
+                .getStatementWithSignedDownloadLinkById(statementId, accountNumber, requestInfo)
                 .map(statementApiMapper::toApi)
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new StatementNotFoundException(
@@ -55,6 +61,7 @@ public class StatementsController implements StatementsApi {
     }
 
     @Override
+    @PreAuthorize("hasRole('" + AppRole.SEARCH + "')")
     public ResponseEntity<StatementSummaryPage> searchStatements(
             String accountNumber,
             String startDate,

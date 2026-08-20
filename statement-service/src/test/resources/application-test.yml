@@ -62,18 +62,7 @@ statement:
 
 security:
   endpoints:
-    upload:
-      - method: POST
-        pattern: /api/v1/statements/upload
-    audit:
-      - method: GET
-        pattern: /api/v1/statements/audit/logs
-    search:
-      - method: GET
-        pattern: /api/v1/statements/search
-    link:
-      - method: GET
-        pattern: /api/v1/statements/link/**
+    # Role-gated endpoints enforced in code via @PreAuthorize (ADR 0012)
     whitelist:
       - method: GET
         pattern: /api/v1/statements/download/**

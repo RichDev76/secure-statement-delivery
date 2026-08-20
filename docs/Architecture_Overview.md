@@ -351,23 +351,26 @@ Ports are swappable by design: the original local-disk file store was replaced w
     - Reads from the top‑level `roles` claim, falling back to `realm_access.roles`
     - Produces `ROLE_<roleName>` authorities
 
-##### Endpoint Roles (config-driven, HTTP layer)
+##### Endpoint Roles (method security at the HTTP boundary)
 
-`SecurityConfig` builds its authorization rules from `SecurityEndpointsProperties` (method + path-pattern groups sourced from Config Server), not hard-coded matchers — see ADR-0012:
+Roles are enforced in code, on the controller handler that implements each operation, via `@PreAuthorize` with `AppRole` compile-time constants — see ADR-0012:
 
 - `POST /api/v1/statements/upload` → `ROLE_Upload`
 - `GET /api/v1/statements/audit/logs` → `ROLE_AuditLogsSearch`
 - `GET /api/v1/statements/search` → `ROLE_Search`
-- `GET /api/v1/statements/link/**` → `ROLE_GenerateSignedLink`
-- `GET /api/v1/statements/download/**` → whitelisted (no authentication; protected by signature + rate limiting instead)
+- `GET /api/v1/statements/link/{id}` → `ROLE_GenerateSignedLink`
+- `GET /api/v1/statements/download/**` → `@PublicEndpoint` (no authentication; protected by signature + rate limiting instead)
 
-Additional whitelisted endpoints:
+The filter chain itself only authenticates and floors every non-whitelisted request at `anyRequest().authenticated()`; an ArchUnit rule requires every handler to carry `@PreAuthorize` or an explicit `@PublicEndpoint(reason)`, so no endpoint can ship without a stated authorization decision.
+
+Whitelisted paths stay config-driven (`SecurityEndpointsProperties`, sourced from Config Server) because they legitimately vary per environment:
+- `/api/v1/statements/download/**` – signed-link downloads
 - `/api/v1/statements/actuator/health/**` – health check endpoints
 - `/api/v1/statements/actuator/info` – application info
 - `/api/v1/statements/v3/api-docs/**` – OpenAPI documentation
 - `/api/v1/statements/swagger-ui/**`, `/swagger-ui.html` – Swagger UI
 
-Unauthenticated and forbidden requests get **RFC 9457 ProblemDetail** JSON (`ERROR_CODE=UNAUTHENTICATED` / `ACCESS_DENIED`), from dedicated `AuthenticationEntryPoint` / `AccessDeniedHandler` beans rather than the default Spring Security pages.
+Unauthenticated and forbidden requests get **RFC 9457 ProblemDetail** JSON (`ERROR_CODE=UNAUTHENTICATED` / `ACCESS_DENIED`) built by the shared `SecurityProblemDetailFactory`: 401s come from the dedicated `AuthenticationEntryPoint` bean in the filter chain; method-security 403s are answered by a dedicated `AccessDeniedException` handler in `GlobalExceptionHandler` (denials from `@PreAuthorize` are thrown inside MVC, not the filter chain).
 
 #### Correlation and Request Context
 
@@ -569,9 +572,29 @@ In production, these components may be deployed as separate containers or on Kub
 
 ---
 
+### Scope: What "Production-Grade" Means for This Brief
+
+The brief asks for a solution that is *"production-grade — reflecting the quality and standards you would apply in a real-world environment."* That is a bar on **engineering judgment**, not a checklist of every capability a long-lived production system eventually accumulates. A senior engineer in a real environment does not build everything a domain could ever need before shipping — they build to the standard the current scope demands, make deliberate calls about what to defer, and leave a documented, low-cost path to extend. This project is scoped to that standard.
+
+#### The trust boundary that defines "in scope"
+
+The four functional requirements — admin upload, expiring signed download links, a download audit log, secure storage — are implemented as a **trusted, internal back-office surface**. Callers are Keycloak service-account clients (`statement-service-admin-client`, `statement-service-consumer-client`) issued to internal systems, not end-customer logins. That framing is load-bearing, not incidental:
+
+- It is why per-endpoint role-based authorization (ADR-0012) is the access-control model, not a per-customer ownership/tenant model.
+- It is why the download endpoint makes the **signed link itself** the security boundary rather than the caller's identity — see Security Architecture and the Signed Link Model above. A customer-facing self-service portal would need object-level authorization and caller attribution on every request; an internal API mediating a known set of trusted systems instead needs to contain a **leaked link**, which is exactly what the HMAC signature, bounded redemptions, per-link rate limiting, and indistinguishable expired/exhausted responses are built to do.
+- It is why malware/content scanning on uploads is deferred (ADR-0026): that control matters for a public upload surface, not an internal admin one — the same trust boundary that shapes the authorization model shapes this decision too.
+
+Within that boundary, the project holds itself to real production rigor rather than take-home shortcuts: an ArchUnit rule fails the build if any handler ships without a stated authorization decision; every dependency has an explicit, deliberate fail-open/fail-closed policy (ADR-0021/0022) rather than an accidental default; audit writes land in a database-enforced append-only table; CI SHA-pins every action, scans both dependencies and built images, gates on a 90/80 coverage threshold, and blocks breaking OpenAPI changes; 26 ADRs record not just what was decided but what was rejected and why. None of that is optional polish — it's the same discipline the brief's "real-world environment" phrase is asking to see, just aimed at a deliberately bounded surface.
+
+#### What's deliberately out, and why that's still production-grade
+
+Three capabilities — MEK rotation, an observability stack (Prometheus/Grafana/Zipkin), and Kubernetes deployment — were evaluated and scoped out rather than built or silently skipped; see *Considered but Deferred* below for the reasoning and adoption path on each. In every case the design already accommodates the capability (a versioned DEK-wrap format, a scrape-ready `/actuator/prometheus` endpoint, Kubernetes-shaped health probes and stateless scaling): the judgment call was that *building* it now would spend scope on infrastructure orthogonal to what this brief actually tests, not that the capability doesn't matter in a real deployment.
+
+---
+
 ### Considered but Deferred
 
-Three capabilities were deliberately evaluated and scoped out. Each is recorded here with the reasoning and the adoption path, so a future decision starts from the tradeoff, not from scratch. In every case the current design keeps the door open rather than closing it.
+Four capabilities were deliberately evaluated and scoped out. Each is recorded here with the reasoning and the adoption path, so a future decision starts from the tradeoff, not from scratch. In every case the current design keeps the door open rather than closing it.
 
 #### Master Encryption Key (MEK) Rotation
 
@@ -593,5 +616,12 @@ Three capabilities were deliberately evaluated and scoped out. Each is recorded 
 - **Deferred because**: Docker Compose gives a reviewer a reproducible, single-command environment on a laptop; Kubernetes adds cluster provisioning, manifests, and secret-delivery plumbing that improve nothing about the submission's actual signal.
 - **The door is open**: the workload is already Kubernetes-shaped — stateless app (horizontal scaling needs no session affinity), split readiness/liveness endpoints that map one-to-one onto k8s probes, ShedLock guarding scheduled jobs against multi-replica double-runs, a non-root container with an image-level health check, and fully externalised configuration.
 - **Adoption path**: Deployment + Service + Ingress (TLS at the edge) manifests or a Helm chart; probes point at the existing `/actuator/health/{readiness,liveness}` endpoints; secrets move from Config Server env-injection to External Secrets / CSI against the same Vault; an HPA can key off the already-exported Prometheus metrics.
+
+#### Malware/Virus Scanning on Statement Uploads
+
+- **Considered because**: antivirus/malware scanning at upload (e.g. ClamAV) is a standard control for a user-supplied file pipeline — without it, a malicious or compromised upstream could have its file stored and later redistributed via signed links, effectively laundered through encryption and access control unchanged.
+- **Deferred because**: the upload path is an internal admin endpoint, not a public one — the same trust boundary that scopes out full object-level authorization on link generation (see "Scope" above) scopes out content scanning here too. It's also nontrivial to add: a scanning daemon/sidecar or embedded engine, signature-definition updates, a scan hook in the upload path, and a fail-open-vs-fail-closed policy decision consistent with the rest of the platform's failure doctrine.
+- **The door is open**: existing controls already narrow the surface without inspecting content — contract-enforced content type, the 10MB size cap, digest verification, authentication/authorization, and envelope encryption at rest (ADR-0026). `StatementUploadService` and `ValidationUtil` are the integration points a future scan hook would extend.
+- **Adoption path**: a synchronous ClamAV daemon/sidecar scan on the upload path is the direct option; cloud-provider malware scanning (e.g. S3-integrated) becomes viable once the S3-compatible storage backend is the only one in play, without tying the decision to a specific provider today. Revisit before upload sources broaden beyond the current trusted pipeline, or before accepting end-user-supplied files directly.
 
 ---

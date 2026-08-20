@@ -19,7 +19,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 /** Shared upload/link/download steps for integration tests exercising the full HTTP stack. */
 public final class UploadDownloadSteps {
 
-    public record UploadedStatement(String statementId, byte[] content) {}
+    public record UploadedStatement(String statementId, String accountNumber, byte[] content) {}
 
     private UploadDownloadSteps() {}
 
@@ -40,11 +40,13 @@ public final class UploadDownloadSteps {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return new UploadedStatement(JsonPath.read(responseBody, "$.statementId"), content);
+        return new UploadedStatement(JsonPath.read(responseBody, "$.statementId"), accountNumber, content);
     }
 
-    public static UriComponents mintDownloadLink(MockMvc mockMvc, String statementId) throws Exception {
+    public static UriComponents mintDownloadLink(MockMvc mockMvc, String statementId, String accountNumber)
+            throws Exception {
         var responseBody = mockMvc.perform(get("/api/v1/statements/link/{statementId}", statementId)
+                        .queryParam("accountNumber", accountNumber)
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_GenerateSignedLink"))))
                 .andExpect(status().isOk())
                 .andReturn()

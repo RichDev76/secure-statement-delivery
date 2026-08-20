@@ -36,14 +36,18 @@ public class StatementQueryService {
     private final SignedLinkService signedLinkService;
     private final AuditHelper auditHelper;
 
-    public Optional<StatementDto> getStatementWithSignedDownloadLinkById(UUID statementId, RequestInfo requestInfo) {
+    public Optional<StatementDto> getStatementWithSignedDownloadLinkById(
+            UUID statementId, String accountNumber, RequestInfo requestInfo) {
         var performedBy = requestInfo.getPerformedBy();
         var clientIp = requestInfo.getClientIp();
         var userAgent = requestInfo.getUserAgent();
 
         try {
             var dto = this.statementService.getStatementDtoById(statementId);
-            var accountNumber = dto.accountNumber();
+            if (!dto.accountNumber().equals(accountNumber)) {
+                auditHelper.recordStatementNotFound(statementId, performedBy, clientIp, userAgent);
+                return Optional.empty();
+            }
 
             try {
                 var fileName = dto.fileName();

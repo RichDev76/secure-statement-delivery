@@ -17,14 +17,6 @@ class SecurityEndpointsPropertiesTest {
             new ApplicationContextRunner().withUserConfiguration(TestConfig.class);
 
     private static final String[] VALID_PROPERTIES = {
-        "security.endpoints.upload[0].method=POST",
-        "security.endpoints.upload[0].pattern=/api/v1/statements/upload",
-        "security.endpoints.audit[0].method=GET",
-        "security.endpoints.audit[0].pattern=/api/v1/statements/audit/logs",
-        "security.endpoints.search[0].method=GET",
-        "security.endpoints.search[0].pattern=/api/v1/statements/search",
-        "security.endpoints.link[0].method=GET",
-        "security.endpoints.link[0].pattern=/api/v1/statements/link/**",
         "security.endpoints.whitelist[0].method=GET",
         "security.endpoints.whitelist[0].pattern=/api/v1/statements/download/**",
         "security.endpoints.whitelist[1].method=GET",
@@ -32,45 +24,21 @@ class SecurityEndpointsPropertiesTest {
     };
 
     @Test
-    void GivenRuleForEveryGroup_WhenContextBinds_ThenEachEndpointRuleCarriesItsMethodAndPattern() {
+    void GivenWhitelistRules_WhenContextBinds_ThenEachEndpointRuleCarriesItsMethodAndPattern() {
         contextRunner.withPropertyValues(VALID_PROPERTIES).run(context -> {
             var properties = context.getBean(SecurityEndpointsProperties.class);
 
-            assertThat(properties.getUpload()).hasSize(1);
-            assertThat(properties.getUpload().get(0).getMethod()).isEqualTo("POST");
-            assertThat(properties.getUpload().get(0).getPattern()).isEqualTo("/api/v1/statements/upload");
-
-            assertThat(properties.getAudit()).hasSize(1);
-            assertThat(properties.getAudit().get(0).getMethod()).isEqualTo("GET");
-            assertThat(properties.getAudit().get(0).getPattern()).isEqualTo("/api/v1/statements/audit/logs");
-
-            assertThat(properties.getSearch()).hasSize(1);
-            assertThat(properties.getSearch().get(0).getPattern()).isEqualTo("/api/v1/statements/search");
-
-            assertThat(properties.getLink()).hasSize(1);
-            assertThat(properties.getLink().get(0).getPattern()).isEqualTo("/api/v1/statements/link/**");
-
             assertThat(properties.getWhitelist()).hasSize(2);
+            assertThat(properties.getWhitelist().get(0).getMethod()).isEqualTo("GET");
+            assertThat(properties.getWhitelist().get(0).getPattern()).isEqualTo("/api/v1/statements/download/**");
             assertThat(properties.getWhitelist().get(1).getPattern())
                     .isEqualTo("/api/v1/statements/actuator/health/**");
         });
     }
 
     @Test
-    void GivenUploadGroupMissing_WhenContextBinds_ThenStartupFailsValidation() {
-        var propertiesWithoutUpload = withoutLinesFor("upload");
-
-        contextRunner.withPropertyValues(propertiesWithoutUpload).run(context -> {
-            assertThat(context).hasFailed();
-            assertThat(context.getStartupFailure()).hasStackTraceContaining("upload");
-        });
-    }
-
-    @Test
     void GivenWhitelistGroupMissing_WhenContextBinds_ThenStartupFailsValidation() {
-        var propertiesWithoutWhitelist = withoutLinesFor("whitelist");
-
-        contextRunner.withPropertyValues(propertiesWithoutWhitelist).run(context -> {
+        contextRunner.run(context -> {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure()).hasStackTraceContaining("whitelist");
         });
@@ -79,7 +47,7 @@ class SecurityEndpointsPropertiesTest {
     @Test
     void GivenRuleWithBlankMethod_WhenContextBinds_ThenStartupFailsValidation() {
         var propertiesWithBlankMethod =
-                replace("security.endpoints.upload[0].method=POST", "security.endpoints.upload[0].method=");
+                replace("security.endpoints.whitelist[0].method=GET", "security.endpoints.whitelist[0].method=");
 
         contextRunner.withPropertyValues(propertiesWithBlankMethod).run(context -> {
             assertThat(context).hasFailed();
@@ -90,19 +58,13 @@ class SecurityEndpointsPropertiesTest {
     @Test
     void GivenRuleWithBlankPattern_WhenContextBinds_ThenStartupFailsValidation() {
         var propertiesWithBlankPattern = replace(
-                "security.endpoints.upload[0].pattern=/api/v1/statements/upload",
-                "security.endpoints.upload[0].pattern=");
+                "security.endpoints.whitelist[0].pattern=/api/v1/statements/download/**",
+                "security.endpoints.whitelist[0].pattern=");
 
         contextRunner.withPropertyValues(propertiesWithBlankPattern).run(context -> {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure()).hasStackTraceContaining("pattern");
         });
-    }
-
-    private static String[] withoutLinesFor(String group) {
-        return java.util.Arrays.stream(VALID_PROPERTIES)
-                .filter(line -> !line.startsWith("security.endpoints." + group + "["))
-                .toArray(String[]::new);
     }
 
     private static String[] replace(String original, String replacement) {

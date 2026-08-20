@@ -49,6 +49,7 @@ class DownloadRateLimitIT extends AbstractIntegrationTest {
         String statementId = JsonPath.read(uploadResponseBody, "$.statementId");
 
         var linkResponseBody = mockMvc.perform(get("/api/v1/statements/link/{statementId}", statementId)
+                        .queryParam("accountNumber", accountNumber)
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_GenerateSignedLink"))))
                 .andExpect(status().isOk())
                 .andReturn()

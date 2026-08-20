@@ -14,8 +14,8 @@ session state itself.
 
 `statement-service` is a JWT resource server (Spring Security) validating tokens issued by
 Keycloak. `KeycloakRoleConverter` maps the JWT's `roles` (or `realm_access.roles`) claim to
-`ROLE_<name>` authorities. `SecurityConfig` enforces distinct roles per endpoint group
-(`Upload`, `GenerateSignedLink`, `Search`, `AuditLogsSearch`); the download endpoint is whitelisted
+`ROLE_<name>` authorities. `@PreAuthorize` on each controller handler enforces one distinct role per operation
+(`Upload`, `GenerateSignedLink`, `Search`, `AuditLogsSearch` — see 0012); the download endpoint is whitelisted
 and relies solely on its signed-link signature (see 0003).
 
 ## Alternatives

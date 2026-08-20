@@ -13,9 +13,6 @@ RUN apk update && \
 # 3. (Optional) Switch back to HTTPS now that certificates are trusted
 RUN sed -i 's/http/https/g' /etc/apk/repositories
 
-# Ensure envsubst (gettext) and curl are available for template rendering + healthchecks
-RUN apk add --no-cache gettext curl
-
 # Copy entrypoint script (mounted file in compose will override during dev; still keep copy)
 COPY docker-entrypoint.sh /usr/local/bin/vault-docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/vault-docker-entrypoint.sh

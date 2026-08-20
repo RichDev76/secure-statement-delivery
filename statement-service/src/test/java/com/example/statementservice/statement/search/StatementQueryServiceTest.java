@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -92,8 +93,8 @@ class StatementQueryServiceTest {
         when(signedLinkService.buildSignedDownloadLink(signedLink, fileName))
                 .thenReturn(java.net.URI.create("http://localhost/download/statement.pdf"));
 
-        Optional<StatementDto> result =
-                statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
+        Optional<StatementDto> result = statementQueryService.getStatementWithSignedDownloadLinkById(
+                testStatementId, testAccountNumber, testRequestInfo);
 
         assertThat(result).isPresent();
         assertThat(result.get())
@@ -121,8 +122,8 @@ class StatementQueryServiceTest {
                 .thenThrow(linkFailure);
 
         // When
-        Optional<StatementDto> result =
-                statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
+        Optional<StatementDto> result = statementQueryService.getStatementWithSignedDownloadLinkById(
+                testStatementId, testAccountNumber, testRequestInfo);
 
         // Then
         assertThat(result).isPresent();
@@ -142,12 +143,28 @@ class StatementQueryServiceTest {
         when(statementService.getStatementDtoById(testStatementId))
                 .thenThrow(new StatementNotFoundException("Not found"));
 
-        Optional<StatementDto> result =
-                statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
+        Optional<StatementDto> result = statementQueryService.getStatementWithSignedDownloadLinkById(
+                testStatementId, testAccountNumber, testRequestInfo);
 
         assertThat(result).isEmpty();
         verify(statementService).getStatementDtoById(testStatementId);
         verify(auditHelper).recordStatementNotFound(eq(testStatementId), eq("test-user"), eq("127.0.0.1"), eq("JUnit"));
+    }
+
+    @Test
+    void
+            GivenStatementBelongsToDifferentAccount_WhenGettingSignedDownloadLink_ThenEmptyIsReturnedAndAuditedAsNotFound() {
+        // Given
+        when(statementService.getStatementDtoById(testStatementId)).thenReturn(testStatementDto);
+
+        // When
+        Optional<StatementDto> result = statementQueryService.getStatementWithSignedDownloadLinkById(
+                testStatementId, "999999999", testRequestInfo);
+
+        // Then
+        assertThat(result).isEmpty();
+        verify(auditHelper).recordStatementNotFound(eq(testStatementId), eq("test-user"), eq("127.0.0.1"), eq("JUnit"));
+        verify(signedLinkService, never()).createSignedLink(any(UUID.class), any(String.class), any(String.class));
     }
 
     @Test

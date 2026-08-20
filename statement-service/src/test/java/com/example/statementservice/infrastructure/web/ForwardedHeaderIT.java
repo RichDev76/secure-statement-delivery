@@ -40,6 +40,7 @@ class ForwardedHeaderIT extends AbstractIntegrationTest {
 
         // When: the request arrives through a TLS-terminating proxy
         var linkResponseBody = mockMvc.perform(get("/api/v1/statements/link/{statementId}", uploaded.statementId())
+                        .queryParam("accountNumber", uploaded.accountNumber())
                         .header("X-Forwarded-Proto", "https")
                         .header("X-Forwarded-Host", "statements.public.example.com")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_GenerateSignedLink"))))
@@ -57,7 +58,7 @@ class ForwardedHeaderIT extends AbstractIntegrationTest {
     void GivenXForwardedFor_WhenDownloading_ThenAuditRecordsForwardedClientIp() throws Exception {
         // Given
         var uploaded = uploadPdf(mockMvc, "statement.pdf", uniqueAccountNumber("5"));
-        var linkUri = mintDownloadLink(mockMvc, uploaded.statementId());
+        var linkUri = mintDownloadLink(mockMvc, uploaded.statementId(), uploaded.accountNumber());
         var linkId = UUID.fromString(linkUri.getQueryParams().getFirst("linkId"));
 
         // When: the download arrives through a proxy that appends the real client IP

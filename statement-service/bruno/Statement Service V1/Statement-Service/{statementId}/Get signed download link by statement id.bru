@@ -5,13 +5,17 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/link/:statementId
+  url: {{baseUrl}}/link/:statementId?accountNumber={{lastAccountNumber}}
   body: none
   auth: bearer
 }
 
 params:path {
   statementId: {{lastStatementId}}
+}
+
+params:query {
+  accountNumber: {{lastAccountNumber}}
 }
 
 headers {
@@ -58,10 +62,11 @@ docs {
   `GET /link/{statementId}`). Despite the folder name, this does not return statement metadata alone — it always
   generates a fresh signed link, so calling it twice yields two independently valid/redeemable links.
 
-  Uses `{{lastStatementId}}`, set by "Upload PDF statement" — run that request first (or run the whole collection
-  as a folder) for this to have a real id to look up. On success, stores `lastFileName`/`lastExpires`/`lastLinkId`/
-  `lastSignature` parsed from the returned `downloadLink`, so "Download statement PDF using signed URL" can chain
-  off this response instead of using a static, eventually-stale fixture.
+  Uses `{{lastStatementId}}` and `{{lastAccountNumber}}`, both set by "Upload PDF statement" — run that request
+  first (or run the whole collection as a folder) so both are populated; accountNumber must match the statement's
+  actual account or this 404s. On success, stores `lastFileName`/`lastExpires`/`lastLinkId`/`lastSignature` parsed
+  from the returned `downloadLink`, so "Download statement PDF using signed URL" can chain off this response
+  instead of using a static, eventually-stale fixture.
 
   Note: if signed-link generation itself fails internally, the service still returns 200 with `downloadLink` absent
   (logged as `LINK_GENERATION_FAILED` in the audit trail) rather than an error — this is intentional fail-open

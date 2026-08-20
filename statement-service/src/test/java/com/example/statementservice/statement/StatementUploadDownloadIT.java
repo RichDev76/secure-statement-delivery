@@ -57,6 +57,7 @@ class StatementUploadDownloadIT extends AbstractIntegrationTest {
 
         // When: mint signed link
         var linkResponseBody = mockMvc.perform(get("/api/v1/statements/link/{statementId}", statementId)
+                        .queryParam("accountNumber", accountNumber)
                         .with(linkRole))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -110,7 +111,7 @@ class StatementUploadDownloadIT extends AbstractIntegrationTest {
                 mockMvc, "My.Statement.PDF", UploadDownloadSteps.uniqueAccountNumber("2"));
 
         // When
-        var linkUri = UploadDownloadSteps.mintDownloadLink(mockMvc, uploaded.statementId());
+        var linkUri = UploadDownloadSteps.mintDownloadLink(mockMvc, uploaded.statementId(), uploaded.accountNumber());
         var downloadResult = mockMvc.perform(UploadDownloadSteps.downloadRequest(linkUri))
                 .andExpect(status().isOk())
                 .andReturn();

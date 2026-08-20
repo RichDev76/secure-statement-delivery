@@ -5,10 +5,12 @@ import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import com.example.statementservice.infrastructure.security.PublicEndpoint;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -16,6 +18,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import java.io.File;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
 @AnalyzeClasses(packages = ArchitectureTest.ROOT, importOptions = ImportOption.DoNotIncludeTests.class)
@@ -71,6 +74,23 @@ class ArchitectureTest {
 
     @ArchTest
     static final ArchRule constructorInjectionOnly = noFields().should().beAnnotatedWith(Autowired.class);
+
+    // The filter chain only floors requests at authenticated(); every handler must state its own decision.
+    @ArchTest
+    static final ArchRule everyRestHandlerDeclaresItsAuthorization = methods()
+            .that()
+            .arePublic()
+            .and()
+            .areDeclaredInClassesThat()
+            .areAnnotatedWith(RestController.class)
+            .should()
+            .beMetaAnnotatedWith(PreAuthorize.class)
+            .orShould()
+            .beAnnotatedWith(PublicEndpoint.class);
+
+    @ArchTest
+    static final ArchRule handlersDeclareExactlyOneAuthorizationDecision =
+            methods().that().areMetaAnnotatedWith(PreAuthorize.class).should().notBeAnnotatedWith(PublicEndpoint.class);
 
     @ArchTest
     static final ArchRule fileCryptoAndObjectStorageAccessIsConfinedToInfrastructure = noClasses()

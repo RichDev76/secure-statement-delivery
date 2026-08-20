@@ -19,18 +19,6 @@ public class SecurityEndpointsProperties {
     @NotEmpty(message = "security.endpoints.whitelist must declare at least one rule")
     private List<@Valid EndpointRule> whitelist = new ArrayList<>();
 
-    @NotEmpty(message = "security.endpoints.upload must declare at least one rule")
-    private List<@Valid EndpointRule> upload = new ArrayList<>();
-
-    @NotEmpty(message = "security.endpoints.audit must declare at least one rule")
-    private List<@Valid EndpointRule> audit = new ArrayList<>();
-
-    @NotEmpty(message = "security.endpoints.search must declare at least one rule")
-    private List<@Valid EndpointRule> search = new ArrayList<>();
-
-    @NotEmpty(message = "security.endpoints.link must declare at least one rule")
-    private List<@Valid EndpointRule> link = new ArrayList<>();
-
     @Getter
     @Setter
     public static class EndpointRule {

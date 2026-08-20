@@ -32,10 +32,15 @@ class SecurityRoleMatrixIT extends AbstractIntegrationTest {
 
     private record EndpointCase(HttpMethod method, String path, String allowedRole, String wrongRole) {}
 
+    // Paths carry every required parameter - argument resolution runs before method security.
     static Stream<EndpointCase> protectedEndpoints() {
         return Stream.of(
                 new EndpointCase(HttpMethod.GET, "/api/v1/statements/audit/logs", "AuditLogsSearch", "Search"),
-                new EndpointCase(HttpMethod.GET, "/api/v1/statements/search", "Search", "AuditLogsSearch"),
+                new EndpointCase(
+                        HttpMethod.GET,
+                        "/api/v1/statements/search?accountNumber=123456789&startDate=2026-01-01&endDate=2026-01-31",
+                        "Search",
+                        "AuditLogsSearch"),
                 new EndpointCase(
                         HttpMethod.GET,
                         "/api/v1/statements/link/" + UUID.randomUUID(),
@@ -74,6 +79,7 @@ class SecurityRoleMatrixIT extends AbstractIntegrationTest {
         perform(endpoint, jwtWithRole(endpoint.wrongRole()))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.title").value("Forbidden"))
                 .andExpect(jsonPath("$.status").value(403));
     }
@@ -92,7 +98,12 @@ class SecurityRoleMatrixIT extends AbstractIntegrationTest {
     void GivenUploadRoleJwt_WhenUploadingStatement_ThenSecurityGrantsAccess() throws Exception {
         var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, "pdf".getBytes());
 
-        mockMvc.perform(multipart("/api/v1/statements/upload").file(file).with(jwtWithRole("Upload")))
+        mockMvc.perform(multipart("/api/v1/statements/upload")
+                        .file(file)
+                        .param("accountNumber", "123456789")
+                        .param("date", "2026-07-31")
+                        .header("X-Message-Digest", "0123456789abcdef".repeat(4))
+                        .with(jwtWithRole("Upload")))
                 .andExpect(result -> assertThat(result.getResponse().getStatus())
                         .as("security must not block a correctly-roled caller")
                         .isNotIn(401, 403));
@@ -102,9 +113,15 @@ class SecurityRoleMatrixIT extends AbstractIntegrationTest {
     void GivenJwtWithWrongRole_WhenUploadingStatement_ThenProblemDetail403IsReturned() throws Exception {
         var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, "pdf".getBytes());
 
-        mockMvc.perform(multipart("/api/v1/statements/upload").file(file).with(jwtWithRole("Search")))
+        mockMvc.perform(multipart("/api/v1/statements/upload")
+                        .file(file)
+                        .param("accountNumber", "123456789")
+                        .param("date", "2026-07-31")
+                        .header("X-Message-Digest", "0123456789abcdef".repeat(4))
+                        .with(jwtWithRole("Search")))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.title").value("Forbidden"))
                 .andExpect(jsonPath("$.status").value(403));
     }
@@ -117,7 +134,9 @@ class SecurityRoleMatrixIT extends AbstractIntegrationTest {
                 .authorities(new KeycloakRoleConverter());
 
         // When
-        var result = mockMvc.perform(get("/api/v1/statements/search").with(keycloakJwt))
+        var result = mockMvc.perform(
+                        get("/api/v1/statements/search?accountNumber=123456789&startDate=2026-01-01&endDate=2026-01-31")
+                                .with(keycloakJwt))
                 .andReturn();
 
         // Then

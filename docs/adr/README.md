@@ -16,7 +16,7 @@ for format and process.
 | 0009 | [Asynchronous, fail-open audit logging](0009-asynchronous-audit-logging.md) | Accepted |
 | 0010 | [Migrate to Spring Boot 4.0.7 / Spring Cloud 2025.1.2](0010-migrate-to-spring-boot-4.md) | Accepted |
 | 0011 | [Adopt feature-first hexagonal packaging](0011-adopt-feature-first-hexagonal-packaging.md) | Accepted |
-| 0012 | [Config-driven security endpoint matchers](0012-config-driven-security-endpoint-matchers.md) | Accepted |
+| 0012 | [Method-level role authorization with config-driven whitelist](0012-method-level-role-authorization.md) | Accepted |
 | 0013 | [Split exception handler chain with a safe generic catch-all](0013-split-exception-handler-chain.md) | Accepted |
 | 0014 | [Local disk storage to Floci/S3 migration](0014-local-storage-to-floci-s3-migration.md) | Accepted |
 | 0015 | [Time-based signed links and envelope encryption](0015-time-based-signed-links-and-envelope-encryption.md) | Accepted |
@@ -30,3 +30,4 @@ for format and process.
 | 0023 | [Compute the upload content hash in one streaming pass; defer upload streaming and bulkhead](0023-single-streaming-digest-pass-and-deferred-upload-streaming.md) | Accepted |
 | 0024 | [GitHub Actions CI pipeline](0024-github-actions-ci-pipeline.md) | Accepted |
 | 0025 | [Structured JSON logging and no-PII-in-logs policy](0025-structured-json-logging-and-no-pii-policy.md) | Accepted |
+| 0026 | [Defer ClamAV virus/malware scanning on statement uploads](0026-defer-clamav-malware-scanning.md) | Accepted |

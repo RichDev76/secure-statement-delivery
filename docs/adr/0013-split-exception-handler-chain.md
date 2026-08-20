@@ -50,4 +50,4 @@ and add the missing test coverage — without changing any response that was alr
 
 - docs/standards/security.md, docs/standards/testing.md
 - [0011 — Adopt feature-first hexagonal packaging](0011-adopt-feature-first-hexagonal-packaging.md)
-- [0012 — Config-driven security endpoint matchers](0012-config-driven-security-endpoint-matchers.md)
+- [0012 — Method-level role authorization with config-driven whitelist](0012-method-level-role-authorization.md)

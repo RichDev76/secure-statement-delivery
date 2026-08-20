@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -42,6 +43,16 @@ public class GlobalExceptionHandler {
     private static final String DEFAULT_INTERNAL_ERROR_MSG = "Internal server error";
 
     public static final String TITLE_DESCRIPTION_VALIDATION_FAILED = "Validation Failed";
+
+    // @PreAuthorize denials surface inside MVC; without this the Exception catch-all would answer 500.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDenied(HttpServletRequest request) {
+        log.warn("Access denied - path={}, method={}", EndpointLabel.of(request.getRequestURI()), request.getMethod());
+        var problemDetail = SecurityProblemDetailFactory.accessDenied(request);
+        return ResponseEntity.status(problemDetail.getStatus())
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problemDetail);
+    }
 
     @ExceptionHandler({
         MethodArgumentNotValidException.class,

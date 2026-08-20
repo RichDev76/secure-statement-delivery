@@ -351,23 +351,26 @@ Ports are swappable by design: the original local-disk file store was replaced w
     - Reads from the top‑level `roles` claim, falling back to `realm_access.roles`
     - Produces `ROLE_<roleName>` authorities
 
-##### Endpoint Roles (config-driven, HTTP layer)
+##### Endpoint Roles (method security at the HTTP boundary)
 
-`SecurityConfig` builds its authorization rules from `SecurityEndpointsProperties` (method + path-pattern groups sourced from Config Server), not hard-coded matchers — see ADR-0012:
+Roles are enforced in code, on the controller handler that implements each operation, via `@PreAuthorize` with `AppRole` compile-time constants — see ADR-0012:
 
 - `POST /api/v1/statements/upload` → `ROLE_Upload`
 - `GET /api/v1/statements/audit/logs` → `ROLE_AuditLogsSearch`
 - `GET /api/v1/statements/search` → `ROLE_Search`
-- `GET /api/v1/statements/link/**` → `ROLE_GenerateSignedLink`
-- `GET /api/v1/statements/download/**` → whitelisted (no authentication; protected by signature + rate limiting instead)
+- `GET /api/v1/statements/link/{id}` → `ROLE_GenerateSignedLink`
+- `GET /api/v1/statements/download/**` → `@PublicEndpoint` (no authentication; protected by signature + rate limiting instead)
 
-Additional whitelisted endpoints:
+The filter chain itself only authenticates and floors every non-whitelisted request at `anyRequest().authenticated()`; an ArchUnit rule requires every handler to carry `@PreAuthorize` or an explicit `@PublicEndpoint(reason)`, so no endpoint can ship without a stated authorization decision.
+
+Whitelisted paths stay config-driven (`SecurityEndpointsProperties`, sourced from Config Server) because they legitimately vary per environment:
+- `/api/v1/statements/download/**` – signed-link downloads
 - `/api/v1/statements/actuator/health/**` – health check endpoints
 - `/api/v1/statements/actuator/info` – application info
 - `/api/v1/statements/v3/api-docs/**` – OpenAPI documentation
 - `/api/v1/statements/swagger-ui/**`, `/swagger-ui.html` – Swagger UI
 
-Unauthenticated and forbidden requests get **RFC 9457 ProblemDetail** JSON (`ERROR_CODE=UNAUTHENTICATED` / `ACCESS_DENIED`), from dedicated `AuthenticationEntryPoint` / `AccessDeniedHandler` beans rather than the default Spring Security pages.
+Unauthenticated and forbidden requests get **RFC 9457 ProblemDetail** JSON (`ERROR_CODE=UNAUTHENTICATED` / `ACCESS_DENIED`) built by the shared `SecurityProblemDetailFactory`: 401s come from the dedicated `AuthenticationEntryPoint` bean in the filter chain; method-security 403s are answered by a dedicated `AccessDeniedException` handler in `GlobalExceptionHandler` (denials from `@PreAuthorize` are thrown inside MVC, not the filter chain).
 
 #### Correlation and Request Context
 

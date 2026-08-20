@@ -52,17 +52,4 @@ class SecurityFilterChainIT extends AbstractIntegrationTest {
         // Then
         assertThat(result.getResponse().getContentAsString()).contains("Authentication required");
     }
-
-    @Test
-    void GivenTokenWithoutUploadRole_WhenUpload_ThenProblemDetailContainsAccessDeniedErrorCode() throws Exception {
-        // Given
-        var wrongRole = jwt().authorities(new SimpleGrantedAuthority("ROLE_Search"));
-        var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, "pdf".getBytes());
-
-        // When / Then
-        mockMvc.perform(multipart("/api/v1/statements/upload").file(file).with(wrongRole))
-                .andExpect(status().isForbidden())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.errorCode").value("ACCESS_DENIED"));
-    }
 }

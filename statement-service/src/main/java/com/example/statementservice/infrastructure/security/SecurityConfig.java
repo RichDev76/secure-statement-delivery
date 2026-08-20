@@ -1,10 +1,9 @@
 package com.example.statementservice.infrastructure.security;
 
-import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
-import static com.example.statementservice.infrastructure.web.CommonUtil.createProblemDetail;
-
 import com.example.statementservice.infrastructure.web.EndpointLabel;
-import java.net.URI;
+import com.example.statementservice.infrastructure.web.SecurityProblemDetailFactory;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -15,8 +14,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -30,15 +30,14 @@ import tools.jackson.databind.json.JsonMapper;
 @Slf4j
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @EnableConfigurationProperties(SecurityEndpointsProperties.class)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private static final String ERROR_CODE_UNAUTHENTICATED = "UNAUTHENTICATED";
-    private static final String ERROR_CODE_ACCESS_DENIED = "ACCESS_DENIED";
-
     private final SecurityEndpointsProperties endpoints;
 
+    // Roles are enforced via @PreAuthorize; authenticated() is the backstop for unannotated handlers.
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -53,28 +52,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
                     var registry = auth;
-
                     for (var group : groupByMethod(endpoints.getWhitelist()).entrySet()) {
                         registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
                                 .permitAll();
                     }
-                    for (var group : groupByMethod(endpoints.getUpload()).entrySet()) {
-                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
-                                .hasRole(AppRole.UPLOAD.getRoleName());
-                    }
-                    for (var group : groupByMethod(endpoints.getAudit()).entrySet()) {
-                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
-                                .hasRole(AppRole.AUDIT_LOGS_SEARCH.getRoleName());
-                    }
-                    for (var group : groupByMethod(endpoints.getSearch()).entrySet()) {
-                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
-                                .hasRole(AppRole.SEARCH.getRoleName());
-                    }
-                    for (var group : groupByMethod(endpoints.getLink()).entrySet()) {
-                        registry = registry.requestMatchers(group.getKey(), toArray(group.getValue()))
-                                .hasRole(AppRole.GENERATE_SIGNED_LINK.getRoleName());
-                    }
-
                     registry.anyRequest().authenticated();
                 })
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(problemDetailAuthEntryPoint)
@@ -110,25 +91,11 @@ public class SecurityConfig {
                     "Unauthenticated access - path={}, method={}",
                     EndpointLabel.of(request.getRequestURI()),
                     request.getMethod());
-
-            var pd = createProblemDetail(
-                    HttpStatus.UNAUTHORIZED,
-                    buildProblemDetailTypeURI(request, "/errors/authentication"),
-                    "Unauthenticated",
-                    "Authentication required to access this resource",
-                    ERROR_CODE_UNAUTHENTICATED);
-
-            try {
-                pd.setInstance(URI.create(request.getRequestURI()));
-            } catch (Exception ignored) {
-            }
-
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-            jsonMapper.writeValue(response.getOutputStream(), pd);
+            writeProblemDetail(response, SecurityProblemDetailFactory.unauthenticated(request), jsonMapper);
         };
     }
 
+    // Unreachable on current paths (403s arise in MVC); kept as backstop for future URL-level rules.
     @Bean
     public AccessDeniedHandler problemDetailAccessDeniedHandler(JsonMapper jsonMapper) {
         return (request, response, accessDeniedException) -> {
@@ -136,21 +103,14 @@ public class SecurityConfig {
                     "Access denied - path={}, method={}",
                     EndpointLabel.of(request.getRequestURI()),
                     request.getMethod());
-
-            var pd = createProblemDetail(
-                    HttpStatus.FORBIDDEN,
-                    buildProblemDetailTypeURI(request, "/errors/authorization"),
-                    "Forbidden",
-                    "You do not have permission to access this resource",
-                    ERROR_CODE_ACCESS_DENIED);
-            try {
-                pd.setInstance(URI.create(request.getRequestURI()));
-            } catch (Exception ignored) {
-            }
-
-            response.setStatus(HttpStatus.FORBIDDEN.value());
-            response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-            jsonMapper.writeValue(response.getOutputStream(), pd);
+            writeProblemDetail(response, SecurityProblemDetailFactory.accessDenied(request), jsonMapper);
         };
+    }
+
+    private static void writeProblemDetail(
+            HttpServletResponse response, ProblemDetail problemDetail, JsonMapper jsonMapper) throws IOException {
+        response.setStatus(problemDetail.getStatus());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        jsonMapper.writeValue(response.getOutputStream(), problemDetail);
     }
 }

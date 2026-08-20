@@ -1,13 +1,18 @@
 openapi: 3.0.0
 info:
   title: Statement Upload & Search API
-  version: 1.13.0
+  version: 1.14.0
   description: >
     Upload a PDF account statement with metadata and strict validation rules.
     Also provides search endpoints to retrieve statements by statementId,
     and to search by account number and/or date using paginated results.
     Includes audit log retrieval capabilities.
     All endpoints require JWT bearer authentication and support the x-correlation-id header for request tracing.
+
+    1.14.0: BREAKING. `accountNumber` is now a required query parameter on `GET /link/{statementId}`
+    (new parameter) and `GET /audit/logs` (was optional). Closes an object-level authorization gap
+    where either endpoint could be used to access another account's data given only a role and, for
+    /link, a guessed or leaked statementId.
 
     1.12.0: error-contract truth-up (additive). Backfills errorCode values the service already
     emits (STATEMENT_NOT_FOUND, PDF_VALIDATION_FAILED, INVALID_SEARCH_PARAMETERS, INVALID_REQUEST),
@@ -183,7 +188,9 @@ paths:
       summary: Get statement metadata and download link by its unique statement id
       description: >
         Retrieve statement metadata and download link (does not return binary PDF).
-        Use the `statementId` returned at upload time.
+        Use the `statementId` returned at upload time. `accountNumber` must match the
+        statement's actual account; a mismatch returns 404, identical to a genuinely
+        unknown `statementId` — deliberately no distinguishing signal.
       operationId: getDownloadSignedLinkById
       parameters:
         - $ref: '#/components/parameters/correlationIdHeader'
@@ -195,6 +202,7 @@ paths:
             type: string
             format: uuid
             example: "550e8400-e29b-41d4-a716-446655440000"
+        - $ref: '#/components/parameters/accountNumberParam'
       responses:
         '200':
           description: Base statement information with download link
@@ -427,18 +435,12 @@ paths:
       summary: Get audit logs
       description: >
         Retrieve paginated audit logs for statement-related activities such as
-        uploads, downloads, and link generations.
+        uploads, downloads, and link generations. `accountNumber` is mandatory —
+        this endpoint never returns another account's history.
       operationId: getFilteredAuditLogs
       parameters:
         - $ref: '#/components/parameters/correlationIdHeader'
-        - name: accountNumber
-          in: query
-          required: false
-          description: Filter logs by account number.
-          schema:
-            type: string
-            pattern: "^[0-9]{9,15}$"
-            example: "123456789"
+        - $ref: '#/components/parameters/accountNumberParam'
         - name: startDate
           in: query
           required: false

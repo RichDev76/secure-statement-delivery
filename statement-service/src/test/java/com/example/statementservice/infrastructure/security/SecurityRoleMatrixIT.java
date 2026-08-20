@@ -35,7 +35,11 @@ class SecurityRoleMatrixIT extends AbstractIntegrationTest {
     // Paths carry every required parameter - argument resolution runs before method security.
     static Stream<EndpointCase> protectedEndpoints() {
         return Stream.of(
-                new EndpointCase(HttpMethod.GET, "/api/v1/statements/audit/logs", "AuditLogsSearch", "Search"),
+                new EndpointCase(
+                        HttpMethod.GET,
+                        "/api/v1/statements/audit/logs?accountNumber=123456789",
+                        "AuditLogsSearch",
+                        "Search"),
                 new EndpointCase(
                         HttpMethod.GET,
                         "/api/v1/statements/search?accountNumber=123456789&startDate=2026-01-01&endDate=2026-01-31",
@@ -43,7 +47,7 @@ class SecurityRoleMatrixIT extends AbstractIntegrationTest {
                         "AuditLogsSearch"),
                 new EndpointCase(
                         HttpMethod.GET,
-                        "/api/v1/statements/link/" + UUID.randomUUID(),
+                        "/api/v1/statements/link/" + UUID.randomUUID() + "?accountNumber=123456789",
                         "GenerateSignedLink",
                         "Search"));
     }

@@ -309,8 +309,11 @@ curl -X POST "http://localhost:8080/api/v1/statements/upload" \
 
 #### Get a Signed Download Link
 
+`accountNumber` must match the statement's actual account — a mismatch returns 404, identical to
+an unknown `statementId`.
+
 ```bash
-curl -H "Authorization: Bearer $TOKEN" -X GET "http://localhost:8080/api/v1/statements/link/$STATEMENT_ID"
+curl -H "Authorization: Bearer $TOKEN" -X GET "http://localhost:8080/api/v1/statements/link/$STATEMENT_ID?accountNumber=123456789"
 ```
 
 #### Search Statements

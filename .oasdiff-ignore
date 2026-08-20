@@ -1,0 +1,5 @@
+# Every suppression below requires: the operation (method + path), and a written justification.
+# Format: METHOD /path  description
+
+GET /link/{statementId} accountNumber added as a required query parameter — closes an object-level authorization gap
+GET /audit/logs accountNumber changed from optional to required — closes an object-level authorization gap

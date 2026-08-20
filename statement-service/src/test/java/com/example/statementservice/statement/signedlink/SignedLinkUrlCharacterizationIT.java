@@ -25,7 +25,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 @AutoConfigureMockMvc
 class SignedLinkUrlCharacterizationIT extends AbstractIntegrationTest {
 
-    private record SeededStatement(UUID id, String fileName) {}
+    private record SeededStatement(UUID id, String fileName, String accountNumber) {}
 
     private static Pattern signedUrlShape(String fileName) {
         return Pattern.compile("^http://localhost/api/v1/statements/download/" + Pattern.quote(fileName)
@@ -43,9 +43,10 @@ class SignedLinkUrlCharacterizationIT extends AbstractIntegrationTest {
 
     private SeededStatement seedStatement() {
         var fileName = "statement-" + UUID.randomUUID() + ".pdf";
+        var accountNumber = "9" + String.format("%08d", System.nanoTime() % 100000000L);
         var statement = Statement.builder()
                 .id(UUID.randomUUID())
-                .accountNumber("ACC-" + UUID.randomUUID())
+                .accountNumber(accountNumber)
                 .statementDate(LocalDate.of(2026, 7, 31))
                 .uploadFileName(fileName)
                 .storageKey("/unused/in/this/test.pdf.enc")
@@ -54,11 +55,12 @@ class SignedLinkUrlCharacterizationIT extends AbstractIntegrationTest {
                 .encrypted(true)
                 .build();
         statementRepository.save(statement);
-        return new SeededStatement(statement.getId(), fileName);
+        return new SeededStatement(statement.getId(), fileName, accountNumber);
     }
 
-    private String mintDownloadLink(UUID statementId) throws Exception {
+    private String mintDownloadLink(UUID statementId, String accountNumber) throws Exception {
         var responseBody = mockMvc.perform(get("/api/v1/statements/link/{statementId}", statementId)
+                        .queryParam("accountNumber", accountNumber)
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_GenerateSignedLink"))))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -72,7 +74,7 @@ class SignedLinkUrlCharacterizationIT extends AbstractIntegrationTest {
         var seeded = seedStatement();
         var mintedAtEpoch = OffsetDateTime.now().toEpochSecond();
 
-        var downloadLink = mintDownloadLink(seeded.id());
+        var downloadLink = mintDownloadLink(seeded.id(), seeded.accountNumber());
 
         var matcher = signedUrlShape(seeded.fileName()).matcher(downloadLink);
         assertThat(matcher.matches())
@@ -88,7 +90,7 @@ class SignedLinkUrlCharacterizationIT extends AbstractIntegrationTest {
     void GivenExistingStatement_WhenMintingSignedLink_ThenUrlSignatureIsOnlyFindableViaItsHash() throws Exception {
         var seeded = seedStatement();
 
-        var downloadLink = mintDownloadLink(seeded.id());
+        var downloadLink = mintDownloadLink(seeded.id(), seeded.accountNumber());
 
         var queryParams =
                 UriComponentsBuilder.fromUriString(downloadLink).build().getQueryParams();

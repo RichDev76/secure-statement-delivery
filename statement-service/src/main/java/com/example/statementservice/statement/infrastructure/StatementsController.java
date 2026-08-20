@@ -49,10 +49,11 @@ public class StatementsController implements StatementsApi {
 
     @Override
     @PreAuthorize("hasRole('" + AppRole.GENERATE_SIGNED_LINK + "')")
-    public ResponseEntity<StatementSummary> getDownloadSignedLinkById(UUID statementId, String xCorrelationId) {
+    public ResponseEntity<StatementSummary> getDownloadSignedLinkById(
+            UUID statementId, String accountNumber, String xCorrelationId) {
         var requestInfo = requestInfoProvider.get();
         return statementQueryService
-                .getStatementWithSignedDownloadLinkById(statementId, requestInfo)
+                .getStatementWithSignedDownloadLinkById(statementId, accountNumber, requestInfo)
                 .map(statementApiMapper::toApi)
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new StatementNotFoundException(

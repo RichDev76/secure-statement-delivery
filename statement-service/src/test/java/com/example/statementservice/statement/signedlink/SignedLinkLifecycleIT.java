@@ -48,7 +48,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     private Statement seedStatement() {
         var statement = Statement.builder()
                 .id(UUID.randomUUID())
-                .accountNumber("ACC-" + UUID.randomUUID())
+                .accountNumber("9" + String.format("%08d", System.nanoTime() % 100000000L))
                 .statementDate(LocalDate.of(2026, 7, 31))
                 .uploadFileName("statement-" + UUID.randomUUID() + ".pdf")
                 .storageKey("/unused/in/this/test.pdf.enc")
@@ -59,8 +59,9 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
         return statementRepository.save(statement);
     }
 
-    private UriComponentsBuilder mintLinkUri(UUID statementId) throws Exception {
+    private UriComponentsBuilder mintLinkUri(UUID statementId, String accountNumber) throws Exception {
         var responseBody = mockMvc.perform(get("/api/v1/statements/link/{statementId}", statementId)
+                        .queryParam("accountNumber", accountNumber)
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_GenerateSignedLink"))))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -97,7 +98,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         String statementId = JsonPath.read(uploadResponseBody, "$.statementId");
-        var uri = mintLinkUri(UUID.fromString(statementId)).build();
+        var uri = mintLinkUri(UUID.fromString(statementId), accountNumber).build();
 
         // When: the same link is downloaded twice
         for (int attempt = 0; attempt < 2; attempt++) {
@@ -136,7 +137,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         String statementId = JsonPath.read(uploadResponseBody, "$.statementId");
-        var uri = mintLinkUri(UUID.fromString(statementId)).build();
+        var uri = mintLinkUri(UUID.fromString(statementId), accountNumber).build();
 
         // When: the first 3 redemptions all succeed
         for (int attempt = 0; attempt < 3; attempt++) {
@@ -160,7 +161,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     void Given_TamperedSignature_When_Downloading_Then_Returns403() throws Exception {
         // Given
         var statement = seedStatement();
-        var uri = mintLinkUri(statement.getId()).build();
+        var uri = mintLinkUri(statement.getId(), statement.getAccountNumber()).build();
         var signature = uri.getQueryParams().getFirst("signature");
         var tampered = signature.substring(0, signature.length() - 1) + (signature.endsWith("A") ? "B" : "A");
 
@@ -176,7 +177,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     void Given_TamperedExpiryParameter_When_Downloading_Then_Returns403() throws Exception {
         // Given
         var statement = seedStatement();
-        var uri = mintLinkUri(statement.getId()).build();
+        var uri = mintLinkUri(statement.getId(), statement.getAccountNumber()).build();
         var tamperedExpires = Long.parseLong(uri.getQueryParams().getFirst("expires")) + 3600;
 
         // When / Then
@@ -191,7 +192,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     void Given_TamperedLinkIdParameter_When_Downloading_Then_Returns403() throws Exception {
         // Given
         var statement = seedStatement();
-        var uri = mintLinkUri(statement.getId()).build();
+        var uri = mintLinkUri(statement.getId(), statement.getAccountNumber()).build();
 
         // When / Then
         mockMvc.perform(get(uri.getPath())
@@ -205,7 +206,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     void Given_ExpiredLink_When_Downloading_Then_RejectedAndFailureAudited() throws Exception {
         // Given: statement.signed-link.expiry is overridden to 2s for this test class.
         var statement = seedStatement();
-        var uri = mintLinkUri(statement.getId()).build();
+        var uri = mintLinkUri(statement.getId(), statement.getAccountNumber()).build();
         Thread.sleep(2100);
 
         // When / Then

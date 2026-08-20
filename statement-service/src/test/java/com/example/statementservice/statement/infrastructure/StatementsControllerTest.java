@@ -244,13 +244,15 @@ class StatementsControllerTest {
     @Test
     void GivenExistingStatement_WhenGettingSignedLinkById_ThenReturnsOkWithSummary() {
 
+        var accountNumber = "123456789";
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo))
+        when(statementQueryService.getStatementWithSignedDownloadLinkById(
+                        testStatementId, accountNumber, testRequestInfo))
                 .thenReturn(Optional.of(testStatementDto));
         when(statementApiMapper.toApi(testStatementDto)).thenReturn(testStatementSummary);
 
         ResponseEntity<StatementSummary> response =
-                statementsController.getDownloadSignedLinkById(testStatementId, null);
+                statementsController.getDownloadSignedLinkById(testStatementId, accountNumber, null);
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -258,55 +260,63 @@ class StatementsControllerTest {
         assertThat(response.getBody().getStatementId()).isEqualTo(testStatementId);
         assertThat(response.getBody().getAccountNumber()).isEqualTo("123456789");
 
-        verify(statementQueryService).getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
+        verify(statementQueryService)
+                .getStatementWithSignedDownloadLinkById(testStatementId, accountNumber, testRequestInfo);
     }
 
     @Test
     void GivenUnknownStatement_WhenGettingSignedLinkById_ThenThrowsStatementNotFoundException() {
 
+        var accountNumber = "123456789";
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(statementQueryService.getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo))
+        when(statementQueryService.getStatementWithSignedDownloadLinkById(
+                        testStatementId, accountNumber, testRequestInfo))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> statementsController.getDownloadSignedLinkById(testStatementId, null))
+        assertThatThrownBy(() -> statementsController.getDownloadSignedLinkById(testStatementId, accountNumber, null))
                 .isInstanceOf(StatementNotFoundException.class)
                 .hasMessageContaining("Statement(s) not found for Id: " + testStatementId);
 
-        verify(statementQueryService).getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
+        verify(statementQueryService)
+                .getStatementWithSignedDownloadLinkById(testStatementId, accountNumber, testRequestInfo);
     }
 
     @Test
     void GivenSpecificStatementId_WhenGettingSignedLinkById_ThenThatIdReachesService() {
 
         var specificId = UUID.randomUUID();
+        var accountNumber = "123456789";
         var dto = StatementDto.builder().statementId(specificId).build();
         var summary = new StatementSummary();
         summary.setStatementId(specificId);
 
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(statementQueryService.getStatementWithSignedDownloadLinkById(specificId, testRequestInfo))
+        when(statementQueryService.getStatementWithSignedDownloadLinkById(specificId, accountNumber, testRequestInfo))
                 .thenReturn(Optional.of(dto));
         when(statementApiMapper.toApi(dto)).thenReturn(summary);
 
-        var response = statementsController.getDownloadSignedLinkById(specificId, null);
+        var response = statementsController.getDownloadSignedLinkById(specificId, accountNumber, null);
 
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getStatementId()).isEqualTo(specificId);
-        verify(statementQueryService).getStatementWithSignedDownloadLinkById(eq(specificId), eq(testRequestInfo));
+        verify(statementQueryService)
+                .getStatementWithSignedDownloadLinkById(eq(specificId), eq(accountNumber), eq(testRequestInfo));
     }
 
     @Test
     void GivenServiceThrows_WhenGettingSignedLinkById_ThenExceptionPropagates() {
 
+        var accountNumber = "123456789";
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
-        when(statementQueryService.getStatementWithSignedDownloadLinkById(any(), any()))
+        when(statementQueryService.getStatementWithSignedDownloadLinkById(any(), any(), any()))
                 .thenThrow(new RuntimeException("Service error"));
 
-        assertThatThrownBy(() -> statementsController.getDownloadSignedLinkById(testStatementId, null))
+        assertThatThrownBy(() -> statementsController.getDownloadSignedLinkById(testStatementId, accountNumber, null))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Service error");
 
-        verify(statementQueryService).getStatementWithSignedDownloadLinkById(testStatementId, testRequestInfo);
+        verify(statementQueryService)
+                .getStatementWithSignedDownloadLinkById(testStatementId, accountNumber, testRequestInfo);
     }
 
     private Page<StatementDto> emptyPage() {

@@ -79,6 +79,7 @@ class CorruptCiphertextDownloadIT extends AbstractIntegrationTest {
         corruptOneCiphertextByte(storageKey);
 
         var linkResponseBody = mockMvc.perform(get("/api/v1/statements/link/{statementId}", statementId)
+                        .queryParam("accountNumber", accountNumber)
                         .with(linkRole))
                 .andExpect(status().isOk())
                 .andReturn()

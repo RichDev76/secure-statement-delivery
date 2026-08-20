@@ -5,12 +5,13 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/audit/logs?page=0&size=50
+  url: {{baseUrl}}/audit/logs?accountNumber=123456789&page=0&size=50
   body: none
   auth: bearer
 }
 
 params:query {
+  accountNumber: 123456789
   page: 0
   size: 50
 }

@@ -36,6 +36,8 @@ import org.springframework.data.jpa.domain.Specification;
 @ExtendWith(MockitoExtension.class)
 class AuditQueryServiceTest {
 
+    private static final String ACCOUNT_NUMBER = "123456789";
+
     @Mock
     private AuditLogRepository auditLogRepository;
 
@@ -52,14 +54,14 @@ class AuditQueryServiceTest {
     void setUp() {
         testAuditLog = new AuditLog();
         testAuditLog.setId(UUID.randomUUID());
-        testAuditLog.setAccountNumber("123456789");
+        testAuditLog.setAccountNumber(ACCOUNT_NUMBER);
         testAuditLog.setAction("DOWNLOAD");
         testAuditLog.setPerformedAt(OffsetDateTime.now());
         testAuditLog.setPerformedBy("testUser");
 
         testAuditLogDto = AuditLogDto.builder()
                 .id(UUID.randomUUID())
-                .accountNumber("123456789")
+                .accountNumber(ACCOUNT_NUMBER)
                 .action("DOWNLOAD")
                 .build();
     }
@@ -81,14 +83,13 @@ class AuditQueryServiceTest {
     }
 
     @Test
-    void GivenAccountNumber_WhenQueryingAuditLogs_ThenDebugLogNeverContainsAccountNumberOnlyPresenceFlag() {
+    void GivenAccountNumber_WhenQueryingAuditLogs_ThenDebugLogNeverContainsAccountNumberValue() {
         // Given
         stubEmptyRepositoryPage();
-        var accountNumber = "123456789";
 
         try (var logs = LogCapture.forClassAtLevel(AuditQueryService.class, Level.DEBUG)) {
             // When
-            auditQueryService.getFilteredAuditLogs(accountNumber, null, null, 0, 50);
+            auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, null, 0, 50);
 
             // Then
             assertThat(logs.lines())
@@ -96,23 +97,7 @@ class AuditQueryServiceTest {
                             + "would pass trivially if the log statement were deleted")
                     .isNotEmpty()
                     .as("the account number must never reach a log line")
-                    .noneMatch(line -> line.contains(accountNumber))
-                    .as("presence, not value, is the diagnostic signal that replaces it")
-                    .anyMatch(line -> line.contains("accountFilter=present"));
-        }
-    }
-
-    @Test
-    void GivenNoAccountNumber_WhenQueryingAuditLogs_ThenDebugLogReportsFilterAbsent() {
-        // Given
-        stubEmptyRepositoryPage();
-
-        try (var logs = LogCapture.forClassAtLevel(AuditQueryService.class, Level.DEBUG)) {
-            // When
-            auditQueryService.getFilteredAuditLogs(null, null, null, 0, 50);
-
-            // Then
-            assertThat(logs.lines()).anyMatch(line -> line.contains("accountFilter=absent"));
+                    .noneMatch(line -> line.contains(ACCOUNT_NUMBER));
         }
     }
 
@@ -123,7 +108,7 @@ class AuditQueryServiceTest {
 
         // When
         Page<AuditLogDto> result =
-                auditQueryService.getFilteredAuditLogs("123456789", "2024-01-01", "2024-01-31", 0, 50);
+                auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, "2024-01-01", "2024-01-31", 0, 50);
 
         // Then
         assertThat(result.getContent()).containsExactly(testAuditLogDto);
@@ -135,25 +120,7 @@ class AuditQueryServiceTest {
     }
 
     @Test
-    void GivenNullAccountNumber_WhenQueryingAuditLogs_ThenSpecificationBuiltWithNullFilter() {
-        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
-            // Given
-            specs.when(() -> AuditLogSpecifications.filter(isNull(), any(), any()))
-                    .thenReturn(null);
-            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
-                    .thenReturn(new PageImpl<>(Collections.emptyList()));
-            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
-
-            // When
-            auditQueryService.getFilteredAuditLogs(null, null, null, null, null);
-
-            // Then
-            specs.verify(() -> AuditLogSpecifications.filter(isNull(), isNull(), isNull()));
-        }
-    }
-
-    @Test
-    void GivenBlankAccountNumber_WhenQueryingAuditLogs_ThenSpecificationBuiltWithNullFilter() {
+    void GivenBlankAccountNumber_WhenQueryingAuditLogs_ThenSpecificationBuiltWithBlankFilterNotNull() {
         try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
             // Given
             when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
@@ -163,8 +130,10 @@ class AuditQueryServiceTest {
             // When
             auditQueryService.getFilteredAuditLogs("   ", null, null, null, null);
 
-            // Then
-            specs.verify(() -> AuditLogSpecifications.filter(isNull(), isNull(), isNull()));
+            // Then: a blank accountNumber must never be silently treated as "no filter" - that was
+            // exactly the object-level authorization gap being closed. The filter still runs, just
+            // against a value ("") that matches no real account.
+            specs.verify(() -> AuditLogSpecifications.filter(eq(""), isNull(), isNull()));
         }
     }
 
@@ -190,7 +159,7 @@ class AuditQueryServiceTest {
         stubEmptyRepositoryPage();
 
         // When
-        var result = auditQueryService.getFilteredAuditLogs(null, null, null, null, null);
+        var result = auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, null, null, null);
 
         // Then
         assertThat(result.getNumber()).isZero();
@@ -203,7 +172,7 @@ class AuditQueryServiceTest {
         stubEmptyRepositoryPage();
 
         // When
-        var result = auditQueryService.getFilteredAuditLogs(null, null, null, -5, null);
+        var result = auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, null, -5, null);
 
         // Then
         assertThat(result.getNumber()).isZero();
@@ -215,7 +184,7 @@ class AuditQueryServiceTest {
         stubEmptyRepositoryPage();
 
         // When
-        var result = auditQueryService.getFilteredAuditLogs(null, null, null, null, 200);
+        var result = auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, null, null, 200);
 
         // Then
         assertThat(result.getSize()).isEqualTo(100);
@@ -227,7 +196,7 @@ class AuditQueryServiceTest {
         stubEmptyRepositoryPage();
 
         // When
-        var result = auditQueryService.getFilteredAuditLogs(null, null, null, null, 0);
+        var result = auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, null, null, 0);
 
         // Then
         assertThat(result.getSize()).isEqualTo(1);
@@ -242,11 +211,11 @@ class AuditQueryServiceTest {
             when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
             // When
-            auditQueryService.getFilteredAuditLogs(null, "2024-01-15", null, null, null);
+            auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, "2024-01-15", null, null, null);
 
             // Then
             ArgumentCaptor<OffsetDateTime> startCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-            specs.verify(() -> AuditLogSpecifications.filter(isNull(), startCaptor.capture(), isNull()));
+            specs.verify(() -> AuditLogSpecifications.filter(eq(ACCOUNT_NUMBER), startCaptor.capture(), isNull()));
             var capturedStart = startCaptor.getValue();
             assertThat(capturedStart.toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 15));
             assertThat(capturedStart.getHour()).isZero();
@@ -263,11 +232,11 @@ class AuditQueryServiceTest {
             when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
             // When
-            auditQueryService.getFilteredAuditLogs(null, null, "2024-01-31", null, null);
+            auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, "2024-01-31", null, null);
 
             // Then
             ArgumentCaptor<OffsetDateTime> endCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-            specs.verify(() -> AuditLogSpecifications.filter(isNull(), isNull(), endCaptor.capture()));
+            specs.verify(() -> AuditLogSpecifications.filter(eq(ACCOUNT_NUMBER), isNull(), endCaptor.capture()));
             var capturedEnd = endCaptor.getValue();
             assertThat(capturedEnd.toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 31));
             assertThat(capturedEnd.getHour()).isEqualTo(23);
@@ -278,21 +247,23 @@ class AuditQueryServiceTest {
 
     @Test
     void GivenMalformedStartDate_WhenQueryingAuditLogs_ThenInvalidDateExceptionIsThrown() {
-        assertThatThrownBy(() -> auditQueryService.getFilteredAuditLogs(null, "invalid-date", null, null, null))
+        assertThatThrownBy(
+                        () -> auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, "invalid-date", null, null, null))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("Invalid start date format");
     }
 
     @Test
     void GivenMalformedEndDate_WhenQueryingAuditLogs_ThenInvalidDateExceptionIsThrown() {
-        assertThatThrownBy(() -> auditQueryService.getFilteredAuditLogs(null, null, "2024/01/31", null, null))
+        assertThatThrownBy(() -> auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, "2024/01/31", null, null))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("Invalid end date format");
     }
 
     @Test
     void GivenStartDateAfterEndDate_WhenQueryingAuditLogs_ThenInvalidDateExceptionIsThrown() {
-        assertThatThrownBy(() -> auditQueryService.getFilteredAuditLogs(null, "2024-02-01", "2024-01-01", null, null))
+        assertThatThrownBy(() ->
+                        auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, "2024-02-01", "2024-01-01", null, null))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("Start date must be before or equal to end date");
     }
@@ -306,10 +277,10 @@ class AuditQueryServiceTest {
             when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
             // When
-            auditQueryService.getFilteredAuditLogs(null, "   ", "   ", null, null);
+            auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, "   ", "   ", null, null);
 
             // Then
-            specs.verify(() -> AuditLogSpecifications.filter(isNull(), isNull(), isNull()));
+            specs.verify(() -> AuditLogSpecifications.filter(eq(ACCOUNT_NUMBER), isNull(), isNull()));
         }
     }
 
@@ -322,12 +293,13 @@ class AuditQueryServiceTest {
             when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
 
             // When
-            auditQueryService.getFilteredAuditLogs(null, "  2024-01-01  ", "  2024-01-31  ", null, null);
+            auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, "  2024-01-01  ", "  2024-01-31  ", null, null);
 
             // Then
             ArgumentCaptor<OffsetDateTime> startCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
             ArgumentCaptor<OffsetDateTime> endCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-            specs.verify(() -> AuditLogSpecifications.filter(isNull(), startCaptor.capture(), endCaptor.capture()));
+            specs.verify(() ->
+                    AuditLogSpecifications.filter(eq(ACCOUNT_NUMBER), startCaptor.capture(), endCaptor.capture()));
             assertThat(startCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 1));
             assertThat(endCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2024, 1, 31));
         }
@@ -339,7 +311,7 @@ class AuditQueryServiceTest {
         stubEmptyRepositoryPage();
 
         // When
-        var result = auditQueryService.getFilteredAuditLogs(null, "2024-01-15", "2024-01-15", null, null);
+        var result = auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, "2024-01-15", "2024-01-15", null, null);
 
         // Then
         assertThat(result).isNotNull();
@@ -352,7 +324,7 @@ class AuditQueryServiceTest {
         stubEmptyRepositoryPage();
 
         // When
-        auditQueryService.getFilteredAuditLogs(null, null, null, null, null);
+        auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, null, null, null);
 
         // Then
         var order = capturedPageable().getSort().getOrderFor("performedAt");
@@ -366,7 +338,7 @@ class AuditQueryServiceTest {
         stubRepositoryPage(List.of(testAuditLog), List.of(testAuditLogDto), 120);
 
         // When
-        var result = auditQueryService.getFilteredAuditLogs(null, null, null, 1, 50);
+        var result = auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, null, null, 1, 50);
 
         // Then
         assertThat(result.getNumber()).isEqualTo(1);

@@ -5,13 +5,17 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/link/:statementId
+  url: {{baseUrl}}/link/:statementId?accountNumber=123456789
   body: none
   auth: bearer
 }
 
 params:path {
   statementId: {{lastStatementId}}
+}
+
+params:query {
+  accountNumber: 123456789
 }
 
 headers {

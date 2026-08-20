@@ -23,7 +23,7 @@ public class AuditController implements AuditApi {
     @Override
     @PreAuthorize("hasRole('" + AppRole.AUDIT_LOGS_SEARCH + "')")
     public ResponseEntity<AuditLogPage> getFilteredAuditLogs(
-            String xCorrelationId, String accountNumber, String startDate, String endDate, Integer page, Integer size) {
+            String accountNumber, String xCorrelationId, String startDate, String endDate, Integer page, Integer size) {
         var dtoPage = auditQueryService.getFilteredAuditLogs(accountNumber, startDate, endDate, page, size);
         var apiPage = auditApiMapper.toPage(dtoPage.getContent());
         apiPage.page(dtoPage.getNumber());

@@ -28,13 +28,7 @@ public class AuditQueryService {
     public Page<AuditLogDto> getFilteredAuditLogs(
             String accountNumber, String startDate, String endDate, Integer page, Integer size) {
 
-        log.debug(
-                "Querying audit logs: accountFilter={}, start={}, end={}, page={}, size={}",
-                accountNumber != null ? "present" : "absent",
-                startDate,
-                endDate,
-                page,
-                size);
+        log.debug("Querying audit logs: start={}, end={}, page={}, size={}", startDate, endDate, page, size);
 
         var startDateTime = parseDate(startDate, false);
         var endDateTime = parseDate(endDate, true);
@@ -45,8 +39,7 @@ public class AuditQueryService {
 
         var pageable = PageRequest.of(pageNum, pageSize, Sort.by(Sort.Direction.DESC, "performedAt"));
 
-        var specification =
-                AuditLogSpecifications.filter(normalizeAccountNumber(accountNumber), startDateTime, endDateTime);
+        var specification = AuditLogSpecifications.filter(accountNumber.trim(), startDateTime, endDateTime);
         var auditLogPage = auditLogRepository.findAll(specification, pageable);
 
         var auditLogDtos = auditLogEntityMapper.toDtos(auditLogPage.getContent());
@@ -81,10 +74,6 @@ public class AuditQueryService {
         if (start != null && end != null && start.isAfter(end)) {
             throw new InvalidDateException("Start date must be before or equal to end date");
         }
-    }
-
-    private String normalizeAccountNumber(String accountNumber) {
-        return (accountNumber == null || accountNumber.isBlank()) ? null : accountNumber.trim();
     }
 
     private int normalizePageNumber(Integer page) {

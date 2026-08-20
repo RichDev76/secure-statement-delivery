@@ -159,7 +159,7 @@ jobs:
           git fetch origin "$GITHUB_BASE_REF" --depth=1
           if git cat-file -e "origin/${GITHUB_BASE_REF}:${SPEC}" 2>/dev/null; then
             git show "origin/${GITHUB_BASE_REF}:${SPEC}" > /tmp/base-spec.yaml
-            oasdiff breaking /tmp/base-spec.yaml "$SPEC" --fail-on ERR
+            oasdiff breaking /tmp/base-spec.yaml "$SPEC" --fail-on ERR --err-ignore .oasdiff-ignore
           else
             echo "::notice::Contract absent on base branch (new or renamed contract) — skipping breaking-change check"
           fi

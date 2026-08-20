@@ -1,5 +1,8 @@
-# Every suppression below requires: the operation (method + path), and a written justification.
-# Format: METHOD /path  description
+# Each line is a regex matched against oasdiff's single-line rendering of a finding
+# (`oasdiff breaking ... --format singleline`) - not a method+path+description triple.
+# Every suppression here is a deliberate, reviewed breaking change; keep entries narrow
+# (include the operation and parameter name) so this file can't silently swallow an
+# unrelated future breaking change on the same path.
 
-GET /link/{statementId} accountNumber added as a required query parameter — closes an object-level authorization gap
-GET /audit/logs accountNumber changed from optional to required — closes an object-level authorization gap
+GET /audit/logs the `query` request parameter `accountNumber` became required
+GET /link/{statementId} added the new required `query` request parameter `accountNumber`

@@ -4,6 +4,24 @@ A multi-module platform for secure storage and delivery of monthly account state
 
 ---
 
+### TL;DR
+
+Spring Boot service for uploading, storing, and delivering monthly account statements as encrypted
+PDFs, gated by JWT role-based access (Keycloak), with audit logging and time-limited HMAC-signed
+download links.
+
+- **Fastest path to a running stack:** [Option 1](#option-1-running-full-docker-compose-all-services)
+  — `cd infra && cp .env.example .env` (fill in the secrets), then `./bootstrap_all.sh`.
+- **Actively developing the service:** [Option 2](#option-2-running-locally-via-maven-supporting-services-via-docker)
+  — Docker for Postgres/Keycloak/Redis/Floci, `mvn spring-boot:run` for the service itself.
+- **Verify it's up:** `curl http://localhost:8080/api/v1/statements/actuator/health`, then Swagger UI
+  at `http://localhost:8080/api/v1/statements/swagger-ui/index.html`.
+- **Run the tests:** `cd statement-service && mvn clean verify` (see [Tests & Coverage](#tests--coverage)).
+- **Understand the design:** [Architecture Overview](docs/Architecture_Overview.md) and the
+  [ADR log](docs/adr/README.md).
+
+---
+
 ### Repository Structure
 
 - `statement-service/` - Spring Boot application exposing the Statement Upload & Search API
@@ -153,9 +171,14 @@ curl http://localhost:8080/api/v1/statements/actuator/health
 
 ---
 
-### Option 2: Running Locally with Only KeyCloak and Postgres
+### Option 2: Running Locally via Maven (Supporting Services via Docker)
 
-This option runs only Keycloak and PostgreSQL in Docker, while running the Statement Service locally via Maven. This is useful for development and debugging.
+This option runs Keycloak, PostgreSQL, Redis, and Floci (S3-compatible storage) in Docker, while
+running the Statement Service locally via Maven. This is useful for development and debugging.
+
+> The `local` profile talks to all four of these — Redis backs the signed-link download cache and
+> Floci is where statement files actually live, so both need to be up, not just Postgres/Keycloak,
+> or `/actuator/health` will report `DOWN` and uploads/downloads will fail.
 
 #### Step 1: Configure Environment Variables
 
@@ -166,14 +189,14 @@ cp .env.example .env
 
 Edit `.env` with the required values (see Option 1 for details).
 
-#### Step 2: Start Only Keycloak and PostgreSQL
+#### Step 2: Start Supporting Services
 
 ```bash
 cd infra
-docker compose up -d db keycloak
+docker compose up -d db keycloak redis floci
 ```
 
-Wait for both services to be healthy:
+Wait for all four to be healthy:
 
 ```bash
 # Check health status
@@ -183,7 +206,10 @@ docker compose ps
 curl -s http://localhost:8081/realms/statement-service | jq .realm
 
 # Verify PostgreSQL is ready
-docker exec -it db pg_isready -U postgres
+docker exec db pg_isready -U postgres
+
+# Verify Floci's bucket is reachable
+aws s3api head-bucket --bucket statements --endpoint-url http://localhost:4566
 ```
 
 #### Step 3: Set Local Environment Variables
@@ -217,6 +243,8 @@ mvn -pl statement-service spring-boot:run -Dspring-boot.run.profiles=local
 The `local` profile (`application-local.yml`) is preconfigured to:
 - Connect to PostgreSQL at `localhost:5432/statementdb`
 - Use Keycloak at `http://localhost:8081/realms/statement-service` for JWT validation
+- Use Redis at `localhost:6379` for the signed-link download cache
+- Use Floci at `localhost:4566` for statement storage
 - Disable Config Server dependency
 
 #### Step 5: Verify the Service
@@ -387,12 +415,12 @@ curl http://localhost:8081/realms/statement-service
 docker compose ps db
 
 # Test connection
-docker exec -it db psql -U statementuser -d statementdb -c "SELECT 1"
+docker exec db psql -U statementuser -d statementdb -c "SELECT 1"
 ```
 
 #### Statement Service Won't Start
 - Ensure all environment variables are set
-- Check that Keycloak and PostgreSQL are healthy
+- Check that Keycloak, PostgreSQL, and Redis are healthy: `docker compose ps`
 - Verify Floci is healthy and the `statements` bucket exists: `docker compose ps floci` and
   `aws s3api head-bucket --bucket statements --endpoint-url http://localhost:4566`
 
@@ -406,10 +434,10 @@ cd infra
 docker compose down
 ```
 
-#### Only Keycloak and Postgres
+#### Only the Option 2 Supporting Services
 ```bash
 cd infra
-docker compose down db keycloak
+docker compose down db keycloak redis floci
 ```
 
 To remove all data volumes (fresh start):

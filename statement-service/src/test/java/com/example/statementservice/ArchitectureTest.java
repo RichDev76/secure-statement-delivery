@@ -99,4 +99,13 @@ class ArchitectureTest {
             .should()
             .dependOnClassesThat(
                     assignableTo(File.class).or(resideInAnyPackage("javax.crypto..", "software.amazon.awssdk..")));
+
+    // Servlet/multipart types are transport concerns; generated API contracts carry them by codegen design, so only
+    // infrastructure and generated packages may.
+    @ArchTest
+    static final ArchRule servletAndMultipartTypesAreConfinedToInfrastructure = noClasses()
+            .that()
+            .resideOutsideOfPackages(GENERATED_API, GENERATED_MODELS, "..infrastructure..")
+            .should()
+            .dependOnClassesThat(resideInAnyPackage("jakarta.servlet..", "org.springframework.web.multipart.."));
 }

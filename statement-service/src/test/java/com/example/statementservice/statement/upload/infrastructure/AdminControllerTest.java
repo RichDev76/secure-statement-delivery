@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.example.statementservice.infrastructure.web.RequestInfoProvider;
 import com.example.statementservice.model.api.UploadResponse;
 import com.example.statementservice.shared.RequestInfo;
+import com.example.statementservice.statement.UploadedFile;
 import com.example.statementservice.statement.upload.StatementUploadService;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.time.OffsetDateTime;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -80,7 +82,7 @@ class AdminControllerTest {
     void GivenValidUpload_WhenUploadStatement_ThenReturnsCreatedWithResponse() {
 
         when(statementUploadService.upload(
-                        eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any()))
+                        eq(testMessageDigest), any(UploadedFile.class), eq(testAccountNumber), eq(testDate), any()))
                 .thenReturn(testDto);
         when(uploadResponseApiMapper.toApi(testDto)).thenReturn(testApiResponse);
 
@@ -95,7 +97,7 @@ class AdminControllerTest {
         assertThat(response.getBody().getFileSize()).isEqualTo(testDto.fileSize());
 
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
+                .upload(eq(testMessageDigest), any(UploadedFile.class), eq(testAccountNumber), eq(testDate), any());
         verify(uploadResponseApiMapper).toApi(testDto);
     }
 
@@ -109,7 +111,7 @@ class AdminControllerTest {
         adminController.uploadStatement(testMessageDigest, testFile, testAccountNumber, testDate, null);
 
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
+                .upload(eq(testMessageDigest), any(UploadedFile.class), eq(testAccountNumber), eq(testDate), any());
     }
 
     @Test
@@ -123,7 +125,7 @@ class AdminControllerTest {
                 .hasMessageContaining("Service error");
 
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
+                .upload(eq(testMessageDigest), any(UploadedFile.class), eq(testAccountNumber), eq(testDate), any());
         verifyNoInteractions(uploadResponseApiMapper);
     }
 
@@ -145,7 +147,7 @@ class AdminControllerTest {
         largeResponse.setFileSize(10000L);
 
         when(statementUploadService.upload(
-                        eq(testMessageDigest), eq(largeFile), eq(testAccountNumber), eq(testDate), any()))
+                        eq(testMessageDigest), any(UploadedFile.class), eq(testAccountNumber), eq(testDate), any()))
                 .thenReturn(largeDto);
         when(uploadResponseApiMapper.toApi(largeDto)).thenReturn(largeResponse);
 
@@ -156,6 +158,13 @@ class AdminControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getFileSize()).isEqualTo(10000L);
+
+        // Captured, not eq()-matched - the controller wraps the file in a fresh adapter per call.
+        ArgumentCaptor<UploadedFile> fileCaptor = ArgumentCaptor.forClass(UploadedFile.class);
+        verify(statementUploadService)
+                .upload(eq(testMessageDigest), fileCaptor.capture(), eq(testAccountNumber), eq(testDate), any());
+        assertThat(fileCaptor.getValue().getOriginalFilename()).isEqualTo("large-statement.pdf");
+        assertThat(fileCaptor.getValue().getSize()).isEqualTo(10000L);
     }
 
     @Test
@@ -172,9 +181,9 @@ class AdminControllerTest {
         adminController.uploadStatement(testMessageDigest, testFile, maxAccountNumber, testDate, null);
 
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(testFile), eq(minAccountNumber), eq(testDate), any());
+                .upload(eq(testMessageDigest), any(UploadedFile.class), eq(minAccountNumber), eq(testDate), any());
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(testFile), eq(maxAccountNumber), eq(testDate), any());
+                .upload(eq(testMessageDigest), any(UploadedFile.class), eq(maxAccountNumber), eq(testDate), any());
     }
 
     @Test
@@ -191,9 +200,9 @@ class AdminControllerTest {
         adminController.uploadStatement(testMessageDigest, testFile, testAccountNumber, futureDate, null);
 
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(pastDate), any());
+                .upload(eq(testMessageDigest), any(UploadedFile.class), eq(testAccountNumber), eq(pastDate), any());
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(futureDate), any());
+                .upload(eq(testMessageDigest), any(UploadedFile.class), eq(testAccountNumber), eq(futureDate), any());
     }
 
     @Test
@@ -256,7 +265,7 @@ class AdminControllerTest {
                 .hasMessageContaining("Mapper error");
 
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(testFile), eq(testAccountNumber), eq(testDate), any());
+                .upload(eq(testMessageDigest), any(UploadedFile.class), eq(testAccountNumber), eq(testDate), any());
         verify(uploadResponseApiMapper).toApi(testDto);
     }
 
@@ -274,8 +283,11 @@ class AdminControllerTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        ArgumentCaptor<UploadedFile> fileCaptor = ArgumentCaptor.forClass(UploadedFile.class);
         verify(statementUploadService)
-                .upload(eq(testMessageDigest), eq(fileWithoutName), eq(testAccountNumber), eq(testDate), any());
+                .upload(eq(testMessageDigest), fileCaptor.capture(), eq(testAccountNumber), eq(testDate), any());
+        assertThat(fileCaptor.getValue().getOriginalFilename()).isEmpty();
     }
 
     @Test

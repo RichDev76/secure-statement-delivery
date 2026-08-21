@@ -8,6 +8,7 @@ import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.DuplicateStatementException;
 import com.example.statementservice.statement.StatementService;
+import com.example.statementservice.statement.UploadedFile;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -16,7 +17,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -37,7 +37,7 @@ public class StatementUploadService {
     private final AuditService auditService;
 
     public UploadResponseDto upload(
-            String xMessageDigest, MultipartFile file, String accountNumber, String date, RequestInfo requestInfo) {
+            String xMessageDigest, UploadedFile file, String accountNumber, String date, RequestInfo requestInfo) {
         var performedBy = requestInfo.getPerformedBy() != null ? requestInfo.getPerformedBy() : ADMIN_USER;
         try {
             this.validationUtil.validateFileUploadInputs(file, accountNumber, date);
@@ -87,7 +87,7 @@ public class StatementUploadService {
         }
     }
 
-    private static String computeContentHash(MultipartFile file) {
+    private static String computeContentHash(UploadedFile file) {
         try (var content = file.getInputStream()) {
             return Sha256Digest.hexOf(content);
         } catch (IOException e) {

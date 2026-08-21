@@ -19,6 +19,8 @@ import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.DuplicateStatementException;
 import com.example.statementservice.statement.StatementService;
+import com.example.statementservice.statement.UploadedFile;
+import com.example.statementservice.statement.upload.infrastructure.MultipartFileAdapter;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -52,7 +54,7 @@ class StatementUploadServiceTest {
     private StatementUploadService statementUploadService;
 
     private String testMessageDigest;
-    private MultipartFile testFile;
+    private UploadedFile testFile;
     private String testAccountNumber;
     private String testDate;
     private RequestInfo testRequestInfo;
@@ -63,7 +65,8 @@ class StatementUploadServiceTest {
     @BeforeEach
     void setUp() {
         testMessageDigest = "a".repeat(64);
-        testFile = new MockMultipartFile("file", "statement.pdf", "application/pdf", "test content".getBytes());
+        testFile = new MultipartFileAdapter(
+                new MockMultipartFile("file", "statement.pdf", "application/pdf", "test content".getBytes()));
         expectedContentHash = Sha256Digest.hexOf("test content".getBytes());
         testAccountNumber = "123456789";
         testDate = "2024-01-15";
@@ -392,8 +395,9 @@ class StatementUploadServiceTest {
     void GivenUnreadableFile_WhenUpload_ThenThrowsDigestComputationExceptionAndAuditsValidationFailed()
             throws IOException {
         // Given
-        var unreadableFile = mock(MultipartFile.class);
-        when(unreadableFile.getInputStream()).thenThrow(new IOException("disk error"));
+        var rawUnreadableFile = mock(MultipartFile.class);
+        when(rawUnreadableFile.getInputStream()).thenThrow(new IOException("disk error"));
+        var unreadableFile = new MultipartFileAdapter(rawUnreadableFile);
 
         // When / Then
         assertThatThrownBy(() -> statementUploadService.upload(

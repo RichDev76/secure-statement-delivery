@@ -29,7 +29,7 @@ public class AdminController implements AdminApi {
     public ResponseEntity<UploadResponse> uploadStatement(
             String xMessageDigest, MultipartFile file, String accountNumber, String date, String xCorrelationId) {
         var dto = this.statementUploadService.upload(
-                xMessageDigest, file, accountNumber, date, requestInfoProvider.get());
+                xMessageDigest, new MultipartFileAdapter(file), accountNumber, date, requestInfoProvider.get());
         var api = uploadResponseApiMapper.toApi(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(api);
     }

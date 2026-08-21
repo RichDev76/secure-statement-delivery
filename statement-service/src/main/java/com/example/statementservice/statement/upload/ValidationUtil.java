@@ -1,12 +1,12 @@
 package com.example.statementservice.statement.upload;
 
 import com.example.statementservice.shared.InvalidDateException;
+import com.example.statementservice.statement.UploadedFile;
 import java.io.IOException;
 import java.io.InputStream;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
 
 @Component
 public class ValidationUtil {
@@ -38,7 +38,7 @@ public class ValidationUtil {
     private static final String INVALID_PDF_MSG = "File is not a valid PDF";
     private static final String PDF_READ_ERROR_MSG = "Failed to read file for magic number validation";
 
-    public void validateFileUploadInputs(MultipartFile file, String accountNumber, String date) {
+    public void validateFileUploadInputs(UploadedFile file, String accountNumber, String date) {
         validateFileName(file);
         validatePdfMagicNumber(file);
         validateCorrectContentType(file);
@@ -57,27 +57,27 @@ public class ValidationUtil {
         }
     }
 
-    public void validateFileNotEmpty(MultipartFile file) {
+    public void validateFileNotEmpty(UploadedFile file) {
         if (file == null || file.isEmpty()) {
             throw new MissingFileException(MISSING_FILE_MSG);
         }
     }
 
-    public void validateCorrectContentType(MultipartFile file) {
+    public void validateCorrectContentType(UploadedFile file) {
         var contentType = file.getContentType();
         if (!MediaType.APPLICATION_PDF_VALUE.equals(contentType)) {
             throw new UnsupportedContentTypeException(UNSUPPORTED_CONTENT_TYPE_MSG);
         }
     }
 
-    public void validateFileName(MultipartFile file) {
+    public void validateFileName(UploadedFile file) {
         var originalFileName = getOriginalFileName(file);
         if (originalFileName.contains("..")) {
             throw new PdfValidationException("Invalid filename: path traversal is not allowed");
         }
     }
 
-    private String getOriginalFileName(MultipartFile file) {
+    private String getOriginalFileName(UploadedFile file) {
         var originalFileName = file.getOriginalFilename();
         if (org.apache.commons.lang3.StringUtils.isEmpty(originalFileName)) {
             throw new PdfValidationException("Filename must not be empty");
@@ -102,7 +102,7 @@ public class ValidationUtil {
         }
     }
 
-    public void validatePdfMagicNumber(MultipartFile file) {
+    public void validatePdfMagicNumber(UploadedFile file) {
         try (InputStream inputStream = file.getInputStream()) {
             var magicBytes = new byte[PDF_MAGIC_NUMBER_SIZE];
             int bytesRead = inputStream.read(magicBytes);

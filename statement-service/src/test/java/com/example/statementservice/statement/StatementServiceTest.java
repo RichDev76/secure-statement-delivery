@@ -40,7 +40,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("StatementService Unit Tests")
@@ -64,7 +63,7 @@ class StatementServiceTest {
     private StatementEntityMapper statementEntityMapper;
 
     @Mock
-    private MultipartFile multipartFile;
+    private UploadedFile multipartFile;
 
     @Mock
     private IdGeneratorPort idGenerator;
@@ -266,7 +265,7 @@ class StatementServiceTest {
         var captor = org.mockito.ArgumentCaptor.forClass(Statement.class);
         verify(statementRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getContentHash()).isEqualTo(testContentHash);
-        verify(multipartFile, never()).getBytes();
+        // UploadedFile has no whole-file-load method - a second, non-streaming read is now impossible by type.
     }
 
     @Test

@@ -21,7 +21,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -46,7 +45,7 @@ public class StatementService {
 
     @Transactional
     public UploadResponseDto uploadStatement(
-            String accountNumber, LocalDate statementDate, MultipartFile file, String uploadedBy, String contentHash) {
+            String accountNumber, LocalDate statementDate, UploadedFile file, String uploadedBy, String contentHash) {
         // Pre-check avoids orphaning an S3 object on the common duplicate path.
         if (statementRepository.existsByAccountNumberAndStatementDate(accountNumber, statementDate)) {
             throw new DuplicateStatementException(DUPLICATE_STATEMENT_MESSAGE);
@@ -158,7 +157,7 @@ public class StatementService {
     private Statement buildStatement(
             String accountNumber,
             LocalDate statementDate,
-            MultipartFile file,
+            UploadedFile file,
             String uploadedBy,
             UUID id,
             String fileReference,
@@ -181,7 +180,7 @@ public class StatementService {
         return stmt;
     }
 
-    private UploadResponseDto getUploadResponse(MultipartFile file, UUID id) {
+    private UploadResponseDto getUploadResponse(UploadedFile file, UUID id) {
         return UploadResponseDto.builder()
                 .statementId(id)
                 .uploadedAt(OffsetDateTime.now(clock))

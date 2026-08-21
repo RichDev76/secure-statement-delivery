@@ -1,5 +1,5 @@
 # stage 1: build with Maven
-FROM maven:3-eclipse-temurin-26 AS build
+FROM maven:3-eclipse-temurin-25 AS build
 WORKDIR /app
 
 # Copy the parent POM

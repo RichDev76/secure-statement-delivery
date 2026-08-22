@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -99,8 +99,8 @@ class SignedLinkUrlCharacterizationIT extends AbstractIntegrationTest {
 
         // The raw signature must never be directly usable as a lookup key (ADR 0021) - only its
         // SHA-256 hash resolves to the persisted row.
-        var storedLink =
-                signedLinkRepository.findByTokenHash(Sha256Digest.hexOf(signature.getBytes(StandardCharsets.UTF_8)));
+        var storedLink = signedLinkRepository.findByTokenHash(
+                new Sha256ContentDigest().hexOf(signature.getBytes(StandardCharsets.UTF_8)));
         assertThat(storedLink).isPresent();
         assertThat(storedLink.get().getId()).isEqualTo(linkIdInUrl);
         assertThat(storedLink.get().getStatementId()).isEqualTo(seeded.id());

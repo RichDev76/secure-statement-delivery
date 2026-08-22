@@ -3,8 +3,8 @@ package com.example.statementservice.statement.upload.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.statementservice.shared.InvalidDateException;
-import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.DuplicateStatementException;
+import com.example.statementservice.statement.StatementUploadException;
 import com.example.statementservice.statement.upload.DigestComputationException;
 import com.example.statementservice.statement.upload.DigestMismatchException;
 import com.example.statementservice.statement.upload.InvalidAccountNumberException;

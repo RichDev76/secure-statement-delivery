@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.statementservice.AbstractIntegrationTest;
 import com.example.statementservice.audit.AuditAction;
 import com.example.statementservice.audit.AuditLogRepository;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.statement.StatementRepository;
 import com.jayway.jsonpath.JsonPath;
 import java.net.URI;
@@ -55,7 +55,7 @@ class CorruptCiphertextDownloadIT extends AbstractIntegrationTest {
         // Given: a genuine upload, then one ciphertext byte flipped directly in the object store
         var originalBytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
         var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, originalBytes);
-        var digest = Sha256Digest.hexOf(originalBytes);
+        var digest = new Sha256ContentDigest().hexOf(originalBytes);
         var accountNumber = String.format("1%08d", System.currentTimeMillis() % 100000000L);
         var uploadRole = jwt().authorities(new SimpleGrantedAuthority("ROLE_Upload"));
         var linkRole = jwt().authorities(new SimpleGrantedAuthority("ROLE_GenerateSignedLink"));

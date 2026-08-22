@@ -9,9 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.statementservice.api.StatementsApi;
-import com.example.statementservice.shared.IdGeneratorPort;
-import com.example.statementservice.shared.Sha256Digest;
-import com.example.statementservice.shared.StatementUploadException;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
+import com.example.statementservice.shared.IdGenerator;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import jakarta.validation.constraints.Pattern;
 import java.io.ByteArrayOutputStream;
@@ -66,7 +65,7 @@ class StatementServiceTest {
     private UploadedFile multipartFile;
 
     @Mock
-    private IdGeneratorPort idGenerator;
+    private IdGenerator idGenerator;
 
     @Mock
     private EncryptedFileFetcher encryptedFileFetcher;
@@ -86,7 +85,7 @@ class StatementServiceTest {
         testId = UUID.randomUUID();
         testAccountNumber = "123456789";
         testStatementDate = LocalDate.of(2024, 1, 1);
-        testContentHash = Sha256Digest.hexOf("file-content".getBytes());
+        testContentHash = new Sha256ContentDigest().hexOf("file-content".getBytes());
         testStatement = new Statement();
         testStatement.setId(testId);
         testStatement.setAccountNumber(testAccountNumber);

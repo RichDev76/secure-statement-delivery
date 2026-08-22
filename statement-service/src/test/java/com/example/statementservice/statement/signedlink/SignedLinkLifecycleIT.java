@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -85,7 +85,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
         // Given: a real upload so the download can actually stream decrypted bytes back.
         var originalBytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
         var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, originalBytes);
-        var digest = Sha256Digest.hexOf(originalBytes);
+        var digest = new Sha256ContentDigest().hexOf(originalBytes);
         var accountNumber = String.format("1%08d", System.currentTimeMillis() % 100000000L);
         var uploadResponseBody = mockMvc.perform(multipart("/api/v1/statements/upload")
                         .file(file)
@@ -124,7 +124,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
         // upload so every one of the first 3 downloads actually succeeds, not just the check.
         var originalBytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
         var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, originalBytes);
-        var digest = Sha256Digest.hexOf(originalBytes);
+        var digest = new Sha256ContentDigest().hexOf(originalBytes);
         var accountNumber = String.format("1%08d", System.currentTimeMillis() % 100000000L);
         var uploadResponseBody = mockMvc.perform(multipart("/api/v1/statements/upload")
                         .file(file)

@@ -13,10 +13,13 @@ class AuditPartitionMaintenanceServiceIT extends AbstractIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
+    private AuditPartitionRepository auditPartitionRepository;
+
+    @Autowired
     private AuditPartitionMaintenanceProperties properties;
 
     private AuditPartitionMaintenanceService service() {
-        return new AuditPartitionMaintenanceService(jdbcTemplate, properties);
+        return new AuditPartitionMaintenanceService(auditPartitionRepository, properties);
     }
 
     private boolean partitionExists(String name) {

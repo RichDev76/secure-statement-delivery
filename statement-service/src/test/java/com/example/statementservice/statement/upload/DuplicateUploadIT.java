@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,7 @@ class DuplicateUploadIT extends AbstractIntegrationTest {
                         .file(retryFile)
                         .param("accountNumber", accountNumber)
                         .param("date", "2026-07-01")
-                        .header("X-Message-Digest", Sha256Digest.hexOf(retryBytes))
+                        .header("X-Message-Digest", new Sha256ContentDigest().hexOf(retryBytes))
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_Upload"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("STATEMENT_ALREADY_EXISTS"));

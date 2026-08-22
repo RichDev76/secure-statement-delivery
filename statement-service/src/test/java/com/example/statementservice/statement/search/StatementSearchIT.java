@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ class StatementSearchIT extends AbstractIntegrationTest {
                         .file(file)
                         .param("accountNumber", accountNumber)
                         .param("date", date)
-                        .header("X-Message-Digest", Sha256Digest.hexOf(bytes))
+                        .header("X-Message-Digest", new Sha256ContentDigest().hexOf(bytes))
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_Upload"))))
                 .andExpect(status().isCreated());
     }

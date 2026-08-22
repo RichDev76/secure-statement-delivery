@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -25,7 +25,7 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
     private SignedLink persistLink(String rawToken, OffsetDateTime expiresAt) {
         var link = new SignedLink();
         link.setId(UUID.randomUUID());
-        link.setTokenHash(Sha256Digest.hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
+        link.setTokenHash(new Sha256ContentDigest().hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
         link.setExpiresAt(expiresAt);
         link.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         link.setCreatedBy("it-test");
@@ -40,7 +40,7 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
 
         var duplicate = new SignedLink();
         duplicate.setId(UUID.randomUUID());
-        duplicate.setTokenHash(Sha256Digest.hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
+        duplicate.setTokenHash(new Sha256ContentDigest().hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
         duplicate.setExpiresAt(OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(10));
         duplicate.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         duplicate.setCreatedBy("it-test");
@@ -92,12 +92,12 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
 
         // Then: the stored value is a hash, not the raw token
         assertThat(storedValue).isNotEqualTo(rawToken);
-        assertThat(storedValue).isEqualTo(Sha256Digest.hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
+        assertThat(storedValue).isEqualTo(new Sha256ContentDigest().hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
 
         // And: an attacker who leaks only this stored value and replays it as if it were the raw
         // token (the same hashing step SignedLinkService.validate() applies to incoming tokens)
         // does not resolve to the link - the leaked hash is not itself a usable credential.
-        var hashOfLeakedValue = Sha256Digest.hexOf(storedValue.getBytes(StandardCharsets.UTF_8));
+        var hashOfLeakedValue = new Sha256ContentDigest().hexOf(storedValue.getBytes(StandardCharsets.UTF_8));
         assertThat(signedLinkRepository.findByTokenHash(hashOfLeakedValue)).isEmpty();
     }
 

@@ -24,7 +24,7 @@ import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.StatementStorageUnavailableException;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
-import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
+import com.example.statementservice.statement.signedlink.SignedLinkRateLimiter;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import com.example.statementservice.support.LogCapture;
 import java.io.ByteArrayInputStream;
@@ -60,7 +60,7 @@ class DownloadServiceTest {
     private AuditService auditService;
 
     @Mock
-    private SignedLinkRateLimiterPort rateLimiter;
+    private SignedLinkRateLimiter rateLimiter;
 
     @Mock
     private AuditLogRepository auditLogRepository;

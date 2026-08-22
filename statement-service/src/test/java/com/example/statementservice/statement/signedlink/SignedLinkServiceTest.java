@@ -7,15 +7,15 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.example.statementservice.shared.IdGeneratorPort;
-import com.example.statementservice.shared.Sha256Digest;
-import java.nio.charset.StandardCharsets;
+import com.example.statementservice.shared.ContentDigest;
+import com.example.statementservice.shared.IdGenerator;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +39,7 @@ class SignedLinkServiceTest {
     private static final String FILE_NAME = "statement.pdf";
     private static final String DOWNLOAD_PATH = "/api/v1/statements/download/" + FILE_NAME;
     private static final String RAW_TOKEN = "test-signature-token";
+    private static final String TOKEN_HASH = "b".repeat(64);
 
     @Mock
     private SignedLinkRepository signedLinkRepository;
@@ -50,7 +51,10 @@ class SignedLinkServiceTest {
     private DownloadUrlProvider downloadUrlProvider;
 
     @Mock
-    private IdGeneratorPort idGenerator;
+    private IdGenerator idGenerator;
+
+    @Mock
+    private ContentDigest contentDigest;
 
     private SignedLinkProperties properties;
 
@@ -70,8 +74,9 @@ class SignedLinkServiceTest {
         properties = new SignedLinkProperties();
         properties.setExpiry(Duration.ofMinutes(15));
         properties.setDownloadPath("/api/v1/statements/download/");
+        lenient().when(contentDigest.hexOf(any(byte[].class))).thenReturn(TOKEN_HASH);
         signedLinkService = new SignedLinkService(
-                signedLinkRepository, linkSigner, downloadUrlProvider, properties, idGenerator, clock);
+                signedLinkRepository, linkSigner, downloadUrlProvider, properties, idGenerator, contentDigest, clock);
     }
 
     @Test
@@ -89,9 +94,7 @@ class SignedLinkServiceTest {
         assertThat(result.getId()).isNotNull();
         assertThat(result.getStatementId()).isEqualTo(testStatementId);
         assertThat(result.getToken()).isEqualTo(RAW_TOKEN);
-        assertThat(result.getTokenHash())
-                .isEqualTo(Sha256Digest.hexOf(RAW_TOKEN.getBytes(StandardCharsets.UTF_8)))
-                .isNotEqualTo(RAW_TOKEN);
+        assertThat(result.getTokenHash()).isEqualTo(TOKEN_HASH).isNotEqualTo(RAW_TOKEN);
         assertThat(result.getCreatedBy()).isEqualTo(testCreatedBy);
         assertThat(result.getCreatedAt()).isNotNull();
         verify(signedLinkRepository).save(any(SignedLink.class));
@@ -334,7 +337,7 @@ class SignedLinkServiceTest {
         link.setId(UUID.randomUUID());
         link.setStatementId(testStatementId);
         link.setToken(RAW_TOKEN);
-        link.setTokenHash(Sha256Digest.hexOf(RAW_TOKEN.getBytes(StandardCharsets.UTF_8)));
+        link.setTokenHash(TOKEN_HASH);
         link.setExpiresAt(expiresAt);
         link.setCreatedAt(OffsetDateTime.now(clock).minusMinutes(5));
         link.setCreatedBy(testCreatedBy);

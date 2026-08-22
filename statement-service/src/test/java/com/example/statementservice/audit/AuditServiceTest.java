@@ -12,7 +12,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.example.statementservice.shared.IdGeneratorPort;
+import com.example.statementservice.shared.IdGenerator;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
@@ -47,7 +47,7 @@ class AuditServiceTest {
     private AuditLogRepository auditLogRepository;
 
     @Mock
-    private IdGeneratorPort idGenerator;
+    private IdGenerator idGenerator;
 
     private AuditService auditService;
     private SimpleMeterRegistry meterRegistry;

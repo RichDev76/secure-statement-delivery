@@ -1,4 +1,4 @@
-package com.example.statementservice.shared;
+package com.example.statementservice.infrastructure.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.Test;
 
-class Sha256DigestTest {
+class Sha256ContentDigestTest {
+
+    private final Sha256ContentDigest digest = new Sha256ContentDigest();
 
     @Test
     void GivenKnownInput_WhenHashing_ThenWellKnownSha256HexIsProduced() {
@@ -16,7 +18,7 @@ class Sha256DigestTest {
         var input = "abc".getBytes(StandardCharsets.UTF_8);
 
         // When
-        var hex = Sha256Digest.hexOf(input);
+        var hex = digest.hexOf(input);
 
         // Then
         assertThat(hex).isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
@@ -28,7 +30,7 @@ class Sha256DigestTest {
         var input = new byte[0];
 
         // When
-        var hex = Sha256Digest.hexOf(input);
+        var hex = digest.hexOf(input);
 
         // Then
         assertThat(hex).isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -40,7 +42,7 @@ class Sha256DigestTest {
         var input = new ByteArrayInputStream("abc".getBytes(StandardCharsets.UTF_8));
 
         // When
-        var hex = Sha256Digest.hexOf(input);
+        var hex = digest.hexOf(input);
 
         // Then
         assertThat(hex).isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
@@ -52,7 +54,7 @@ class Sha256DigestTest {
         var input = new ByteArrayInputStream(new byte[0]);
 
         // When
-        var hex = Sha256Digest.hexOf(input);
+        var hex = digest.hexOf(input);
 
         // Then
         assertThat(hex).isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -65,10 +67,10 @@ class Sha256DigestTest {
         ThreadLocalRandom.current().nextBytes(content);
 
         // When
-        var streamedHex = Sha256Digest.hexOf(new ByteArrayInputStream(content));
+        var streamedHex = digest.hexOf(new ByteArrayInputStream(content));
 
         // Then
-        assertThat(streamedHex).isEqualTo(Sha256Digest.hexOf(content));
+        assertThat(streamedHex).isEqualTo(digest.hexOf(content));
     }
 
     @Test
@@ -77,7 +79,7 @@ class Sha256DigestTest {
         var input = "statement-content".getBytes(StandardCharsets.UTF_8);
 
         // When
-        var hex = Sha256Digest.hexOf(input);
+        var hex = digest.hexOf(input);
 
         // Then
         assertThat(hex).hasSize(64).matches("[0-9a-f]{64}");

@@ -1,4 +1,4 @@
-package com.example.statementservice.infrastructure.metrics;
+package com.example.statementservice.statement.download.infrastructure;
 
 import com.example.statementservice.statement.download.DownloadService;
 import io.micrometer.core.instrument.MeterRegistry;

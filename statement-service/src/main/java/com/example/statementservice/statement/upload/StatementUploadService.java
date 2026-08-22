@@ -2,12 +2,12 @@ package com.example.statementservice.statement.upload;
 
 import com.example.statementservice.audit.AuditAction;
 import com.example.statementservice.audit.AuditService;
+import com.example.statementservice.shared.ContentDigest;
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
-import com.example.statementservice.shared.Sha256Digest;
-import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.DuplicateStatementException;
 import com.example.statementservice.statement.StatementService;
+import com.example.statementservice.statement.StatementUploadException;
 import com.example.statementservice.statement.UploadedFile;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -35,6 +35,7 @@ public class StatementUploadService {
     private final ValidationUtil validationUtil;
     private final StatementService statementService;
     private final AuditService auditService;
+    private final ContentDigest contentDigest;
 
     public UploadResponseDto upload(
             String xMessageDigest, UploadedFile file, String accountNumber, String date, RequestInfo requestInfo) {
@@ -87,9 +88,9 @@ public class StatementUploadService {
         }
     }
 
-    private static String computeContentHash(UploadedFile file) {
+    private String computeContentHash(UploadedFile file) {
         try (var content = file.getInputStream()) {
-            return Sha256Digest.hexOf(content);
+            return contentDigest.hexOf(content);
         } catch (IOException e) {
             throw new DigestComputationException("Failed to compute file digest", e);
         }

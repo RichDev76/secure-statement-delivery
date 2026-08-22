@@ -7,21 +7,23 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.statementservice.audit.AuditService;
+import com.example.statementservice.shared.ContentDigest;
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.shared.RequestInfo;
-import com.example.statementservice.shared.Sha256Digest;
-import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.DuplicateStatementException;
 import com.example.statementservice.statement.StatementService;
+import com.example.statementservice.statement.StatementUploadException;
 import com.example.statementservice.statement.UploadedFile;
 import com.example.statementservice.statement.upload.infrastructure.MultipartFileAdapter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -50,6 +52,9 @@ class StatementUploadServiceTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private ContentDigest contentDigest;
+
     @InjectMocks
     private StatementUploadService statementUploadService;
 
@@ -63,11 +68,12 @@ class StatementUploadServiceTest {
     private String expectedContentHash;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
         testMessageDigest = "a".repeat(64);
         testFile = new MultipartFileAdapter(
                 new MockMultipartFile("file", "statement.pdf", "application/pdf", "test content".getBytes()));
-        expectedContentHash = Sha256Digest.hexOf("test content".getBytes());
+        expectedContentHash = "c".repeat(64);
+        lenient().when(contentDigest.hexOf(any(InputStream.class))).thenReturn(expectedContentHash);
         testAccountNumber = "123456789";
         testDate = "2024-01-15";
         testRequestInfo = new RequestInfo("192.168.1.1", "Mozilla/5.0", "testUser");

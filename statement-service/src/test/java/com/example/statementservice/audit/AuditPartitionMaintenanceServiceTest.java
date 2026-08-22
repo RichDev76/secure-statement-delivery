@@ -1,8 +1,7 @@
 package com.example.statementservice.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,14 +17,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.ResultSetExtractor;
 
 @ExtendWith(MockitoExtension.class)
 class AuditPartitionMaintenanceServiceTest {
 
     @Mock
-    private JdbcTemplate jdbcTemplate;
+    private AuditPartitionRepository auditPartitionRepository;
 
     private AuditPartitionMaintenanceProperties properties;
     private AuditPartitionMaintenanceService service;
@@ -37,7 +34,7 @@ class AuditPartitionMaintenanceServiceTest {
     @BeforeEach
     void setUp() {
         properties = new AuditPartitionMaintenanceProperties();
-        service = new AuditPartitionMaintenanceService(jdbcTemplate, properties);
+        service = new AuditPartitionMaintenanceService(auditPartitionRepository, properties);
 
         logger = (Logger) LoggerFactory.getLogger(AuditPartitionMaintenanceService.class);
         originalLevel = logger.getLevel();
@@ -56,16 +53,13 @@ class AuditPartitionMaintenanceServiceTest {
     @Test
     void GivenMaintenanceEnabled_WhenCreatingUpcomingPartitions_ThenPartitionFunctionIsInvoked() {
         // Given
-        when(jdbcTemplate.query(any(String.class), any(ResultSetExtractor.class), eq(properties.getMonthsAhead())))
-                .thenReturn(null);
-        when(jdbcTemplate.queryForObject("SELECT count(*) FROM audit_logs_default", Integer.class))
-                .thenReturn(0);
+        when(auditPartitionRepository.countDefaultPartitionRows()).thenReturn(0);
 
         // When
         service.createUpcomingPartitions();
 
         // Then
-        verify(jdbcTemplate).query(any(String.class), any(ResultSetExtractor.class), eq(properties.getMonthsAhead()));
+        verify(auditPartitionRepository).createUpcomingPartitions(properties.getMonthsAhead());
     }
 
     @Test
@@ -77,16 +71,13 @@ class AuditPartitionMaintenanceServiceTest {
         service.createUpcomingPartitions();
 
         // Then
-        verify(jdbcTemplate, never()).query(any(String.class), any(ResultSetExtractor.class), any());
+        verify(auditPartitionRepository, never()).createUpcomingPartitions(anyInt());
     }
 
     @Test
     void GivenDefaultPartitionHasRows_WhenCreatingUpcomingPartitions_ThenErrorIsLogged() {
         // Given
-        when(jdbcTemplate.query(any(String.class), any(ResultSetExtractor.class), eq(properties.getMonthsAhead())))
-                .thenReturn(null);
-        when(jdbcTemplate.queryForObject("SELECT count(*) FROM audit_logs_default", Integer.class))
-                .thenReturn(3);
+        when(auditPartitionRepository.countDefaultPartitionRows()).thenReturn(3);
 
         // When
         service.createUpcomingPartitions();
@@ -100,10 +91,7 @@ class AuditPartitionMaintenanceServiceTest {
     @Test
     void GivenDefaultPartitionIsEmpty_WhenCreatingUpcomingPartitions_ThenNoErrorIsLogged() {
         // Given
-        when(jdbcTemplate.query(any(String.class), any(ResultSetExtractor.class), eq(properties.getMonthsAhead())))
-                .thenReturn(null);
-        when(jdbcTemplate.queryForObject("SELECT count(*) FROM audit_logs_default", Integer.class))
-                .thenReturn(0);
+        when(auditPartitionRepository.countDefaultPartitionRows()).thenReturn(0);
 
         // When
         service.createUpcomingPartitions();

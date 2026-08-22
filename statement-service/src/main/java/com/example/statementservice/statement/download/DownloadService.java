@@ -8,7 +8,7 @@ import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.StatementStorageUnavailableException;
 import com.example.statementservice.statement.signedlink.LinkValidationResult;
 import com.example.statementservice.statement.signedlink.SignedLink;
-import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
+import com.example.statementservice.statement.signedlink.SignedLinkRateLimiter;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -38,7 +38,7 @@ public class DownloadService {
     private final SignedLinkService signedLinkService;
     private final StatementService statementService;
     private final AuditService auditService;
-    private final SignedLinkRateLimiterPort rateLimiter;
+    private final SignedLinkRateLimiter rateLimiter;
     private final AuditLogRepository auditLogRepository;
 
     public DownloadStreamResult validateAndStreamDetailed(

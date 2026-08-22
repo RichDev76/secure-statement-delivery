@@ -97,8 +97,8 @@ class ArchitectureTest {
             .that()
             .resideOutsideOfPackage(SHARED_INFRASTRUCTURE)
             .should()
-            .dependOnClassesThat(
-                    assignableTo(File.class).or(resideInAnyPackage("javax.crypto..", "software.amazon.awssdk..")));
+            .dependOnClassesThat(assignableTo(File.class)
+                    .or(resideInAnyPackage("javax.crypto..", "java.security..", "software.amazon.awssdk..")));
 
     // Servlet/multipart types are transport concerns; generated API contracts carry them by codegen design, so only
     // infrastructure and generated packages may.
@@ -108,4 +108,13 @@ class ArchitectureTest {
             .resideOutsideOfPackages(GENERATED_API, GENERATED_MODELS, "..infrastructure..")
             .should()
             .dependOnClassesThat(resideInAnyPackage("jakarta.servlet..", "org.springframework.web.multipart.."));
+
+    // Spring Data repositories are the tolerated domain-owned persistence port; raw JDBC/SQL APIs
+    // are a technology leak and stay confined to infrastructure.
+    @ArchTest
+    static final ArchRule jdbcAccessIsConfinedToInfrastructure = noClasses()
+            .that()
+            .resideOutsideOfPackage("..infrastructure..")
+            .should()
+            .dependOnClassesThat(resideInAnyPackage("org.springframework.jdbc..", "javax.sql..", "java.sql.."));
 }

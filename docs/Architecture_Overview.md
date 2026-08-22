@@ -325,17 +325,17 @@ sequenceDiagram
 The `statement-service` module is organised by **business capability** (Screaming Architecture), with **ports & adapters** (Hexagonal Architecture) at each IO boundary. Package names state what the system does, not which technical layer a class belongs to; boundaries are enforced by an ArchUnit suite (`ArchitectureTest`) that fails the build on violations, including that generated OpenAPI types are only touched from `infrastructure` packages and that file/crypto/object-storage APIs are confined to shared infrastructure.
 
 - **`statement`** — statement lifecycle core (`Statement`, `StatementRepository`, `StatementService`), plus outbound ports owned by the domain: `StatementFileStore`, `FileCipher`, `EncryptedFileFetcher`.
-    - **`statement.upload`** — validation and upload orchestration (`StatementUploadService`, `ValidationUtil`, streaming `Sha256Digest`), fronted by `statement.upload.infrastructure.AdminController`.
+    - **`statement.upload`** — validation and upload orchestration (`StatementUploadService`, `ValidationUtil`, streaming digest via the shared `ContentDigest` port), fronted by `statement.upload.infrastructure.AdminController`.
     - **`statement.search`** — statement querying (`StatementQueryService`, `AuditHelper`).
     - **`statement.download`** — signed-link download streaming (`DownloadService`), with response-building in `statement.download.infrastructure.DownloadResponseFactory`.
-    - **`statement.signedlink`** — signed-link lifecycle, rate limiting and cleanup (`SignedLinkService`, `SignedLinkCleanupService`), with ports `LinkSigner`, `DownloadUrlProvider`, `SignedLinkRateLimiterPort`; the `@Scheduled`/`@SchedulerLock` trigger lives in `statement.signedlink.infrastructure.SignedLinkCleanupScheduler`.
+    - **`statement.signedlink`** — signed-link lifecycle, rate limiting and cleanup (`SignedLinkService`, `SignedLinkCleanupService`), with ports `LinkSigner`, `DownloadUrlProvider`, `SignedLinkRateLimiter`; the `@Scheduled`/`@SchedulerLock` trigger lives in `statement.signedlink.infrastructure.SignedLinkCleanupScheduler`.
     - **`statement.infrastructure`** — `StatementsController` (link, download, and search endpoints) and `StatementApiMapper`.
 
-- **`audit`** — audit trail (`AuditLog`, `AuditLogRepository`, `AuditService`, `AuditQueryService`, `AuditPartitionMaintenanceService`), fronted by `audit.infrastructure.AuditController` and `audit.infrastructure.AuditPartitionMaintenanceScheduler`.
+- **`audit`** — audit trail (`AuditLog`, `AuditLogRepository`, `AuditService`, `AuditQueryService`, `AuditPartitionMaintenanceService`), with the `AuditPartitionRepository` port (implemented by `audit.infrastructure.JdbcAuditPartitionRepository`), fronted by `audit.infrastructure.AuditController` and `audit.infrastructure.AuditPartitionMaintenanceScheduler`.
 
-- **`infrastructure`** — genuinely shared technical concerns only: `config` (Jackson, OpenAPI, `Clock` bean), `scheduler` (ShedLock wiring), `security` (`SecurityConfig`, `KeycloakRoleConverter`, JWT resource server, config-driven endpoint role matchers), `web` (`CorrelationIdFilter`, `GlobalExceptionHandler`, `RequestInfoProvider`), `logging` (`LoggingAspect`), `crypto` (`MasterKeyProvider`, `AesGcmFileCipher` implementing `FileCipher` with envelope-encryption DEK wrap/unwrap, `HmacSha256LinkSigner` implementing `LinkSigner`), `storage.s3` (`S3StatementFileStore` implementing `StatementFileStore`, `S3ClientConfig`, `S3StorageProperties`, `S3HealthIndicator`), `cache` (`CachingEncryptedFileFetcher` implementing `EncryptedFileFetcher`, `RedisCacheConfig`), `ratelimit` (`Bucket4jSignedLinkRateLimiter` implementing `SignedLinkRateLimiterPort`, `RateLimiterConfig`), `id` (`UuidV7IdGenerator` implementing the shared `IdGeneratorPort`).
+- **`infrastructure`** — genuinely shared technical concerns only: `config` (Jackson, OpenAPI, `Clock` bean), `scheduler` (ShedLock wiring), `security` (`SecurityConfig`, `KeycloakRoleConverter`, JWT resource server, `AppRole` constants and the `@PublicEndpoint` annotation backing method-level `@PreAuthorize` enforcement), `web` (`CorrelationIdFilter`, `GlobalExceptionHandler`, `SecurityProblemDetailFactory`, `RequestInfoProvider`), `logging` (`LoggingAspect`), `crypto` (`MasterKeyProvider`, `AesGcmFileCipher` implementing `FileCipher` with envelope-encryption DEK wrap/unwrap, `HmacSha256LinkSigner` implementing `LinkSigner`, `Sha256ContentDigest` implementing the shared `ContentDigest`), `storage.s3` (`S3StatementFileStore` implementing `StatementFileStore`, `S3ClientConfig`, `S3StorageProperties`, `S3HealthIndicator`), `cache` (`CachingEncryptedFileFetcher` implementing `EncryptedFileFetcher`, `RedisCacheConfig`), `ratelimit` (`Bucket4jSignedLinkRateLimiter` implementing `SignedLinkRateLimiter`, `RateLimiterConfig`), `id` (`UuidV7IdGenerator` implementing the shared `IdGenerator`).
 
-- **`shared`** — cross-feature, dependency-free values only: `RequestInfo`, `DateMapper`, `Sha256Digest`, `IdGeneratorPort`.
+- **`shared`** — cross-feature, dependency-free values and ports only: `RequestInfo`, `DateMapper`, `ContentDigest`, `IdGenerator`.
 
 Ports are swappable by design: the original local-disk file store was replaced with `S3StatementFileStore` (S3-compatible object storage — Floci non-prod, real AWS S3 in production, selected purely by the `statement.storage.s3.endpoint` property) without any change to domain code (`StatementService`, `DownloadService`). Similarly, `EncryptedFileFetcher` was introduced as its own bean (not a self-invoked method) specifically because `@Cacheable` only takes effect through Spring's proxy — a lesson worth keeping visible in the port boundary itself. See ADR-0011, ADR-0014, ADR-0015.
 
@@ -425,7 +425,7 @@ Unauthenticated and forbidden requests get **RFC 9457 ProblemDetail** JSON (`ERR
 
 #### Digests and Verification
 
-- `Sha256Digest` (a shared, pure hashing utility) exposes a **streaming** `hexOf(InputStream)` overload used for the upload-integrity digest, avoiding a full-file byte-array read.
+- `ContentDigest` (a shared port, implemented by `infrastructure.crypto.Sha256ContentDigest`) exposes a **streaming** `hexOf(InputStream)` overload used for the upload-integrity digest, avoiding a full-file byte-array read.
 - The computed digest is compared with the client‑provided `X-Message-Digest` header to ensure integrity, and the same digest is persisted as `statements.content_hash`.
 
 ---
@@ -456,7 +456,7 @@ There is no `singleUse`/`used` boolean: redemption is **bounded, not binary** (`
 
 #### Rate Limiting
 
-- `Bucket4jSignedLinkRateLimiter` (implementing `SignedLinkRateLimiterPort`) enforces a **per-link** token bucket, backed by **PostgreSQL** (`Bucket4jPostgreSQL`'s `SELECT FOR UPDATE`-based proxy manager, table `signed_link_rate_limit_buckets`), default 10 requests/minute (`statement.signed-link.rate-limit-per-minute`).
+- `Bucket4jSignedLinkRateLimiter` (implementing `SignedLinkRateLimiter`) enforces a **per-link** token bucket, backed by **PostgreSQL** (`Bucket4jPostgreSQL`'s `SELECT FOR UPDATE`-based proxy manager, table `signed_link_rate_limit_buckets`), default 10 requests/minute (`statement.signed-link.rate-limit-per-minute`).
 - The rate-limit check runs **before** signature validation in `DownloadService`, so a brute-force signature-guessing flood against a real `linkId` is throttled too, not just genuinely valid requests. It smooths burst speed against one leaked link; it does not reduce a leaked link's total exposure, only how fast that exposure can be drained.
 - **Fails open**: if the rate limiter itself is unavailable (Postgres contention, connection error), the request is allowed through rather than blocking legitimate downloads on a rate-limiter outage.
 - Bucket rows carry a TTL matched to the bucket's own refill window and are swept by `deleteExpiredBuckets()`, invoked from the same ShedLock-scheduled trigger that cleans up expired signed links (no separate job for one extra `DELETE`).

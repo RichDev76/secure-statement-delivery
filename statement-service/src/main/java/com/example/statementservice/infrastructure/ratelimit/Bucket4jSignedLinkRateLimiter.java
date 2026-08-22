@@ -1,7 +1,7 @@
 package com.example.statementservice.infrastructure.ratelimit;
 
 import com.example.statementservice.statement.signedlink.SignedLinkProperties;
-import com.example.statementservice.statement.signedlink.SignedLinkRateLimiterPort;
+import com.example.statementservice.statement.signedlink.SignedLinkRateLimiter;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class Bucket4jSignedLinkRateLimiter implements SignedLinkRateLimiterPort {
+public class Bucket4jSignedLinkRateLimiter implements SignedLinkRateLimiter {
 
     private static final String TABLE_NAME = "signed_link_rate_limit_buckets";
 

@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ class DownloadRateLimitIT extends AbstractIntegrationTest {
                         .file(file)
                         .param("accountNumber", accountNumber)
                         .param("date", "2026-07-01")
-                        .header("X-Message-Digest", Sha256Digest.hexOf(originalBytes))
+                        .header("X-Message-Digest", new Sha256ContentDigest().hexOf(originalBytes))
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_Upload"))))
                 .andExpect(status().isCreated())
                 .andReturn()

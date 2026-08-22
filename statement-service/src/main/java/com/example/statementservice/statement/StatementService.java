@@ -1,7 +1,6 @@
 package com.example.statementservice.statement;
 
-import com.example.statementservice.shared.IdGeneratorPort;
-import com.example.statementservice.shared.StatementUploadException;
+import com.example.statementservice.shared.IdGenerator;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -40,7 +39,7 @@ public class StatementService {
     private final FileCipher fileCipher;
     private final StatementEntityMapper statementEntityMapper;
     private final EncryptedFileFetcher encryptedFileFetcher;
-    private final IdGeneratorPort idGenerator;
+    private final IdGenerator idGenerator;
     private final Clock clock;
 
     @Transactional

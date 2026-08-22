@@ -14,7 +14,7 @@ public class SignedLinkCleanupService {
 
     private final SignedLinkRepository repository;
     private final SignedLinkCleanupProperties properties;
-    private final SignedLinkRateLimiterPort rateLimiter;
+    private final SignedLinkRateLimiter rateLimiter;
     private final Clock clock;
 
     @Transactional

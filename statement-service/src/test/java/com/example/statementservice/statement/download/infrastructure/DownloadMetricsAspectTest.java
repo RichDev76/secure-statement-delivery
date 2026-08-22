@@ -1,4 +1,4 @@
-package com.example.statementservice.infrastructure.metrics;
+package com.example.statementservice.statement.download.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

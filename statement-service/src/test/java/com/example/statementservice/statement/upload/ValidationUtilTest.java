@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.shared.InvalidDateException;
-import com.example.statementservice.shared.Sha256Digest;
 import com.example.statementservice.statement.UploadedFile;
 import com.example.statementservice.statement.upload.infrastructure.MultipartFileAdapter;
 import java.io.IOException;
@@ -34,7 +34,7 @@ class ValidationUtilTest {
                 new MockMultipartFile("file", "test.pdf", MediaType.APPLICATION_PDF_VALUE, pdfContent));
         validAccountNumber = "123456789";
         validDate = "2024-01-15";
-        validMessageDigest = Sha256Digest.hexOf(pdfContent);
+        validMessageDigest = new Sha256ContentDigest().hexOf(pdfContent);
         validationUtil = new ValidationUtil();
     }
 

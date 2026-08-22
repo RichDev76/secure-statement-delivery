@@ -2,7 +2,7 @@ package com.example.statementservice.statement.signedlink;
 
 import java.util.UUID;
 
-public interface SignedLinkRateLimiterPort {
+public interface SignedLinkRateLimiter {
 
     boolean tryConsume(UUID linkId);
 

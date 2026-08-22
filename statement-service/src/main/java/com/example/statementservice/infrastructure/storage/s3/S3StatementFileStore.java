@@ -1,6 +1,6 @@
 package com.example.statementservice.infrastructure.storage.s3;
 
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.shared.ContentDigest;
 import com.example.statementservice.statement.StatementFileStore;
 import com.example.statementservice.statement.StatementStorageUnavailableException;
 import java.io.ByteArrayOutputStream;
@@ -33,11 +33,12 @@ public class S3StatementFileStore implements StatementFileStore {
 
     private final S3Client s3Client;
     private final S3StorageProperties properties;
+    private final ContentDigest contentDigest;
 
     @Override
     public String store(UUID id, String accountNumber, LocalDate statementDate, ContentWriter writer)
             throws IOException {
-        var accountNumberHash = Sha256Digest.hexOf(accountNumber.trim().getBytes(StandardCharsets.UTF_8));
+        var accountNumberHash = contentDigest.hexOf(accountNumber.trim().getBytes(StandardCharsets.UTF_8));
         var key = buildKey(accountNumberHash, statementDate, id);
 
         var buffer = new ByteArrayOutputStream();

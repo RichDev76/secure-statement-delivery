@@ -1,6 +1,6 @@
 package com.example.statementservice.audit;
 
-import com.example.statementservice.shared.IdGeneratorPort;
+import com.example.statementservice.shared.IdGenerator;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -25,7 +25,7 @@ public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
     private final ExecutorService auditExecutor;
-    private final IdGeneratorPort idGenerator;
+    private final IdGenerator idGenerator;
     private final Clock clock;
     private final MeterRegistry meterRegistry;
 

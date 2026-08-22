@@ -1,7 +1,7 @@
 package com.example.statementservice.statement.signedlink;
 
-import com.example.statementservice.shared.IdGeneratorPort;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.shared.ContentDigest;
+import com.example.statementservice.shared.IdGenerator;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -27,7 +27,8 @@ public class SignedLinkService {
     private final LinkSigner linkSigner;
     private final DownloadUrlProvider downloadUrlProvider;
     private final SignedLinkProperties properties;
-    private final IdGeneratorPort idGenerator;
+    private final IdGenerator idGenerator;
+    private final ContentDigest contentDigest;
     private final Clock clock;
 
     @Transactional
@@ -41,7 +42,7 @@ public class SignedLinkService {
         link.setId(id);
         link.setStatementId(statementId);
         link.setToken(rawToken);
-        link.setTokenHash(Sha256Digest.hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
+        link.setTokenHash(contentDigest.hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
         link.setExpiresAt(expires);
         link.setCreatedAt(OffsetDateTime.now(clock));
         link.setCreatedBy(createdBy);
@@ -78,7 +79,7 @@ public class SignedLinkService {
             return LinkValidationResult.invalidSignature(null);
         }
 
-        var tokenHash = Sha256Digest.hexOf(token.getBytes(StandardCharsets.UTF_8));
+        var tokenHash = contentDigest.hexOf(token.getBytes(StandardCharsets.UTF_8));
         var optionalLink = signedLinkRepository.findByTokenHash(tokenHash);
         if (optionalLink.isEmpty()) {
             return LinkValidationResult.notFound();

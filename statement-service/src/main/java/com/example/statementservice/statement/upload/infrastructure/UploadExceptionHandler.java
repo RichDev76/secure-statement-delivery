@@ -5,8 +5,8 @@ import static com.example.statementservice.infrastructure.web.CommonUtil.createP
 
 import com.example.statementservice.infrastructure.web.ExceptionMetadata;
 import com.example.statementservice.shared.InvalidDateException;
-import com.example.statementservice.shared.StatementUploadException;
 import com.example.statementservice.statement.DuplicateStatementException;
+import com.example.statementservice.statement.StatementUploadException;
 import com.example.statementservice.statement.upload.DigestComputationException;
 import com.example.statementservice.statement.upload.DigestMismatchException;
 import com.example.statementservice.statement.upload.InvalidAccountNumberException;

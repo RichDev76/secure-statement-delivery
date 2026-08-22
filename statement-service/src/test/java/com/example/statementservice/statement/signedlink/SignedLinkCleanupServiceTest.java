@@ -29,7 +29,7 @@ class SignedLinkCleanupServiceTest {
     private SignedLinkRepository repository;
 
     @Mock
-    private SignedLinkRateLimiterPort rateLimiter;
+    private SignedLinkRateLimiter rateLimiter;
 
     private SignedLinkCleanupProperties properties;
     private SignedLinkCleanupService cleanupService;

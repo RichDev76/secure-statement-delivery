@@ -3,7 +3,7 @@ package com.example.statementservice.statement.upload;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.jayway.jsonpath.JsonPath;
 import java.time.Instant;
 import java.util.List;
@@ -79,7 +79,7 @@ class OversizedUploadIT extends AbstractIntegrationTest {
         var headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         headers.setBearerAuth("test-token");
-        headers.set("X-Message-Digest", Sha256Digest.hexOf(oversized));
+        headers.set("X-Message-Digest", new Sha256ContentDigest().hexOf(oversized));
 
         // When
         var response =

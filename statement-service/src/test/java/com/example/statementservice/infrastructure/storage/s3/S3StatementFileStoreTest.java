@@ -10,6 +10,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.statement.StatementStorageUnavailableException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -55,7 +56,7 @@ class S3StatementFileStoreTest {
         var properties = new S3StorageProperties();
         properties.setBucket(BUCKET);
         properties.setRegion("eu-west-1");
-        fileStore = new S3StatementFileStore(s3Client, properties);
+        fileStore = new S3StatementFileStore(s3Client, properties, new Sha256ContentDigest());
 
         fileStoreLogger = (Logger) LoggerFactory.getLogger(S3StatementFileStore.class);
         originalLevel = fileStoreLogger.getLevel();

@@ -1,28 +1,30 @@
-package com.example.statementservice.shared;
+package com.example.statementservice.infrastructure.crypto;
 
+import com.example.statementservice.shared.ContentDigest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
+import org.springframework.stereotype.Component;
 
-public final class Sha256Digest {
+@Component
+public class Sha256ContentDigest implements ContentDigest {
 
     private static final String ALGORITHM = "SHA-256";
     private static final int STREAM_BUFFER_SIZE = 8192;
 
-    private Sha256Digest() {}
-
-    public static String hexOf(byte[] input) {
-        return toHex(newDigest().digest(input));
+    @Override
+    public String hexOf(byte[] content) {
+        return toHex(newDigest().digest(content));
     }
 
-    // Caller owns and closes the stream.
-    public static String hexOf(InputStream input) throws IOException {
+    @Override
+    public String hexOf(InputStream content) throws IOException {
         var digest = newDigest();
         var buffer = new byte[STREAM_BUFFER_SIZE];
         int bytesRead;
-        while ((bytesRead = input.read(buffer)) != -1) {
+        while ((bytesRead = content.read(buffer)) != -1) {
             digest.update(buffer, 0, bytesRead);
         }
         return toHex(digest.digest());

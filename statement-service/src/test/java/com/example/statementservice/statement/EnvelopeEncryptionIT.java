@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.statementservice.AbstractIntegrationTest;
-import com.example.statementservice.shared.Sha256Digest;
+import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ class EnvelopeEncryptionIT extends AbstractIntegrationTest {
 
     private UUID upload(byte[] content, String accountNumber) throws Exception {
         var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, content);
-        var digest = Sha256Digest.hexOf(content);
+        var digest = new Sha256ContentDigest().hexOf(content);
         var responseBody = mockMvc.perform(multipart("/api/v1/statements/upload")
                         .file(file)
                         .param("accountNumber", accountNumber)

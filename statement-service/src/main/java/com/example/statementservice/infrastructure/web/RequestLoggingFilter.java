@@ -44,7 +44,6 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private void logCompletion(HttpServletRequest request, int status, long startNanos) {
         var durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
-        // getRequestURI() excludes the query string, which carries the signed-link signature.
         var endpoint = EndpointLabel.of(request.getRequestURI());
         var method = request.getMethod();
 

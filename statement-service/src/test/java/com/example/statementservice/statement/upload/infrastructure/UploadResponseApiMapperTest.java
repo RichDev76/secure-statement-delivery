@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.statementservice.shared.DateMapper;
 import com.example.statementservice.statement.upload.UploadResponseDto;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
@@ -13,7 +14,8 @@ import org.junit.jupiter.api.Test;
 @DisplayName("UploadResponseApiMapper Tests")
 class UploadResponseApiMapperTest {
 
-    private final UploadResponseApiMapper uploadResponseApiMapper = new UploadResponseApiMapperImpl(new DateMapper());
+    private final UploadResponseApiMapper uploadResponseApiMapper =
+            new UploadResponseApiMapperImpl(new DateMapper(Clock.system(ZoneId.of("Africa/Johannesburg"))));
 
     @Test
     void GivenDtoWithAllFields_WhenMappingToApi_ThenAllFieldsAreMapped() {

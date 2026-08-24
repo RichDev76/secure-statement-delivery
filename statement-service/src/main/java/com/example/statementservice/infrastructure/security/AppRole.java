@@ -1,6 +1,5 @@
 package com.example.statementservice.infrastructure.security;
 
-// Constants, not an enum: @PreAuthorize needs a compile-time constant expression.
 public final class AppRole {
 
     public static final String UPLOAD = "Upload";

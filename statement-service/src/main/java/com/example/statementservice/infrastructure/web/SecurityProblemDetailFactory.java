@@ -9,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 
-// Single source of RFC 9457 bodies for auth failures, shared by SecurityConfig and GlobalExceptionHandler.
 @Slf4j
 public final class SecurityProblemDetailFactory {
 

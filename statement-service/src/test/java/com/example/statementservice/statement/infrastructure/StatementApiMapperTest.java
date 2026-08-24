@@ -6,6 +6,7 @@ import com.example.statementservice.model.api.StatementSummary;
 import com.example.statementservice.shared.DateMapper;
 import com.example.statementservice.statement.StatementDto;
 import java.net.URI;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -20,7 +21,8 @@ import org.junit.jupiter.api.Test;
 @DisplayName("StatementApiMapper Tests")
 class StatementApiMapperTest {
 
-    private final StatementApiMapper statementApiMapper = new StatementApiMapperImpl(new DateMapper());
+    private final StatementApiMapper statementApiMapper =
+            new StatementApiMapperImpl(new DateMapper(Clock.system(ZoneId.of("Africa/Johannesburg"))));
 
     @Test
     void GivenDtoWithAllFields_WhenMappingToApi_ThenAllFieldsAreMapped() {

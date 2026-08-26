@@ -42,7 +42,7 @@ docs {
   Verified against the running service: this returns 400 INVALID_REQUEST ("Required part 'file' is not present"),
   not MISSING_FILE. Spring's own multipart resolver throws MissingServletRequestPartException when a required part
   is absent, which is caught by GlobalExceptionHandler's generic ErrorResponse handling before the controller body
-  (and therefore ValidationUtil.validateFileNotEmpty, which throws MISSING_FILE) ever runs. MISSING_FILE appears to
-  be unreachable dead code: a present-but-empty file would fail the PDF magic-number check first (which runs before
-  the not-empty check in validateFileUploadInputs), and a genuinely absent file never reaches the method at all.
+  (and therefore ValidationUtil.validateFileNotEmpty, which throws MISSING_FILE) ever runs. MISSING_FILE is
+  reachable only for a present-but-empty file part: validateFileNotEmpty now runs first in
+  validateFileUploadInputs, so a zero-byte part returns 400 MISSING_FILE rather than a magic-number failure.
 }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import com.example.statementservice.shared.IdGenerator;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import jakarta.validation.constraints.Pattern;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -113,8 +115,17 @@ class StatementServiceTest {
                     StatementFileStore.ContentWriter writer = invocation.getArgument(3);
                     var out = new ByteArrayOutputStream();
                     writer.writeTo(out);
-                    return "/data/files/statements/hash/2024/01/" + invocation.getArgument(0) + ".pdf.enc";
+                    return expectedStorageKey();
                 });
+    }
+
+    private void stubSuccessfulEncryptAndStore() throws Exception {
+        when(multipartFile.getOriginalFilename()).thenReturn("statement.pdf");
+        stubSuccessfulEncryptAndStore(new byte[] {1, 2, 3, 4}, "file-content".getBytes());
+    }
+
+    private String expectedStorageKey() {
+        return "/data/files/statements/hash/2024/01/" + testId + ".pdf.enc";
     }
 
     @Test
@@ -193,6 +204,78 @@ class StatementServiceTest {
         assertThatThrownBy(() -> statementService.uploadStatement(
                         testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
                 .isInstanceOf(DuplicateStatementException.class);
+    }
+
+    @Test
+    void GivenPersistFailure_WhenUploadStatement_ThenStoredObjectIsCompensatinglyDeleted() throws Exception {
+        // Given
+        stubSuccessfulEncryptAndStore();
+        when(statementRepository.saveAndFlush(any())).thenThrow(new RuntimeException("DB error"));
+
+        // When / Then
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
+                .isInstanceOf(StatementUploadException.class);
+        verify(fileStore).delete(expectedStorageKey());
+    }
+
+    @Test
+    void GivenConcurrentDuplicateInsert_WhenUploadStatement_ThenStoredObjectIsCompensatinglyDeleted() throws Exception {
+        // Given: losing the unique-index race must not orphan the already-stored S3 object
+        stubSuccessfulEncryptAndStore();
+        when(statementRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException(
+                        "duplicate key value violates unique constraint \"idx_statements_account_date\""));
+
+        // When / Then
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
+                .isInstanceOf(DuplicateStatementException.class);
+        verify(fileStore).delete(expectedStorageKey());
+    }
+
+    @Test
+    void GivenPersistFailureAndCompensatingDeleteFailure_WhenUploadStatement_ThenOriginalExceptionPropagates()
+            throws Exception {
+        // Given: the delete is best-effort - its failure must never mask the persistence failure
+        stubSuccessfulEncryptAndStore();
+        when(statementRepository.saveAndFlush(any())).thenThrow(new RuntimeException("DB error"));
+        doThrow(new IOException("delete failed")).when(fileStore).delete(any());
+
+        // When / Then
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
+                .isInstanceOf(StatementUploadException.class)
+                .hasMessageContaining("Failed to persist statement metadata");
+    }
+
+    @Test
+    void GivenEntityBuildFailureAfterStore_WhenUploadStatement_ThenStoredObjectIsCompensatinglyDeleted()
+            throws Exception {
+        // Given: any failure between the successful store and the row commit must still compensate
+        stubSuccessfulEncryptAndStore();
+        when(multipartFile.getOriginalFilename()).thenReturn(null);
+
+        // When / Then
+        assertThatThrownBy(() -> statementService.uploadStatement(
+                        testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
+                .isInstanceOf(StatementUploadException.class);
+        verify(fileStore).delete(expectedStorageKey());
+        verify(statementRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void GivenSuccessfulUpload_WhenUploadStatement_ThenNoCompensatingDeleteOccurs() throws Exception {
+        // Given
+        stubSuccessfulEncryptAndStore();
+        when(multipartFile.getSize()).thenReturn(2048L);
+        when(statementRepository.saveAndFlush(any(Statement.class))).thenAnswer(i -> i.getArgument(0));
+
+        // When
+        statementService.uploadStatement(testAccountNumber, testStatementDate, multipartFile, "user", testContentHash);
+
+        // Then
+        verify(fileStore, never()).delete(any());
     }
 
     @Test

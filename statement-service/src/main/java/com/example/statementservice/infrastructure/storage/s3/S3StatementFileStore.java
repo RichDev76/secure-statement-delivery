@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -56,6 +57,19 @@ public class S3StatementFileStore implements StatementFileStore {
             throw new IOException("Failed to store statement in object storage", e);
         }
         return key;
+    }
+
+    @Override
+    public void delete(String reference) throws IOException {
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(properties.getBucket())
+                    .key(reference)
+                    .build());
+        } catch (SdkException e) {
+            // Not logged here: the caller decides severity (best-effort cleanup logs WARN once).
+            throw new IOException("Failed to delete statement from object storage", e);
+        }
     }
 
     @Override

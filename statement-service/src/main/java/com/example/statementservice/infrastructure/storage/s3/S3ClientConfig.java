@@ -17,7 +17,8 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 public class S3ClientConfig {
 
     // Bounded well inside the 3-minute signed-link TTL. apiCallTimeout doesn't cover a stalled
-    // body read, hence the separate socket timeout below.
+    // body read, hence the separate socket timeout below. Attempt equals call deliberately:
+    // retries fire after fast failures; restarting a slow full-body put mid-window cannot finish.
     private static final Duration API_CALL_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration API_CALL_ATTEMPT_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration CONNECTION_TIMEOUT = Duration.ofSeconds(2);

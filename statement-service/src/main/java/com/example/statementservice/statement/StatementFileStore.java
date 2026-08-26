@@ -14,6 +14,8 @@ public interface StatementFileStore {
 
     boolean exists(String reference);
 
+    void delete(String reference) throws IOException;
+
     @FunctionalInterface
     interface ContentWriter {
         void writeTo(OutputStream out) throws IOException;

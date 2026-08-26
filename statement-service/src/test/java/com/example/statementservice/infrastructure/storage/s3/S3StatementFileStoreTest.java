@@ -28,6 +28,8 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
@@ -221,6 +223,42 @@ class S3StatementFileStoreTest {
 
         // When / Then
         assertThat(fileStore.exists("statements/missing/2026/07/x.pdf.enc")).isFalse();
+    }
+
+    @Test
+    void GivenReference_WhenDeleted_ThenDeleteObjectIsCalledWithSameBucketAndKey() throws IOException {
+        // Given
+        var reference = "statements/abc123/2026/07/some-id.pdf.enc";
+        when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
+                .thenReturn(DeleteObjectResponse.builder().build());
+
+        // When
+        fileStore.delete(reference);
+
+        // Then
+        var requestCaptor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        verify(s3Client).deleteObject(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().bucket()).isEqualTo(BUCKET);
+        assertThat(requestCaptor.getValue().key()).isEqualTo(reference);
+    }
+
+    @Test
+    void GivenDeleteObjectFails_WhenDeleting_ThenIOExceptionHidesDetailsAndCarriesCause() {
+        // Given: the caller logs cleanup failures once, so delete itself stays silent
+        var failure = S3Exception.builder()
+                .statusCode(500)
+                .message("internal failure")
+                .build();
+        when(s3Client.deleteObject(any(DeleteObjectRequest.class))).thenThrow(failure);
+
+        // When / Then
+        assertThatThrownBy(() -> fileStore.delete("statements/abc123/2026/07/some-id.pdf.enc"))
+                .isInstanceOf(IOException.class)
+                .hasCause(failure)
+                .extracting(Throwable::getMessage)
+                .asString()
+                .doesNotContain(BUCKET)
+                .doesNotContain("internal failure");
     }
 
     @Test

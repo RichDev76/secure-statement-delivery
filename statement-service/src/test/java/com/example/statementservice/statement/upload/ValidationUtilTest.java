@@ -9,16 +9,22 @@ import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.statement.UploadedFile;
 import com.example.statementservice.statement.upload.infrastructure.MultipartFileAdapter;
+import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 @DisplayName("ValidationUtil Unit Tests")
 class ValidationUtilTest {
+
+    private static final byte[] PDF_BYTES = {0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34}; // %PDF-1.4
 
     private ValidationUtil validationUtil;
 
@@ -29,12 +35,11 @@ class ValidationUtilTest {
 
     @BeforeEach
     void setUp() {
-        var pdfContent = new byte[] {0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34}; // %PDF-1.4
         validPdfFile = new MultipartFileAdapter(
-                new MockMultipartFile("file", "test.pdf", MediaType.APPLICATION_PDF_VALUE, pdfContent));
+                new MockMultipartFile("file", "test.pdf", MediaType.APPLICATION_PDF_VALUE, PDF_BYTES));
         validAccountNumber = "123456789";
         validDate = "2024-01-15";
-        validMessageDigest = new Sha256ContentDigest().hexOf(pdfContent);
+        validMessageDigest = new Sha256ContentDigest().hexOf(PDF_BYTES);
         validationUtil = new ValidationUtil();
     }
 
@@ -43,6 +48,69 @@ class ValidationUtilTest {
 
         assertThatCode(() -> validationUtil.validateFileUploadInputs(validPdfFile, validAccountNumber, validDate))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void GivenNullFile_WhenValidatingFileUploadInputs_ThenThrowsMissingFileException() {
+
+        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(null, validAccountNumber, validDate))
+                .isInstanceOf(MissingFileException.class)
+                .hasMessageContaining("file is required");
+    }
+
+    @Test
+    void GivenEmptyFileWithValidName_WhenValidatingFileUploadInputs_ThenThrowsMissingFileException() {
+
+        var emptyFile =
+                new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", "application/pdf", new byte[0]));
+        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(emptyFile, validAccountNumber, validDate))
+                .isInstanceOf(MissingFileException.class)
+                .hasMessageContaining("file is required");
+    }
+
+    @Test
+    void
+            GivenValidPdfBytesWithWrongContentType_WhenValidatingFileUploadInputs_ThenThrowsUnsupportedContentTypeException() {
+
+        var pdfBytesWrongType =
+                new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", "text/plain", PDF_BYTES));
+        assertThatThrownBy(
+                        () -> validationUtil.validateFileUploadInputs(pdfBytesWrongType, validAccountNumber, validDate))
+                .isInstanceOf(UnsupportedContentTypeException.class)
+                .hasMessageContaining("Unsupported Media Type");
+    }
+
+    @Test
+    void GivenTraversalFileName_WhenValidatingFileUploadInputs_ThenThrowsPdfValidationException() {
+
+        var traversalFile =
+                new MultipartFileAdapter(new MockMultipartFile("file", "../evil.pdf", "application/pdf", PDF_BYTES));
+        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(traversalFile, validAccountNumber, validDate))
+                .isInstanceOf(PdfValidationException.class)
+                .hasMessageContaining("path traversal is not allowed");
+    }
+
+    @Test
+    void
+            GivenInvalidAccountNumberAndNonPdfBytes_WhenValidatingFileUploadInputs_ThenThrowsInvalidAccountNumberException() {
+
+        // Pins the ordering contract: string checks run before the magic-byte file read.
+        var nonPdfFile = new MultipartFileAdapter(
+                new MockMultipartFile("file", "test.pdf", "application/pdf", "not a pdf".getBytes()));
+        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(nonPdfFile, "12AB", validDate))
+                .isInstanceOf(InvalidAccountNumberException.class)
+                .hasMessageContaining("Invalid account number");
+    }
+
+    @Test
+    void GivenNonPdfBytesWithPdfContentType_WhenValidatingFileUploadInputs_ThenThrowsPdfValidationException() {
+
+        // Pins that the magic-byte check is wired into the aggregate for spoofed content types.
+        var spoofedFile = new MultipartFileAdapter(
+                new MockMultipartFile("file", "test.pdf", "application/pdf", "not a pdf".getBytes()));
+        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(spoofedFile, validAccountNumber, validDate))
+                .isInstanceOf(PdfValidationException.class)
+                .hasMessageContaining("File is not a valid PDF");
     }
 
     @Test
@@ -157,6 +225,43 @@ class ValidationUtilTest {
         assertThatThrownBy(() -> validationUtil.validateCorrectContentType(nullTypeFile))
                 .isInstanceOf(UnsupportedContentTypeException.class)
                 .hasMessageContaining("Unsupported Media Type");
+    }
+
+    @Test
+    void GivenSafeFileName_WhenValidatingFileName_ThenNoExceptionIsThrown() {
+
+        assertThatCode(() -> validationUtil.validateFileName(validPdfFile)).doesNotThrowAnyException();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"../../etc/passwd.pdf", "..\\secrets.pdf", "report..2024.pdf"})
+    void GivenFileNameContainingDoubleDots_WhenValidatingFileName_ThenThrowsPdfValidationException(String fileName) {
+
+        var traversalFile = new MultipartFileAdapter(
+                new MockMultipartFile("file", fileName, "application/pdf", "content".getBytes()));
+        assertThatThrownBy(() -> validationUtil.validateFileName(traversalFile))
+                .isInstanceOf(PdfValidationException.class)
+                .hasMessageContaining("path traversal is not allowed");
+    }
+
+    @Test
+    void GivenEmptyFileName_WhenValidatingFileName_ThenThrowsPdfValidationException() {
+
+        var namelessFile =
+                new MultipartFileAdapter(new MockMultipartFile("file", "", "application/pdf", "content".getBytes()));
+        assertThatThrownBy(() -> validationUtil.validateFileName(namelessFile))
+                .isInstanceOf(PdfValidationException.class)
+                .hasMessageContaining("Filename must not be empty");
+    }
+
+    @Test
+    void GivenNullFileName_WhenValidatingFileName_ThenThrowsPdfValidationException() {
+
+        var nullNameFile = mock(UploadedFile.class);
+        when(nullNameFile.getOriginalFilename()).thenReturn(null);
+        assertThatThrownBy(() -> validationUtil.validateFileName(nullNameFile))
+                .isInstanceOf(PdfValidationException.class)
+                .hasMessageContaining("Filename must not be empty");
     }
 
     @Test
@@ -363,5 +468,21 @@ class ValidationUtilTest {
         assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(wrongFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("File is not a valid PDF");
+    }
+
+    @Test
+    void GivenStreamReturningOneBytePerRead_WhenValidatingPdfMagicNumber_ThenNoExceptionIsThrown() throws IOException {
+
+        var tricklingFile = mock(UploadedFile.class);
+        when(tricklingFile.getInputStream())
+                .thenAnswer(invocation -> new FilterInputStream(new ByteArrayInputStream(PDF_BYTES)) {
+                    @Override
+                    public int read(byte[] buffer, int offset, int length) throws IOException {
+                        return super.read(buffer, offset, Math.min(length, 1));
+                    }
+                });
+
+        assertThatCode(() -> validationUtil.validatePdfMagicNumber(tricklingFile))
+                .doesNotThrowAnyException();
     }
 }

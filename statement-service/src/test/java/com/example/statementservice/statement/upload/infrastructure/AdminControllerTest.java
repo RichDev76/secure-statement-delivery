@@ -269,8 +269,9 @@ class AdminControllerTest {
         verify(uploadResponseApiMapper).toApi(testDto);
     }
 
+    // The controller does not validate filenames; ValidationUtil rejects empty names downstream.
     @Test
-    void GivenFileWithoutName_WhenUploadStatement_ThenUploadStillSucceeds() {
+    void GivenFileWithoutName_WhenUploadStatement_ThenEmptyNameIsPassedToServiceUnchanged() {
 
         MultipartFile fileWithoutName = new MockMultipartFile("file", "", "application/pdf", new byte[100]);
 

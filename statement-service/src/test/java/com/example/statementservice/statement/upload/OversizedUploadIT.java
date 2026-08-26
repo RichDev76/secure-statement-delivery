@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,16 +23,15 @@ import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.unit.DataSize;
 
 /**
  * Runs over real HTTP deliberately: MockMvc bypasses the servlet multipart parser, so the
- * max-file-size limit never fires under it. max-swallow-size is unlimited here so Tomcat drains
- * the oversized body and delivers a clean 413 instead of resetting the connection; this test
- * pins the handler contract, not the connector tuning.
+ * max-file-size limit never fires under it. Uses the production max-swallow-size from
+ * application.yml, so this test pins both the handler contract and the connector tuning that
+ * makes the 413 reachable (Tomcat's 2MB default would reset the connection instead).
  */
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "server.tomcat.max-swallow-size=-1")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 class OversizedUploadIT extends AbstractIntegrationTest {
 
@@ -39,6 +39,12 @@ class OversizedUploadIT extends AbstractIntegrationTest {
 
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @Value("${server.tomcat.max-swallow-size}")
+    private DataSize maxSwallowSize;
+
+    @Value("${spring.servlet.multipart.max-request-size}")
+    private DataSize maxRequestSize;
 
     // Real-HTTP requests cannot use MockMvc's jwt() post-processor; this decoder accepts any
     // bearer token and grants the Upload role.
@@ -89,5 +95,12 @@ class OversizedUploadIT extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONTENT_TOO_LARGE);
         assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON);
         assertThat((String) JsonPath.read(response.getBody(), "$.errorCode")).isEqualTo("UPLOAD_TOO_LARGE");
+    }
+
+    @Test
+    void GivenConnectorConfiguration_WhenComparingLimits_ThenSwallowSizeExceedsMaxRequestSize() {
+        // Then: if max-request-size is ever raised past max-swallow-size, Tomcat resets the
+        // connection on oversized uploads instead of delivering the 413 problem detail.
+        assertThat(maxSwallowSize.toBytes()).isGreaterThan(maxRequestSize.toBytes());
     }
 }

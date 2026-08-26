@@ -2,14 +2,15 @@ package com.example.statementservice.infrastructure.crypto;
 
 import com.example.statementservice.statement.FileCipher;
 import com.example.statementservice.statement.FileCipherException;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.SequenceInputStream;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import javax.crypto.Cipher;
-import javax.crypto.CipherOutputStream;
+import javax.crypto.CipherInputStream;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Component;
@@ -86,22 +87,30 @@ public class AesGcmFileCipher implements FileCipher {
     }
 
     @Override
-    public void encrypt(InputStream plaintext, OutputStream ciphertext, byte[] initializationVector, byte[] dek)
+    public InputStream encryptingStream(InputStream plaintext, byte[] initializationVector, byte[] dek)
             throws IOException {
         try {
             var secretKeySpec = new SecretKeySpec(dek, ALGORITHM_AES);
             var cipher = Cipher.getInstance(ALGO);
-            var gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, initializationVector);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, gcmParameterSpec);
-            ciphertext.write(initializationVector);
-            try (var cipherOutputStream = new CipherOutputStream(ciphertext, cipher)) {
-                plaintext.transferTo(cipherOutputStream);
-            }
-        } catch (IOException e) {
-            throw e;
-        } catch (Exception e) {
+            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, initializationVector));
+            return new SequenceInputStream(
+                    new ByteArrayInputStream(initializationVector), new CipherInputStream(plaintext, cipher));
+        } catch (GeneralSecurityException e) {
+            closeQuietly(plaintext);
             throw new IOException("Encryption failed", e);
         }
+    }
+
+    private static void closeQuietly(InputStream stream) {
+        try {
+            stream.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    @Override
+    public long ciphertextLength(long plaintextLength) {
+        return INITIALIZATION_VECTOR_LENGTH + plaintextLength + (GCM_TAG_LENGTH / 8);
     }
 
     @Override

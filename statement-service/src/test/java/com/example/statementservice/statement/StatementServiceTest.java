@@ -3,6 +3,7 @@ package com.example.statementservice.statement;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -14,7 +15,6 @@ import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.shared.IdGenerator;
 import com.example.statementservice.statement.upload.UploadResponseDto;
 import jakarta.validation.constraints.Pattern;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
@@ -110,11 +110,10 @@ class StatementServiceTest {
         when(idGenerator.newId()).thenReturn(testId);
         when(fileCipher.generateInitializationVector()).thenReturn(iv);
         when(multipartFile.getInputStream()).thenReturn(new java.io.ByteArrayInputStream(content));
-        when(fileStore.store(any(UUID.class), eq(testAccountNumber), eq(testStatementDate), any()))
+        when(fileStore.store(any(UUID.class), eq(testAccountNumber), eq(testStatementDate), anyLong(), any()))
                 .thenAnswer(invocation -> {
-                    StatementFileStore.ContentWriter writer = invocation.getArgument(3);
-                    var out = new ByteArrayOutputStream();
-                    writer.writeTo(out);
+                    StatementFileStore.StreamSupplier supplier = invocation.getArgument(4);
+                    supplier.openStream();
                     return expectedStorageKey();
                 });
     }
@@ -143,7 +142,7 @@ class StatementServiceTest {
         assertThat(result.fileName()).isEqualTo("statement.pdf");
         assertThat(result.fileSize()).isEqualTo(2048L);
         assertThat(result.uploadedAt()).isNotNull();
-        verify(fileStore).store(any(UUID.class), eq(testAccountNumber), eq(testStatementDate), any());
+        verify(fileStore).store(any(UUID.class), eq(testAccountNumber), eq(testStatementDate), anyLong(), any());
         verify(statementRepository).saveAndFlush(any(Statement.class));
     }
 
@@ -186,7 +185,7 @@ class StatementServiceTest {
         assertThatThrownBy(() -> statementService.uploadStatement(
                         testAccountNumber, testStatementDate, multipartFile, "user", testContentHash))
                 .isInstanceOf(DuplicateStatementException.class);
-        verify(fileStore, never()).store(any(UUID.class), any(), any(), any());
+        verify(fileStore, never()).store(any(UUID.class), any(), any(), anyLong(), any());
         verify(statementRepository, never()).saveAndFlush(any());
     }
 
@@ -329,7 +328,7 @@ class StatementServiceTest {
         var captor = org.mockito.ArgumentCaptor.forClass(Statement.class);
         verify(statementRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getEncryptedDek()).isEqualTo(wrappedDek).isNotEqualTo(dek);
-        verify(fileCipher).encrypt(any(), any(), eq(new byte[] {1, 2, 3, 4}), eq(dek));
+        verify(fileCipher).encryptingStream(any(), eq(new byte[] {1, 2, 3, 4}), eq(dek));
     }
 
     @Test

@@ -71,13 +71,15 @@ public class StatementService {
 
     private String encryptAndStore(
             UUID id, String accountNumber, LocalDate statementDate, UploadedFile file, EncryptionMaterial material) {
+        var contentLength = fileCipher.ciphertextLength(file.getSize());
         try {
             return fileStore.store(
                     id,
                     accountNumber,
                     statementDate,
-                    out -> fileCipher.encrypt(
-                            file.getInputStream(), out, material.initializationVector(), material.dek()));
+                    contentLength,
+                    () -> fileCipher.encryptingStream(
+                            file.getInputStream(), material.initializationVector(), material.dek()));
         } catch (IOException e) {
             throw new StatementUploadException("Failed to encrypt and store file", e);
         }

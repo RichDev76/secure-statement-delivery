@@ -15,6 +15,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.example.statementservice.AbstractIntegrationTest;
 import com.example.statementservice.statement.EncryptedFileFetcher;
 import com.example.statementservice.statement.StatementFileStore;
+import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -60,8 +61,12 @@ class CacheDegradeIT extends AbstractIntegrationTest {
     void GivenCacheGetThrows_WhenFetching_ThenDegradesToUnderlyingStoreAndStillReturnsCorrectBytes() throws Exception {
         // Given
         var content = "encrypted-bytes".getBytes();
-        var storageKey =
-                fileStore.store(UUID.randomUUID(), "123456789", LocalDate.of(2026, 8, 1), out -> out.write(content));
+        var storageKey = fileStore.store(
+                UUID.randomUUID(),
+                "123456789",
+                LocalDate.of(2026, 8, 1),
+                content.length,
+                () -> new ByteArrayInputStream(content));
 
         var realCache = cacheManager.getCache(STATEMENT_CIPHERTEXT_CACHE);
         var brokenCache = spy(realCache);

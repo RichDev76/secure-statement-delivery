@@ -400,7 +400,7 @@ Unauthenticated and forbidden requests get **RFC 9457 ProblemDetail** JSON (`ERR
 #### Envelope Encryption at Rest
 
 - Each uploaded PDF gets its own random **256-bit data encryption key (DEK)**.
-- The file is encrypted with **AES‑256‑GCM** (`AES/GCM/NoPadding`, 128-bit tag) using that DEK and a random 12-byte IV; the plaintext is streamed through the cipher, the ciphertext is buffered in the storage adapter (S3 needs a known `Content-Length`, ADR-0014/0023) and then put to object storage with the IV stored as a prefix on the ciphertext object.
+- The file is encrypted with **AES‑256‑GCM** (`AES/GCM/NoPadding`, 128-bit tag) using that DEK and a random 12-byte IV; the ciphertext is streamed straight to object storage with a precomputed `Content-Length` (IV + plaintext + tag is deterministic) — no heap buffer — with the IV stored as a prefix on the ciphertext object.
 - The DEK itself is **wrapped** (encrypted) with the service's master key, also via AES-GCM with its own random IV and a versioned wrap-format byte, and persisted as `statements.encrypted_dek`.
 - **Master key** is supplied by `MasterKeyProvider`, from `statement.encryption.master-key` (a config property delivered by Config Server, itself backed by Vault) or, as a fallback, a mounted secret file (`/run/secrets/master-key`). `statement-service` never talks to Vault directly.
 - On download, `AesGcmFileCipher` unwraps the DEK with the master key, then decrypts the fetched ciphertext with the DEK — the master key is never used to touch file content directly, only to wrap/unwrap per-file DEKs.
@@ -624,12 +624,12 @@ Six capabilities were deliberately evaluated and scoped out. Each is recorded he
 - **The door is open**: existing controls already narrow the surface without inspecting content — contract-enforced content type, the 10MB size cap, digest verification, authentication/authorization, and envelope encryption at rest (ADR-0026). `StatementUploadService` and `ValidationUtil` are the integration points a future scan hook would extend.
 - **Adoption path**: a synchronous ClamAV daemon/sidecar scan on the upload path is the direct option; cloud-provider malware scanning (e.g. S3-integrated) becomes viable once the S3-compatible storage backend is the only one in play, without tying the decision to a specific provider today. Revisit before upload sources broaden beyond the current trusted pipeline, or before accepting end-user-supplied files directly.
 
-#### Upload Ciphertext Streaming and Concurrency Bulkhead
+#### Upload Concurrency Bulkhead
 
-- **Considered because**: the S3 adapter buffers the full ciphertext in heap before the put (S3 needs a known `Content-Length`, ADR-0014), and upload concurrency is unbounded under virtual threads — at a larger size cap that combination is an OOM risk.
-- **Deferred because**: the 10MB cap bounds per-upload heap to a known ceiling (ADR-0023), and a mis-sized bulkhead is its own availability risk; the deferral is safe exactly as long as the cap stands.
-- **The door is open**: the `StatementFileStore`/`FileCipher` ports isolate the change to two adapters, and the upload path's compensating-delete already handles partial-failure cleanup.
-- **Adoption path**: the design is worked out in `docs/FileUploadStreamingPlan.html` (pull-based `StoredContent`, precomputed ciphertext length, bulkhead filter with a 503 contract). Trigger: any raise of the 10MB cap, or memory pressure from upload concurrency in practice.
+- **Considered because**: upload concurrency is unbounded under virtual threads — nothing currently rejects a request when too many uploads are in flight at once. Ciphertext streaming to S3 no longer buffers the full file in heap, so this is a connection-pool/bandwidth concern now, not an OOM one.
+- **Deferred because**: at the current 10MB cap and expected upload volume, unbounded concurrency hasn't been an availability problem in practice, and a mis-sized bulkhead is its own availability risk.
+- **The door is open**: the `StatementFileStore`/`FileCipher` ports isolate storage from the request path, and the upload path's compensating-delete already handles partial-failure cleanup.
+- **Adoption path**: a semaphore-backed filter ordered after Spring Security's authorization filter (so an unauthenticated request can't consume a permit), returning a 503/429 with `Retry-After` on saturation. Trigger: any raise of the 10MB cap, or measured concurrency pressure in practice.
 
 #### Upload Outcome Metrics
 

@@ -38,13 +38,14 @@ public class ValidationUtil {
     private static final String INVALID_PDF_MSG = "File is not a valid PDF";
     private static final String PDF_READ_ERROR_MSG = "Failed to read file for magic number validation";
 
+    // Order is a client-visible contract: cheap checks first, the magic-byte file read last.
     public void validateFileUploadInputs(UploadedFile file, String accountNumber, String date) {
-        validateFileName(file);
-        validatePdfMagicNumber(file);
-        validateCorrectContentType(file);
         validateFileNotEmpty(file);
+        validateCorrectContentType(file);
+        validateFileName(file);
         validateAccountNumber(accountNumber);
         validateDate(date);
+        validatePdfMagicNumber(file);
     }
 
     public void validateMessageDigest(String computedDigestHex, String xMessageDigest) {
@@ -104,10 +105,9 @@ public class ValidationUtil {
 
     public void validatePdfMagicNumber(UploadedFile file) {
         try (InputStream inputStream = file.getInputStream()) {
-            var magicBytes = new byte[PDF_MAGIC_NUMBER_SIZE];
-            int bytesRead = inputStream.read(magicBytes);
+            var magicBytes = inputStream.readNBytes(PDF_MAGIC_NUMBER_SIZE);
 
-            if (bytesRead < PDF_MAGIC_NUMBER_SIZE) {
+            if (magicBytes.length < PDF_MAGIC_NUMBER_SIZE) {
                 throw new PdfValidationException(PDF_TOO_SMALL_MSG);
             }
 

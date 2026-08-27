@@ -23,6 +23,10 @@ server:
   port: 8080
   # Trust X-Forwarded-* for audited IPs and minted link URLs; set to none where directly exposed.
   forward-headers-strategy: framework
+  tomcat:
+    # Must exceed max-request-size (else Tomcat resets oversized uploads instead of returning
+    # the 413 problem detail); small margin so grossly oversized bodies are cut off, not drained.
+    max-swallow-size: 13MB
 
 logging:
   level:

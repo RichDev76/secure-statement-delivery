@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import com.example.statementservice.AbstractIntegrationTest;
 import com.example.statementservice.statement.EncryptedFileFetcher;
 import com.example.statementservice.statement.StatementFileStore;
+import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -29,8 +30,12 @@ class EncryptedFileFetcherCacheIT extends AbstractIntegrationTest {
     void Given_SameStorageKeyFetchedTwice_When_Fetching_Then_UnderlyingStoreIsOnlyReadOnce() throws Exception {
         // Given
         var content = "encrypted-bytes".getBytes();
-        var storageKey =
-                fileStore.store(UUID.randomUUID(), "123456789", LocalDate.of(2026, 8, 1), out -> out.write(content));
+        var storageKey = fileStore.store(
+                UUID.randomUUID(),
+                "123456789",
+                LocalDate.of(2026, 8, 1),
+                content.length,
+                () -> new ByteArrayInputStream(content));
 
         // When
         var first = encryptedFileFetcher.fetch(storageKey);
@@ -47,10 +52,18 @@ class EncryptedFileFetcherCacheIT extends AbstractIntegrationTest {
         // Given
         var contentA = "file-a".getBytes();
         var contentB = "file-b".getBytes();
-        var storageKeyA =
-                fileStore.store(UUID.randomUUID(), "123456789", LocalDate.of(2026, 8, 1), out -> out.write(contentA));
-        var storageKeyB =
-                fileStore.store(UUID.randomUUID(), "123456789", LocalDate.of(2026, 8, 2), out -> out.write(contentB));
+        var storageKeyA = fileStore.store(
+                UUID.randomUUID(),
+                "123456789",
+                LocalDate.of(2026, 8, 1),
+                contentA.length,
+                () -> new ByteArrayInputStream(contentA));
+        var storageKeyB = fileStore.store(
+                UUID.randomUUID(),
+                "123456789",
+                LocalDate.of(2026, 8, 2),
+                contentB.length,
+                () -> new ByteArrayInputStream(contentB));
 
         // When
         var resultA = encryptedFileFetcher.fetch(storageKeyA);

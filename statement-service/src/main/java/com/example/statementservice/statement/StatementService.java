@@ -19,7 +19,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -42,56 +41,74 @@ public class StatementService {
     private final IdGenerator idGenerator;
     private final Clock clock;
 
-    @Transactional
     public UploadResponseDto uploadStatement(
             String accountNumber, LocalDate statementDate, UploadedFile file, String uploadedBy, String contentHash) {
-        // Pre-check avoids orphaning an S3 object on the common duplicate path.
+        rejectDuplicateUpload(accountNumber, statementDate);
+        var id = idGenerator.newId();
+        var encryptionMaterial = prepareEncryptionMaterial();
+        var reference = encryptAndStore(id, accountNumber, statementDate, file, encryptionMaterial);
+        persistCompensatingOnFailure(
+                accountNumber, statementDate, file, uploadedBy, id, reference, encryptionMaterial, contentHash);
+        return getUploadResponse(file, id);
+    }
+
+    // Pre-check avoids orphaning an S3 object on the common duplicate path.
+    private void rejectDuplicateUpload(String accountNumber, LocalDate statementDate) {
         if (statementRepository.existsByAccountNumberAndStatementDate(accountNumber, statementDate)) {
             throw new DuplicateStatementException(DUPLICATE_STATEMENT_MESSAGE);
         }
-        var id = idGenerator.newId();
-        var initializationVector = fileCipher.generateInitializationVector();
-        byte[] dek;
-        byte[] wrappedDek;
+    }
+
+    private EncryptionMaterial prepareEncryptionMaterial() {
         try {
-            dek = fileCipher.generateDek();
-            wrappedDek = fileCipher.wrapDek(dek);
+            var initializationVector = fileCipher.generateInitializationVector();
+            var dek = fileCipher.generateDek();
+            return new EncryptionMaterial(initializationVector, dek, fileCipher.wrapDek(dek));
         } catch (FileCipherException e) {
             throw new StatementUploadException("Failed to prepare encryption key", e);
         }
+    }
 
-        String reference;
+    private String encryptAndStore(
+            UUID id, String accountNumber, LocalDate statementDate, UploadedFile file, EncryptionMaterial material) {
+        var contentLength = fileCipher.ciphertextLength(file.getSize());
         try {
-            reference = fileStore.store(
+            return fileStore.store(
                     id,
                     accountNumber,
                     statementDate,
-                    out -> fileCipher.encrypt(file.getInputStream(), out, initializationVector, dek));
+                    contentLength,
+                    () -> fileCipher.encryptingStream(
+                            file.getInputStream(), material.initializationVector(), material.dek()));
         } catch (IOException e) {
             throw new StatementUploadException("Failed to encrypt and store file", e);
         }
+    }
 
-        var statement = buildStatement(
-                accountNumber,
-                statementDate,
-                file,
-                uploadedBy,
-                id,
-                reference,
-                initializationVector,
-                wrappedDek,
-                contentHash);
+    // Any failure after a successful store must delete the stored object, or it is orphaned.
+    private void persistCompensatingOnFailure(
+            String accountNumber,
+            LocalDate statementDate,
+            UploadedFile file,
+            String uploadedBy,
+            UUID id,
+            String reference,
+            EncryptionMaterial material,
+            String contentHash) {
         try {
+            var statement = buildStatement(
+                    accountNumber, statementDate, file, uploadedBy, id, reference, material, contentHash);
             this.statementRepository.saveAndFlush(statement);
         } catch (DataIntegrityViolationException e) {
+            deleteStoredFileBestEffort(reference);
             if (isAccountDateUniqueViolation(e)) {
                 throw new DuplicateStatementException(DUPLICATE_STATEMENT_MESSAGE, e);
             }
             throw new StatementUploadException("Failed to persist statement metadata", e);
         } catch (RuntimeException e) {
+            deleteStoredFileBestEffort(reference);
             throw new StatementUploadException("Failed to persist statement metadata", e);
         }
-        return getUploadResponse(file, id);
     }
 
     public Statement getStatementById(UUID id) {
@@ -160,8 +177,7 @@ public class StatementService {
             String uploadedBy,
             UUID id,
             String fileReference,
-            byte[] iv,
-            byte[] wrappedDek,
+            EncryptionMaterial material,
             String contentHash) {
         var stmt = new Statement();
         stmt.setId(id);
@@ -169,8 +185,8 @@ public class StatementService {
         stmt.setStatementDate(statementDate);
         stmt.setUploadFileName(sanitizeFileName(Objects.requireNonNull(file.getOriginalFilename())));
         stmt.setStorageKey(fileReference);
-        stmt.setFileIv(iv);
-        stmt.setEncryptedDek(wrappedDek);
+        stmt.setFileIv(material.initializationVector());
+        stmt.setEncryptedDek(material.wrappedDek());
         stmt.setContentHash(contentHash);
         stmt.setEncrypted(true);
         stmt.setSizeBytes(file.getSize());
@@ -178,6 +194,8 @@ public class StatementService {
         stmt.setUploadedBy(uploadedBy == null ? "admin" : uploadedBy);
         return stmt;
     }
+
+    private record EncryptionMaterial(byte[] initializationVector, byte[] dek, byte[] wrappedDek) {}
 
     private UploadResponseDto getUploadResponse(UploadedFile file, UUID id) {
         return UploadResponseDto.builder()
@@ -190,6 +208,15 @@ public class StatementService {
 
     private static boolean isAccountDateUniqueViolation(DataIntegrityViolationException e) {
         return String.valueOf(e.getMostSpecificCause().getMessage()).contains(ACCOUNT_DATE_UNIQUE_INDEX);
+    }
+
+    // Best-effort: the persistence failure must propagate, not the cleanup failure.
+    private void deleteStoredFileBestEffort(String reference) {
+        try {
+            fileStore.delete(reference);
+        } catch (IOException | RuntimeException e) {
+            log.warn("Failed to delete orphaned statement object - storageKey: {}", reference, e);
+        }
     }
 
     // Output must match the download contract's fileName pattern.

@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import com.example.statementservice.statement.FileCipherException;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.SecureRandom;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,13 +49,14 @@ class AesGcmFileCipherTest {
         var plaintext = "the quick brown fox jumps over the lazy dog".getBytes();
         var iv = cipher.generateInitializationVector();
         var dek = cipher.generateDek();
-        var ciphertextBytes = new ByteArrayOutputStream();
 
         // When
-        cipher.encrypt(new ByteArrayInputStream(plaintext), ciphertextBytes, iv, dek);
-        var decrypted = cipher.decrypt(ciphertextBytes.toByteArray(), dek);
+        var ciphertext = cipher.encryptingStream(new ByteArrayInputStream(plaintext), iv, dek)
+                .readAllBytes();
+        var decrypted = cipher.decrypt(ciphertext, dek);
 
         // Then
+        assertThat(ciphertext).hasSize((int) cipher.ciphertextLength(plaintext.length));
         assertThat(decrypted).isEqualTo(plaintext);
     }
 
@@ -65,11 +65,11 @@ class AesGcmFileCipherTest {
         // Given
         var iv = cipher.generateInitializationVector();
         var dek = cipher.generateDek();
-        var ciphertextBytes = new ByteArrayOutputStream();
 
         // When
-        cipher.encrypt(new ByteArrayInputStream(new byte[0]), ciphertextBytes, iv, dek);
-        var decrypted = cipher.decrypt(ciphertextBytes.toByteArray(), dek);
+        var ciphertext = cipher.encryptingStream(new ByteArrayInputStream(new byte[0]), iv, dek)
+                .readAllBytes();
+        var decrypted = cipher.decrypt(ciphertext, dek);
 
         // Then
         assertThat(decrypted).isEmpty();
@@ -82,14 +82,57 @@ class AesGcmFileCipherTest {
         new SecureRandom().nextBytes(plaintext);
         var iv = cipher.generateInitializationVector();
         var dek = cipher.generateDek();
-        var ciphertextBytes = new ByteArrayOutputStream();
 
         // When
-        cipher.encrypt(new ByteArrayInputStream(plaintext), ciphertextBytes, iv, dek);
-        var decrypted = cipher.decrypt(ciphertextBytes.toByteArray(), dek);
+        var ciphertext = cipher.encryptingStream(new ByteArrayInputStream(plaintext), iv, dek)
+                .readAllBytes();
+        var decrypted = cipher.decrypt(ciphertext, dek);
 
         // Then
         assertThat(decrypted).isEqualTo(plaintext);
+    }
+
+    @Test
+    void GivenPlaintextLength_WhenCiphertextLength_ThenReturnsIvPlusPlaintextPlusTagLength() {
+        // Given
+        var plaintextLength = 1_000L;
+
+        // When
+        var ciphertextLength = cipher.ciphertextLength(plaintextLength);
+
+        // Then: 12-byte IV + plaintext + 16-byte GCM tag
+        assertThat(ciphertextLength).isEqualTo(1_000L + 12 + 16);
+    }
+
+    @Test
+    void GivenSameIvDekAndPlaintext_WhenEncryptingStreamCalledTwice_ThenCiphertextBytesAreIdentical()
+            throws IOException {
+        // Given: a retried SDK call must produce byte-identical ciphertext
+        var plaintext = "the quick brown fox jumps over the lazy dog".getBytes();
+        var iv = cipher.generateInitializationVector();
+        var dek = cipher.generateDek();
+
+        // When
+        var first = cipher.encryptingStream(new ByteArrayInputStream(plaintext), iv, dek)
+                .readAllBytes();
+        var second = cipher.encryptingStream(new ByteArrayInputStream(plaintext), iv, dek)
+                .readAllBytes();
+
+        // Then
+        assertThat(first).isEqualTo(second);
+    }
+
+    @Test
+    void GivenCipherInitializationFails_WhenEncryptingStream_ThenPlaintextStreamIsClosedBeforeThrowing() {
+        // Given: cipher init fails before plaintext is wrapped into the returned stream
+        var iv = cipher.generateInitializationVector();
+        var invalidDek = new byte[] {1, 2, 3}; // not a valid AES key length
+        var plaintext = new TrackingInputStream(new ByteArrayInputStream("data".getBytes()));
+
+        // When / Then
+        assertThatThrownBy(() -> cipher.encryptingStream(plaintext, iv, invalidDek))
+                .isInstanceOf(IOException.class);
+        assertThat(plaintext.closed).isTrue();
     }
 
     @Test
@@ -116,9 +159,8 @@ class AesGcmFileCipherTest {
         // Given
         var iv = cipher.generateInitializationVector();
         var dek = cipher.generateDek();
-        var ciphertextBytes = new ByteArrayOutputStream();
-        cipher.encrypt(new ByteArrayInputStream("some data".getBytes()), ciphertextBytes, iv, dek);
-        var corrupted = ciphertextBytes.toByteArray();
+        var corrupted = cipher.encryptingStream(new ByteArrayInputStream("some data".getBytes()), iv, dek)
+                .readAllBytes();
         corrupted[corrupted.length - 1] ^= 0xFF;
 
         // When / Then: the GCM tag check must fail eagerly, before any plaintext is exposed
@@ -134,11 +176,11 @@ class AesGcmFileCipherTest {
         var iv = cipher.generateInitializationVector();
         var dek = cipher.generateDek();
         var otherDek = cipher.generateDek();
-        var ciphertextBytes = new ByteArrayOutputStream();
-        cipher.encrypt(new ByteArrayInputStream("some data".getBytes()), ciphertextBytes, iv, dek);
+        var ciphertext = cipher.encryptingStream(new ByteArrayInputStream("some data".getBytes()), iv, dek)
+                .readAllBytes();
 
         // When / Then
-        assertThatThrownBy(() -> cipher.decrypt(ciphertextBytes.toByteArray(), otherDek))
+        assertThatThrownBy(() -> cipher.decrypt(ciphertext, otherDek))
                 .isInstanceOf(FileCipherException.class)
                 .hasMessageContaining("integrity");
     }
@@ -225,5 +267,19 @@ class AesGcmFileCipherTest {
         assertThatThrownBy(() -> cipher.unwrapDek(tooShort))
                 .isInstanceOf(FileCipherException.class)
                 .hasMessageContaining("Unrecognised DEK wrap format");
+    }
+
+    private static final class TrackingInputStream extends java.io.FilterInputStream {
+        private boolean closed;
+
+        TrackingInputStream(java.io.InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public void close() throws IOException {
+            closed = true;
+            super.close();
+        }
     }
 }

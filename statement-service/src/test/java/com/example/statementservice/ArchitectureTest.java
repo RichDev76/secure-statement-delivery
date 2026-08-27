@@ -11,6 +11,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.example.statementservice.infrastructure.security.PublicEndpoint;
+import com.example.statementservice.statement.StatementService;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -19,6 +20,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import java.io.File;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 
 @AnalyzeClasses(packages = ArchitectureTest.ROOT, importOptions = ImportOption.DoNotIncludeTests.class)
@@ -117,4 +119,22 @@ class ArchitectureTest {
             .resideOutsideOfPackage("..infrastructure..")
             .should()
             .dependOnClassesThat(resideInAnyPackage("org.springframework.jdbc..", "javax.sql..", "java.sql.."));
+
+    // A transaction around uploadStatement (method- or class-level) would hold a DB connection
+    // across the S3 put and defeat the compensating delete on persist failure.
+    @ArchTest
+    static final ArchRule uploadStatementMethodIsNotTransactional = methods()
+            .that()
+            .haveName("uploadStatement")
+            .and()
+            .areDeclaredIn(StatementService.class)
+            .should()
+            .notBeMetaAnnotatedWith(Transactional.class);
+
+    @ArchTest
+    static final ArchRule statementServiceClassIsNotTransactional = noClasses()
+            .that()
+            .haveFullyQualifiedName(StatementService.class.getName())
+            .should()
+            .beMetaAnnotatedWith(Transactional.class);
 }

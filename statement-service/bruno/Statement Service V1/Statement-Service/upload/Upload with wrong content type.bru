@@ -41,7 +41,7 @@ tests {
 }
 
 docs {
-  Same valid PDF bytes as the happy path (passes the magic-number check), but the multipart part's declared
-  content-type is overridden to text/plain — the content-type check runs after the magic-number check and before
-  the digest check, so this is a clean 415, not a 400.
+  Same valid PDF bytes as the happy path, but the multipart part's declared content-type is overridden to
+  text/plain — the content-type check runs before any file content is read (only the not-empty check precedes
+  it), so this is a clean 415, not a 400, regardless of what the bytes contain.
 }

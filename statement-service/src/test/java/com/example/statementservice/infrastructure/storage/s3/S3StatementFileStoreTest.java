@@ -12,8 +12,10 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.statement.StatementStorageUnavailableException;
+import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +30,8 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
@@ -81,7 +85,8 @@ class S3StatementFileStoreTest {
                 .thenReturn(PutObjectResponse.builder().build());
 
         // When
-        var reference = fileStore.store(id, "123456789", LocalDate.of(2026, 7, 1), out -> out.write(content));
+        var reference = fileStore.store(
+                id, "123456789", LocalDate.of(2026, 7, 1), content.length, () -> new ByteArrayInputStream(content));
 
         // Then
         var requestCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
@@ -91,6 +96,7 @@ class S3StatementFileStoreTest {
         assertThat(requestCaptor.getValue().bucket()).isEqualTo(BUCKET);
         assertThat(requestCaptor.getValue().key()).isEqualTo(reference);
         assertThat(reference).endsWith(id + ".pdf.enc").contains("/2026/07/");
+        assertThat(bodyCaptor.getValue().optionalContentLength()).hasValue((long) content.length);
         assertThat(bodyCaptor.getValue().contentStreamProvider().newStream().readAllBytes())
                 .isEqualTo(content);
     }
@@ -104,8 +110,10 @@ class S3StatementFileStoreTest {
         var date = LocalDate.of(2026, 3, 15);
 
         // When
-        var first = fileStore.store(UUID.randomUUID(), accountNumber, date, out -> out.write("a".getBytes()));
-        var second = fileStore.store(UUID.randomUUID(), accountNumber, date, out -> out.write("b".getBytes()));
+        var first = fileStore.store(
+                UUID.randomUUID(), accountNumber, date, 1, () -> new ByteArrayInputStream("a".getBytes()));
+        var second = fileStore.store(
+                UUID.randomUUID(), accountNumber, date, 1, () -> new ByteArrayInputStream("b".getBytes()));
 
         // Then
         assertThat(first).isNotEqualTo(second);
@@ -121,13 +129,88 @@ class S3StatementFileStoreTest {
 
         // When
         var januaryRef = fileStore.store(
-                UUID.randomUUID(), accountNumber, LocalDate.of(2026, 1, 10), out -> out.write("x".getBytes()));
+                UUID.randomUUID(),
+                accountNumber,
+                LocalDate.of(2026, 1, 10),
+                1,
+                () -> new ByteArrayInputStream("x".getBytes()));
         var decemberRef = fileStore.store(
-                UUID.randomUUID(), accountNumber, LocalDate.of(2026, 12, 10), out -> out.write("y".getBytes()));
+                UUID.randomUUID(),
+                accountNumber,
+                LocalDate.of(2026, 12, 10),
+                1,
+                () -> new ByteArrayInputStream("y".getBytes()));
 
         // Then
         assertThat(januaryRef).contains("/2026/01/");
         assertThat(decemberRef).contains("/2026/12/");
+    }
+
+    @Test
+    void GivenStreamSupplierInvokedTwiceByCapturedProvider_WhenStored_ThenBothInvocationsYieldFreshIndependentStreams()
+            throws IOException {
+        // Given: an SDK retry calls newStream() again and must get an independent stream
+        var content = "retry-safe-bytes".getBytes();
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().build());
+
+        // When
+        fileStore.store(
+                UUID.randomUUID(),
+                "123456789",
+                LocalDate.of(2026, 7, 1),
+                content.length,
+                () -> new ByteArrayInputStream(content));
+
+        // Then
+        var bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client).putObject(any(PutObjectRequest.class), bodyCaptor.capture());
+        var provider = bodyCaptor.getValue().contentStreamProvider();
+        assertThat(provider.newStream().readAllBytes()).isEqualTo(content);
+        assertThat(provider.newStream().readAllBytes()).isEqualTo(content);
+    }
+
+    @Test
+    void GivenProviderNewStreamCalledAgain_WhenSimulatingAnSdkRetry_ThenThePriorAttemptsStreamIsClosed()
+            throws IOException {
+        // Given: the SDK only closes the last stream a provider hands out, so a retry must not
+        // leak the previous attempt's stream
+        var opened = new java.util.ArrayList<TrackingInputStream>();
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().build());
+
+        // When
+        fileStore.store(UUID.randomUUID(), "123456789", LocalDate.of(2026, 7, 1), 1, () -> {
+            var stream = new TrackingInputStream(new ByteArrayInputStream(new byte[] {1}));
+            opened.add(stream);
+            return stream;
+        });
+        var bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
+        verify(s3Client).putObject(any(PutObjectRequest.class), bodyCaptor.capture());
+        var provider = bodyCaptor.getValue().contentStreamProvider();
+        provider.newStream(); // first attempt
+        provider.newStream(); // simulated retry
+
+        // Then
+        assertThat(opened.get(0).closed).isTrue();
+    }
+
+    @Test
+    void GivenSourceStreamFailsWhileSdkReadsIt_WhenStoring_ThenIOExceptionIsThrownNotUncheckedIOException() {
+        // Given: a source-read failure must surface as IOException, not UncheckedIOException
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenAnswer(invocation -> {
+                    RequestBody body = invocation.getArgument(1);
+                    body.contentStreamProvider().newStream();
+                    return PutObjectResponse.builder().build();
+                });
+
+        // When / Then
+        assertThatThrownBy(() -> fileStore.store(UUID.randomUUID(), "123456789", LocalDate.of(2026, 7, 1), 1, () -> {
+                    throw new IOException("source read failed");
+                }))
+                .isInstanceOf(IOException.class)
+                .isNotInstanceOf(UncheckedIOException.class);
     }
 
     @Test
@@ -142,7 +225,11 @@ class S3StatementFileStoreTest {
 
         // When / Then
         assertThatThrownBy(() -> fileStore.store(
-                        UUID.randomUUID(), "123456789", LocalDate.of(2026, 7, 1), out -> out.write("x".getBytes())))
+                        UUID.randomUUID(),
+                        "123456789",
+                        LocalDate.of(2026, 7, 1),
+                        1,
+                        () -> new ByteArrayInputStream("x".getBytes())))
                 .isInstanceOf(IOException.class)
                 .extracting(Throwable::getMessage)
                 .asString()
@@ -224,6 +311,42 @@ class S3StatementFileStoreTest {
     }
 
     @Test
+    void GivenReference_WhenDeleted_ThenDeleteObjectIsCalledWithSameBucketAndKey() throws IOException {
+        // Given
+        var reference = "statements/abc123/2026/07/some-id.pdf.enc";
+        when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
+                .thenReturn(DeleteObjectResponse.builder().build());
+
+        // When
+        fileStore.delete(reference);
+
+        // Then
+        var requestCaptor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        verify(s3Client).deleteObject(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().bucket()).isEqualTo(BUCKET);
+        assertThat(requestCaptor.getValue().key()).isEqualTo(reference);
+    }
+
+    @Test
+    void GivenDeleteObjectFails_WhenDeleting_ThenIOExceptionHidesDetailsAndCarriesCause() {
+        // Given: the caller logs cleanup failures once, so delete itself stays silent
+        var failure = S3Exception.builder()
+                .statusCode(500)
+                .message("internal failure")
+                .build();
+        when(s3Client.deleteObject(any(DeleteObjectRequest.class))).thenThrow(failure);
+
+        // When / Then
+        assertThatThrownBy(() -> fileStore.delete("statements/abc123/2026/07/some-id.pdf.enc"))
+                .isInstanceOf(IOException.class)
+                .hasCause(failure)
+                .extracting(Throwable::getMessage)
+                .asString()
+                .doesNotContain(BUCKET)
+                .doesNotContain("internal failure");
+    }
+
+    @Test
     void GivenStorageIsUnreachable_WhenCheckingExistence_ThenStatementStorageUnavailableExceptionIsThrown() {
         // Given: a non-NoSuchKey S3 failure must not be miscategorized as "file missing" (ADR 0021),
         // and must not leak the raw SDK exception type out of the storage adapter either.
@@ -237,5 +360,19 @@ class S3StatementFileStoreTest {
         assertThatThrownBy(() -> fileStore.exists("statements/abc123/2026/07/some-id.pdf.enc"))
                 .isInstanceOf(StatementStorageUnavailableException.class)
                 .hasCause(failure);
+    }
+
+    private static final class TrackingInputStream extends java.io.FilterInputStream {
+        private boolean closed;
+
+        TrackingInputStream(java.io.InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public void close() throws IOException {
+            closed = true;
+            super.close();
+        }
     }
 }

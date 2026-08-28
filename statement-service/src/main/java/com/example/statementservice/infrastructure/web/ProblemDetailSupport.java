@@ -5,7 +5,7 @@ import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 
-public class CommonUtil {
+public class ProblemDetailSupport {
 
     public static final String HTTP = "http";
     public static final String HTTPS = "https";
@@ -20,7 +20,7 @@ public class CommonUtil {
         return problemDetail;
     }
 
-    public static URI buildProblemDetailTypeURI(HttpServletRequest request, String contextPath) {
+    public static URI buildProblemDetailTypeURI(HttpServletRequest request, String typePathSegment) {
         var scheme = request.getScheme();
         var serverName = request.getServerName();
         int serverPort = request.getServerPort();
@@ -31,8 +31,8 @@ public class CommonUtil {
             baseUrl.append(":").append(serverPort);
         }
 
-        if (contextPath != null && !contextPath.isEmpty()) {
-            baseUrl.append(contextPath);
+        if (typePathSegment != null && !typePathSegment.isEmpty()) {
+            baseUrl.append(typePathSegment);
         }
 
         return URI.create(baseUrl.toString());

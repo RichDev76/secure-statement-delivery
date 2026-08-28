@@ -20,6 +20,8 @@ RUN chmod +x /usr/local/bin/vault-docker-entrypoint.sh
 # Ensure directory is present for config and init artifacts
 RUN mkdir -p /vault/config /vault/data /vault/init && chown -R vault:vault /vault
 
+EXPOSE 8200
+
 # Use the entrypoint which renders template and starts vault
 ENTRYPOINT ["/usr/local/bin/vault-docker-entrypoint.sh"]
 CMD ["server", "-config=/vault/config/vault.hcl"]

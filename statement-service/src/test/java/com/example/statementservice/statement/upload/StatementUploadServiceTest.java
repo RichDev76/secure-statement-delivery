@@ -44,7 +44,7 @@ import org.springframework.web.multipart.MultipartFile;
 class StatementUploadServiceTest {
 
     @Mock
-    private ValidationUtil validationUtil;
+    private UploadRequestValidator uploadRequestValidator;
 
     @Mock
     private StatementService statementService;
@@ -74,6 +74,7 @@ class StatementUploadServiceTest {
                 new MockMultipartFile("file", "statement.pdf", "application/pdf", "test content".getBytes()));
         expectedContentHash = "c".repeat(64);
         lenient().when(contentDigest.hexOf(any(InputStream.class))).thenReturn(expectedContentHash);
+        lenient().when(uploadRequestValidator.isValidAccountNumber(any())).thenCallRealMethod();
         testAccountNumber = "123456789";
         testDate = "2024-01-15";
         testRequestInfo = new RequestInfo("192.168.1.1", "Mozilla/5.0", "testUser");
@@ -87,7 +88,7 @@ class StatementUploadServiceTest {
 
     @Test
     void GivenValidUpload_WhenUpload_ThenReturnsResponseAndRecordsSuccessAudit() {
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         doNothing().when(auditService).record(any(), any(), any(), any(), any(), any());
@@ -95,7 +96,7 @@ class StatementUploadServiceTest {
                 testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
         assertThat(result).isNotNull();
         assertThat(result).isEqualTo(testUploadResponse);
-        verify(validationUtil).validateFileUploadInputs(testFile, testAccountNumber, testDate);
+        verify(uploadRequestValidator).validateFileUploadInputs(testFile, testAccountNumber, testDate);
         verify(statementService)
                 .uploadStatement(
                         eq(testAccountNumber),
@@ -109,7 +110,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenNullPerformedBy_WhenUpload_ThenAdminIsUsedAsActor() {
         RequestInfo infoWithNullUser = new RequestInfo("192.168.1.1", "Mozilla/5.0", null);
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, infoWithNullUser);
@@ -119,23 +120,23 @@ class StatementUploadServiceTest {
 
     @Test
     void GivenUploadRequest_WhenUpload_ThenInputsAreValidatedBeforeProcessing() {
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
-        verify(validationUtil).validateFileUploadInputs(testFile, testAccountNumber, testDate);
+        verify(uploadRequestValidator).validateFileUploadInputs(testFile, testAccountNumber, testDate);
     }
 
     @Test
     void GivenValidationFailure_WhenUpload_ThenRethrowsAndRecordsFailureAudit() {
         doThrow(new InvalidMessageDigestException("Invalid digest"))
-                .when(validationUtil)
+                .when(uploadRequestValidator)
                 .validateFileUploadInputs(any(), any(), any());
         assertThatThrownBy(() -> statementUploadService.upload(
                         testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("Invalid digest");
-        verify(validationUtil).validateFileUploadInputs(any(), any(), any());
+        verify(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         verify(statementService, never()).uploadStatement(any(), any(), any(), any(), any());
         ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(auditService)
@@ -153,7 +154,7 @@ class StatementUploadServiceTest {
     void GivenDigestMismatch_WhenUpload_ThenRecordsUploadFailedAuditWithDigestMismatchReasonAndRethrows() {
         // Given
         doThrow(new DigestMismatchException("X-Message-Digest does not match file contents"))
-                .when(validationUtil)
+                .when(uploadRequestValidator)
                 .validateMessageDigest(any(), any());
 
         // When / Then
@@ -169,7 +170,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenStorageFailureDuringUpload_WhenUpload_ThenRecordsUploadFailedAuditWithUploadErrorReason() {
         // Given
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenThrow(new StatementUploadException("Failed to encrypt and store file"));
 
@@ -186,7 +187,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenDuplicateStatement_WhenUpload_ThenRecordsUploadFailedAuditWithDuplicateStatementReason() {
         // Given
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenThrow(new DuplicateStatementException(
                         "A statement already exists for this account number and statement date"));
@@ -204,7 +205,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenUnexpectedRuntimeFailure_WhenUpload_ThenRecordsUploadFailedAuditWithUnexpectedReason() {
         // Given
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("boom"));
 
@@ -222,7 +223,7 @@ class StatementUploadServiceTest {
         // Given: the rejected value must not be persisted as an account identifier
         var garbageAccountNumber = "'; DROP TABLE statements; --";
         doThrow(new InvalidAccountNumberException("Invalid account number"))
-                .when(validationUtil)
+                .when(uploadRequestValidator)
                 .validateFileUploadInputs(any(), any(), any());
 
         // When / Then
@@ -236,7 +237,7 @@ class StatementUploadServiceTest {
     void GivenFailureAuditRecordingAlsoThrows_WhenUpload_ThenOriginalExceptionStillPropagates() {
         // Given
         doThrow(new DigestMismatchException("mismatch"))
-                .when(validationUtil)
+                .when(uploadRequestValidator)
                 .validateFileUploadInputs(any(), any(), any());
         doThrow(new RuntimeException("audit down")).when(auditService).record(any(), any(), any(), any(), any(), any());
 
@@ -250,7 +251,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenInvalidAccountNumber_WhenUpload_ThenThrowsWithoutCallingStatementService() {
         doThrow(new InvalidAccountNumberException("Invalid account"))
-                .when(validationUtil)
+                .when(uploadRequestValidator)
                 .validateFileUploadInputs(any(), any(), any());
         assertThatThrownBy(() -> statementUploadService.upload(
                         testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
@@ -261,7 +262,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenInvalidDate_WhenUpload_ThenThrowsWithoutCallingStatementService() {
         doThrow(new InvalidDateException("Invalid date"))
-                .when(validationUtil)
+                .when(uploadRequestValidator)
                 .validateFileUploadInputs(any(), any(), any());
         assertThatThrownBy(() -> statementUploadService.upload(
                         testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo))
@@ -271,7 +272,7 @@ class StatementUploadServiceTest {
 
     @Test
     void GivenUploadRequest_WhenUpload_ThenAuditDetailsIncludeIpAndUserAgent() {
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
@@ -284,7 +285,7 @@ class StatementUploadServiceTest {
 
     @Test
     void GivenSuccessfulUpload_WhenUpload_ThenRecordsUploadSuccessAction() {
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
@@ -307,7 +308,7 @@ class StatementUploadServiceTest {
                 .fileSize(1024L)
                 .uploadedAt(OffsetDateTime.now())
                 .build();
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(response);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
@@ -317,7 +318,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenAuditRecordingThrows_WhenUpload_ThenUploadStillSucceeds() {
 
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         doThrow(new RuntimeException("Audit failure"))
@@ -332,7 +333,7 @@ class StatementUploadServiceTest {
 
     @Test
     void GivenIsoDateString_WhenUpload_ThenDateIsParsedToLocalDate() {
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, "2024-12-25", testRequestInfo);
@@ -341,7 +342,7 @@ class StatementUploadServiceTest {
 
     @Test
     void GivenUploadRequest_WhenUpload_ThenAllParametersReachStatementService() {
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);
@@ -357,7 +358,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenCustomPerformedBy_WhenUpload_ThenThatActorIsUsedThroughout() {
         RequestInfo customUser = new RequestInfo("10.0.0.1", "Chrome", "customUser");
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, customUser);
@@ -368,7 +369,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenCustomClientIp_WhenUpload_ThenAuditDetailsCarryThatIp() {
         RequestInfo customInfo = new RequestInfo("203.0.113.1", "Safari", "user");
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, customInfo);
@@ -381,7 +382,7 @@ class StatementUploadServiceTest {
     @Test
     void GivenValidUpload_WhenUpload_ThenSameStreamedHashIsValidatedAgainstHeaderAndPersisted() {
         // Given
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
 
@@ -391,7 +392,7 @@ class StatementUploadServiceTest {
         // Then
         var validatedHash = ArgumentCaptor.forClass(String.class);
         var persistedHash = ArgumentCaptor.forClass(String.class);
-        verify(validationUtil).validateMessageDigest(validatedHash.capture(), eq(testMessageDigest));
+        verify(uploadRequestValidator).validateMessageDigest(validatedHash.capture(), eq(testMessageDigest));
         verify(statementService).uploadStatement(any(), any(), any(), any(), persistedHash.capture());
         assertThat(validatedHash.getValue()).isEqualTo(expectedContentHash);
         assertThat(persistedHash.getValue()).isEqualTo(expectedContentHash);
@@ -419,7 +420,7 @@ class StatementUploadServiceTest {
 
     @Test
     void GivenUploadAudit_WhenUpload_ThenSignedLinkIdIsNull() {
-        doNothing().when(validationUtil).validateFileUploadInputs(any(), any(), any());
+        doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
                 .thenReturn(testUploadResponse);
         statementUploadService.upload(testMessageDigest, testFile, testAccountNumber, testDate, testRequestInfo);

@@ -2,6 +2,7 @@ package com.example.statementservice.infrastructure.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.example.statementservice.infrastructure.web.SecurityProblemDetailFactory;
 import com.example.statementservice.support.LogCapture;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -48,7 +49,7 @@ class SecurityConfigTest {
         var request = new MockHttpServletRequest("GET", "/api/v1/statements/download/statement-2026-07.pdf");
         var response = new MockHttpServletResponse();
 
-        try (var logs = LogCapture.forClass(SecurityConfig.class)) {
+        try (var logs = LogCapture.forClass(SecurityProblemDetailFactory.class)) {
             // When
             handler.handle(request, response, new org.springframework.security.access.AccessDeniedException("denied"));
 

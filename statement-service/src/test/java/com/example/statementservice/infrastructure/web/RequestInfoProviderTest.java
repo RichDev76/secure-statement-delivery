@@ -1,8 +1,10 @@
 package com.example.statementservice.infrastructure.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.example.statementservice.support.LogCapture;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,9 +67,9 @@ class RequestInfoProviderTest {
         when(authentication.getName()).thenReturn("john.doe");
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("192.168.1.100", result.getClientIp());
-        assertEquals("Mozilla/5.0", result.getUserAgent());
-        assertEquals("john.doe", result.getPerformedBy());
+        assertEquals("192.168.1.100", result.clientIp());
+        assertEquals("Mozilla/5.0", result.userAgent());
+        assertEquals("john.doe", result.performedBy());
     }
 
     @Test
@@ -81,9 +83,9 @@ class RequestInfoProviderTest {
         when(authentication.isAuthenticated()).thenReturn(false);
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("10.0.0.5", result.getClientIp());
-        assertEquals("Chrome/90.0", result.getUserAgent());
-        assertEquals("system", result.getPerformedBy());
+        assertEquals("10.0.0.5", result.clientIp());
+        assertEquals("Chrome/90.0", result.userAgent());
+        assertEquals("system", result.performedBy());
     }
 
     @Test
@@ -96,9 +98,9 @@ class RequestInfoProviderTest {
         when(securityContext.getAuthentication()).thenReturn(null);
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("172.16.0.1", result.getClientIp());
-        assertEquals("Safari/14.0", result.getUserAgent());
-        assertEquals("system", result.getPerformedBy());
+        assertEquals("172.16.0.1", result.clientIp());
+        assertEquals("Safari/14.0", result.userAgent());
+        assertEquals("system", result.performedBy());
     }
 
     @Test
@@ -110,9 +112,9 @@ class RequestInfoProviderTest {
         when(SecurityContextHolder.getContext()).thenReturn(null);
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("192.168.0.50", result.getClientIp());
-        assertEquals("Edge/91.0", result.getUserAgent());
-        assertEquals("system", result.getPerformedBy());
+        assertEquals("192.168.0.50", result.clientIp());
+        assertEquals("Edge/91.0", result.userAgent());
+        assertEquals("system", result.performedBy());
     }
 
     @Test
@@ -124,9 +126,26 @@ class RequestInfoProviderTest {
         when(SecurityContextHolder.getContext()).thenThrow(new RuntimeException("Auth error"));
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("192.168.10.20", result.getClientIp());
-        assertEquals("Firefox/89.0", result.getUserAgent());
-        assertEquals("system", result.getPerformedBy());
+        assertEquals("192.168.10.20", result.clientIp());
+        assertEquals("Firefox/89.0", result.userAgent());
+        assertEquals("system", result.performedBy());
+    }
+
+    @Test
+    void GivenAuthResolutionThrows_WhenGettingRequestInfo_ThenFailureIsLoggedNotSwallowedSilently() {
+        when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
+        when(requestAttributes.getRequest()).thenReturn(request);
+        when(request.getRemoteAddr()).thenReturn("192.168.10.20");
+        when(request.getHeader("User-Agent")).thenReturn("Firefox/89.0");
+        when(SecurityContextHolder.getContext()).thenThrow(new RuntimeException("Auth error"));
+
+        try (var logs = LogCapture.forClass(RequestInfoProvider.class)) {
+            requestInfoProvider.get();
+
+            assertThat(logs.lines())
+                    .as("a swallowed auth-resolution failure must still be visible, not silent")
+                    .anyMatch(line -> line.contains("system") && line.contains("Auth error"));
+        }
     }
 
     @Test
@@ -138,9 +157,9 @@ class RequestInfoProviderTest {
         when(authentication.getName()).thenReturn("admin");
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("unknown", result.getClientIp());
-        assertEquals("unknown", result.getUserAgent());
-        assertEquals("admin", result.getPerformedBy());
+        assertEquals("unknown", result.clientIp());
+        assertEquals("unknown", result.userAgent());
+        assertEquals("admin", result.performedBy());
     }
 
     @Test
@@ -153,9 +172,9 @@ class RequestInfoProviderTest {
         when(authentication.getName()).thenReturn("testuser");
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("unknown", result.getClientIp());
-        assertEquals("unknown", result.getUserAgent());
-        assertEquals("testuser", result.getPerformedBy());
+        assertEquals("unknown", result.clientIp());
+        assertEquals("unknown", result.userAgent());
+        assertEquals("testuser", result.performedBy());
     }
 
     @Test
@@ -170,9 +189,9 @@ class RequestInfoProviderTest {
         when(authentication.getName()).thenReturn("apiuser");
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("127.0.0.1", result.getClientIp());
-        assertNull(result.getUserAgent()); // Returns null when header is null but request is not
-        assertEquals("apiuser", result.getPerformedBy());
+        assertEquals("127.0.0.1", result.clientIp());
+        assertNull(result.userAgent()); // Returns null when header is null but request is not
+        assertEquals("apiuser", result.performedBy());
     }
 
     @Test
@@ -187,9 +206,9 @@ class RequestInfoProviderTest {
         when(authentication.getName()).thenReturn("service-account");
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertNull(result.getClientIp()); // Returns null when remote address is null but request is not
-        assertEquals("Postman/7.0", result.getUserAgent());
-        assertEquals("service-account", result.getPerformedBy());
+        assertNull(result.clientIp()); // Returns null when remote address is null but request is not
+        assertEquals("Postman/7.0", result.userAgent());
+        assertEquals("service-account", result.performedBy());
     }
 
     @Test
@@ -198,8 +217,8 @@ class RequestInfoProviderTest {
         when(SecurityContextHolder.getContext()).thenReturn(null);
         var result = requestInfoProvider.get();
         assertNotNull(result);
-        assertEquals("unknown", result.getClientIp());
-        assertEquals("unknown", result.getUserAgent());
-        assertEquals("system", result.getPerformedBy());
+        assertEquals("unknown", result.clientIp());
+        assertEquals("unknown", result.userAgent());
+        assertEquals("system", result.performedBy());
     }
 }

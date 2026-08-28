@@ -1,7 +1,6 @@
 package com.example.statementservice.statement;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -19,9 +18,6 @@ public interface StatementRepository extends JpaRepository<Statement, UUID> {
     boolean existsByAccountNumberAndStatementDate(String accountNumber, LocalDate statementDate);
 
     Optional<Statement> findStatementById(UUID id);
-
-    @Query("SELECT s FROM Statement s WHERE s.accountNumber = :accountNumber ORDER BY s.statementDate DESC")
-    Optional<List<Statement>> findAllByAccountNumber(@Param("accountNumber") String accountNumber);
 
     @Query("SELECT s FROM Statement s WHERE s.accountNumber = :accountNumber "
             + "AND (s.statementDate >= :startDate) "

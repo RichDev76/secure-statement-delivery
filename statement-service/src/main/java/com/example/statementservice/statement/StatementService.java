@@ -8,7 +8,6 @@ import java.io.InputStream;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -26,6 +25,7 @@ import org.springframework.stereotype.Service;
 public class StatementService {
 
     public static final String FILE_NAME_SANITIZATION_REGEX = "[^a-zA-Z0-9_-]";
+    public static final String ADMIN_USER = "admin";
 
     private static final String PDF_EXTENSION = ".pdf";
     private static final String FALLBACK_FILE_NAME_STEM = "statement";
@@ -125,34 +125,12 @@ public class StatementService {
         return statementRepository.findByAccountNumber(accountNumber, pageable);
     }
 
-    public List<Statement> getStatementsByAccountNumber(String accountNumber) {
-        return this.statementRepository
-                .findAllByAccountNumber(accountNumber)
-                .orElseThrow(() ->
-                        new StatementNotFoundException("Statement(s) not found for account number: " + accountNumber));
-    }
-
-    public Optional<Statement> getStatementByAccountNumberAndStatementDate(
-            String accountNumber, LocalDate statementDate) {
-        return this.statementRepository.findByAccountNumberAndStatementDate(accountNumber, statementDate);
-    }
-
     public StatementDto toDto(Statement s) {
         return statementEntityMapper.toDto(s);
     }
 
     public StatementDto getStatementDtoById(UUID id) {
         return toDto(getStatementById(id));
-    }
-
-    public List<StatementDto> getStatementsDtoByAccountNumber(String accountNumber) {
-        return statementEntityMapper.toDtos(getStatementsByAccountNumber(accountNumber));
-    }
-
-    public Optional<StatementDto> getStatementDtoByAccountNumberAndStatementDate(
-            String accountNumber, LocalDate statementDate) {
-        return getStatementByAccountNumberAndStatementDate(accountNumber, statementDate)
-                .map(this::toDto);
     }
 
     public Page<Statement> getStatementsByAccountNumberAndDateRange(
@@ -191,7 +169,7 @@ public class StatementService {
         stmt.setEncrypted(true);
         stmt.setSizeBytes(file.getSize());
         stmt.setUploadedAt(OffsetDateTime.now(clock));
-        stmt.setUploadedBy(uploadedBy == null ? "admin" : uploadedBy);
+        stmt.setUploadedBy(uploadedBy == null ? ADMIN_USER : uploadedBy);
         return stmt;
     }
 

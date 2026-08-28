@@ -1,7 +1,7 @@
 package com.example.statementservice.infrastructure.web;
 
-import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
-import static com.example.statementservice.infrastructure.web.CommonUtil.createProblemDetail;
+import static com.example.statementservice.infrastructure.web.ProblemDetailSupport.buildProblemDetailTypeURI;
+import static com.example.statementservice.infrastructure.web.ProblemDetailSupport.createProblemDetail;
 
 import com.example.statementservice.statement.signedlink.SignatureException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,8 +47,7 @@ public class GlobalExceptionHandler {
     // @PreAuthorize denials surface inside MVC; without this the Exception catch-all would answer 500.
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ProblemDetail> handleAccessDenied(HttpServletRequest request) {
-        log.warn("Access denied - path={}, method={}", EndpointLabel.of(request.getRequestURI()), request.getMethod());
-        var problemDetail = SecurityProblemDetailFactory.accessDenied(request);
+        var problemDetail = SecurityProblemDetailFactory.loggedAccessDenied(request);
         return ResponseEntity.status(problemDetail.getStatus())
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(problemDetail);

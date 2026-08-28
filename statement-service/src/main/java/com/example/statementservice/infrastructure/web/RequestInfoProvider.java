@@ -1,12 +1,14 @@
 package com.example.statementservice.infrastructure.web;
 
 import com.example.statementservice.shared.RequestInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+@Slf4j
 @Component
 public class RequestInfoProvider {
 
@@ -51,8 +53,9 @@ public class RequestInfoProvider {
             if (name != null && !name.isBlank()) {
                 return name;
             }
-        } catch (Exception ignored) {
-            // swallow and fall through to system
+        } catch (Exception e) {
+            log.warn(
+                    "Failed to resolve authenticated username, falling back to '{}': {}", SYSTEM_DEFAULT, e.toString());
         }
 
         return SYSTEM_DEFAULT;

@@ -11,12 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.example.statementservice.audit.AuditAction;
-import com.example.statementservice.audit.AuditLog;
-import com.example.statementservice.audit.AuditLogRepository;
 import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.statement.FileCipherException;
 import com.example.statementservice.statement.Statement;
@@ -31,7 +26,6 @@ import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,7 +36,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DownloadService Unit Tests")
@@ -61,9 +54,6 @@ class DownloadServiceTest {
 
     @Mock
     private SignedLinkRateLimiter rateLimiter;
-
-    @Mock
-    private AuditLogRepository auditLogRepository;
 
     @InjectMocks
     private DownloadService downloadService;
@@ -110,8 +100,8 @@ class DownloadServiceTest {
         // are lenient to avoid UnnecessaryStubbingException in the tests that don't use them.
         lenient().when(rateLimiter.tryConsume(testLinkId)).thenReturn(true);
         lenient()
-                .when(auditLogRepository.findBySignedLinkIdAndAction(any(), any()))
-                .thenReturn(List.of());
+                .when(auditService.hasPriorSuccessfulDownloadFromDifferentContext(any(), any(), any()))
+                .thenReturn(false);
     }
 
     @Test
@@ -560,7 +550,7 @@ class DownloadServiceTest {
         when(statementService.fileExists(testStatement)).thenReturn(true);
         var mockStream = new ByteArrayInputStream("decrypted content".getBytes());
         when(statementService.openDecryptedFile(testStatement)).thenReturn(mockStream);
-        when(auditLogRepository.findBySignedLinkIdAndAction(testLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue()))
+        when(auditService.hasPriorSuccessfulDownloadFromDifferentContext(testLinkId, testClientIp, testUserAgent))
                 .thenThrow(new RuntimeException("audit query failed"));
 
         // When
@@ -583,32 +573,19 @@ class DownloadServiceTest {
         when(statementService.fileExists(testStatement)).thenReturn(true);
         when(statementService.openDecryptedFile(testStatement))
                 .thenReturn(new ByteArrayInputStream("decrypted content".getBytes()));
+        when(auditService.hasPriorSuccessfulDownloadFromDifferentContext(testLinkId, testClientIp, testUserAgent))
+                .thenReturn(true);
 
-        var priorDetails = Map.<String, Object>of("ip", "10.0.0.99", "userAgent", "curl/8.0");
-        var priorLog = new AuditLog();
-        priorLog.setDetails(priorDetails);
-        when(auditLogRepository.findBySignedLinkIdAndAction(testLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue()))
-                .thenReturn(List.of(priorLog));
-
-        var downloadServiceLogger = (Logger) LoggerFactory.getLogger(DownloadService.class);
-        var appender = new ListAppender<ILoggingEvent>();
-        appender.start();
-        downloadServiceLogger.addAppender(appender);
-
-        try {
+        try (var logs = LogCapture.forClass(DownloadService.class)) {
             // When
             var result = downloadService.validateAndStreamDetailed(
                     testToken, testExpires, testLinkId, FILE_NAME, testClientIp, testUserAgent, testPerformedBy);
 
             // Then
             assertThat(result.outcome()).isEqualTo(DownloadOutcome.OK);
-            assertThat(appender.list)
-                    .extracting(ILoggingEvent::getFormattedMessage)
-                    .anySatisfy(message -> assertThat(message)
-                            .contains("different ip/userAgent")
-                            .contains(testLinkId.toString()));
-        } finally {
-            downloadServiceLogger.detachAppender(appender);
+            assertThat(logs.lines()).anySatisfy(message -> assertThat(message)
+                    .contains("different ip/userAgent")
+                    .contains(testLinkId.toString()));
         }
     }
 }

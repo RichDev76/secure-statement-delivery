@@ -17,7 +17,6 @@ public record StatementDto(
         URI downloadLink) {
 
     public StatementDto withDownloadLink(URI downloadLink) {
-        return new StatementDto(
-                statementId, accountNumber, statementDate, uploadedAt, fileSize, fileName, downloadLink);
+        return toBuilder().downloadLink(downloadLink).build();
     }
 }

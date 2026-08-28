@@ -1,7 +1,7 @@
 package com.example.statementservice.statement.infrastructure;
 
-import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
-import static com.example.statementservice.infrastructure.web.CommonUtil.createProblemDetail;
+import static com.example.statementservice.infrastructure.web.ProblemDetailSupport.buildProblemDetailTypeURI;
+import static com.example.statementservice.infrastructure.web.ProblemDetailSupport.createProblemDetail;
 
 import com.example.statementservice.statement.StatementNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;

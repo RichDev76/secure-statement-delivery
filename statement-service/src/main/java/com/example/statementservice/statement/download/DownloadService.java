@@ -1,7 +1,7 @@
 package com.example.statementservice.statement.download;
 
 import com.example.statementservice.audit.AuditAction;
-import com.example.statementservice.audit.AuditLogRepository;
+import com.example.statementservice.audit.AuditDetailKeys;
 import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementService;
@@ -14,7 +14,6 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +25,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class DownloadService {
 
-    private static final String AUDIT_KEY_IP = "ip";
-    private static final String AUDIT_KEY_USER_AGENT = "userAgent";
     private static final String AUDIT_KEY_TOKEN = "token";
-    private static final String AUDIT_KEY_REASON = "reason";
-    private static final String AUDIT_KEY_ERROR = "error";
-    private static final String AUDIT_UNKNOWN = "unknown";
     private static final String STAGE_EXISTENCE_CHECK = "checking file existence";
     private static final String STAGE_OPENING_FILE = "opening file";
 
@@ -39,7 +33,6 @@ public class DownloadService {
     private final StatementService statementService;
     private final AuditService auditService;
     private final SignedLinkRateLimiter rateLimiter;
-    private final AuditLogRepository auditLogRepository;
 
     public DownloadStreamResult validateAndStreamDetailed(
             String token,
@@ -51,55 +44,77 @@ public class DownloadService {
             String performedBy) {
         log.debug("Download request (detailed) - token: {}, ip: {}, user: {}", maskToken(token), clientIp, performedBy);
 
-        // Ahead of signature validation deliberately: a signature-guessing flood against a known
-        // real linkId is throttled too, not just genuinely valid requests.
-        if (linkId != null && !rateLimiter.tryConsume(linkId)) {
-            log.warn("Rate limit exceeded - linkId: {}", linkId);
-            auditService.record(
-                    AuditAction.DOWNLOAD_FAILED.getValue(),
-                    null,
-                    null,
-                    linkId,
-                    performedBy,
-                    getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.RATE_LIMITED.getValue()));
-            return new DownloadStreamResult(DownloadOutcome.RATE_LIMITED, Optional.empty());
+        var rateLimited = enforceRateLimit(linkId, token, clientIp, userAgent, performedBy);
+        if (rateLimited.isPresent()) {
+            return rateLimited.get();
         }
 
-        // Step 1: Validate link
-        var result = signedLinkService.validate(token, expires, linkId, fileName);
-        if (!result.isValid()) {
-            handleInvalidLink(result, token, clientIp, userAgent, performedBy);
-            var outcome = getDownloadOutcome(result);
-            return new DownloadStreamResult(outcome, Optional.empty());
+        var validation = signedLinkService.validate(token, expires, linkId, fileName);
+        var invalidLink = requireValidLink(validation, token, clientIp, userAgent, performedBy);
+        if (invalidLink.isPresent()) {
+            return invalidLink.get();
         }
 
-        // Step 2: Fetch statement
-        var link = result.getLink();
-        Optional<Statement> statementOpt = statementService.findStatementById(link.getStatementId());
+        var link = validation.link();
+        var statementOpt = statementService.findStatementById(link.getStatementId());
         if (statementOpt.isEmpty()) {
             handleMissingStatement(link, token, clientIp, userAgent, performedBy);
             return new DownloadStreamResult(DownloadOutcome.STATEMENT_NOT_FOUND, Optional.empty());
         }
-
-        // Step 3: Verify file exists
         var statement = statementOpt.get();
-        try {
-            if (!statementService.fileExists(statement)) {
-                handleMissingFile(statement, link, token, clientIp, userAgent, performedBy);
-                return new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
-            }
-        } catch (StatementStorageUnavailableException e) {
-            handleStorageUnavailable(
-                    statement, link, token, clientIp, userAgent, performedBy, STAGE_EXISTENCE_CHECK, e);
-            return new DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty());
+
+        var missingOrUnavailable = ensureFileExists(statement, link, token, clientIp, userAgent, performedBy);
+        if (missingOrUnavailable.isPresent()) {
+            return missingOrUnavailable.get();
         }
 
-        // Step 4: Decrypt and stream
         return decryptAndStream(statement, link, token, clientIp, userAgent, performedBy);
     }
 
+    // Ahead of signature validation deliberately: a signature-guessing flood against a known
+    // real linkId is throttled too, not just genuinely valid requests.
+    private Optional<DownloadStreamResult> enforceRateLimit(
+            UUID linkId, String token, String clientIp, String userAgent, String performedBy) {
+        if (linkId == null || rateLimiter.tryConsume(linkId)) {
+            return Optional.empty();
+        }
+        log.warn("Rate limit exceeded - linkId: {}", linkId);
+        auditService.record(
+                AuditAction.DOWNLOAD_FAILED.getValue(),
+                null,
+                null,
+                linkId,
+                performedBy,
+                getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.RATE_LIMITED.getValue()));
+        return Optional.of(new DownloadStreamResult(DownloadOutcome.RATE_LIMITED, Optional.empty()));
+    }
+
+    private Optional<DownloadStreamResult> requireValidLink(
+            LinkValidationResult result, String token, String clientIp, String userAgent, String performedBy) {
+        if (result.valid()) {
+            return Optional.empty();
+        }
+        handleInvalidLink(result, token, clientIp, userAgent, performedBy);
+        return Optional.of(new DownloadStreamResult(getDownloadOutcome(result), Optional.empty()));
+    }
+
+    private Optional<DownloadStreamResult> ensureFileExists(
+            Statement statement, SignedLink link, String token, String clientIp, String userAgent, String performedBy) {
+        try {
+            if (statementService.fileExists(statement)) {
+                return Optional.empty();
+            }
+            handleMissingFile(statement, link, token, clientIp, userAgent, performedBy);
+            return Optional.of(new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty()));
+        } catch (StatementStorageUnavailableException e) {
+            handleStorageUnavailable(
+                    statement, link, token, clientIp, userAgent, performedBy, STAGE_EXISTENCE_CHECK, e);
+            return Optional.of(new DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty()));
+        }
+    }
+
     private DownloadOutcome getDownloadOutcome(LinkValidationResult result) {
-        return switch (result.getFailureReason()) {
+        return switch (result.failureReason()) {
             case EXPIRED -> DownloadOutcome.LINK_EXPIRED;
             case NOT_FOUND -> DownloadOutcome.STATEMENT_NOT_FOUND;
             default -> DownloadOutcome.INVALID_SIGNATURE;
@@ -109,7 +124,7 @@ public class DownloadService {
     public record DownloadStreamResult(DownloadOutcome outcome, Optional<InputStream> stream) {}
 
     private String getReason(LinkValidationResult result) {
-        return switch (result.getFailureReason()) {
+        return switch (result.failureReason()) {
             case EXPIRED -> DownloadFailureReason.EXPIRED.getValue();
             case NOT_FOUND -> DownloadFailureReason.STATEMENT_NOT_FOUND.getValue();
             default -> DownloadFailureReason.INVALID.getValue();
@@ -118,11 +133,11 @@ public class DownloadService {
 
     private Map<String, Object> getUserAuditDetails(String token, String clientIp, String userAgent, String reason) {
         var details = new HashMap<String, Object>();
-        details.put(AUDIT_KEY_IP, clientIp != null ? clientIp : AUDIT_UNKNOWN);
-        details.put(AUDIT_KEY_USER_AGENT, userAgent != null ? userAgent : AUDIT_UNKNOWN);
+        details.put(AuditDetailKeys.IP, clientIp != null ? clientIp : AuditDetailKeys.UNKNOWN);
+        details.put(AuditDetailKeys.USER_AGENT, userAgent != null ? userAgent : AuditDetailKeys.UNKNOWN);
         details.put(AUDIT_KEY_TOKEN, maskToken(token));
         if (reason != null) {
-            details.put(AUDIT_KEY_REASON, reason);
+            details.put(AuditDetailKeys.REASON, reason);
         }
         return details;
     }
@@ -135,8 +150,8 @@ public class DownloadService {
     private void handleInvalidLink(
             LinkValidationResult result, String token, String clientIp, String userAgent, String performedBy) {
         var reason = getReason(result);
-        var statementId = result.getLink() != null ? result.getLink().getStatementId() : null;
-        var linkId = result.getLink() != null ? result.getLink().getId() : null;
+        var statementId = result.link() != null ? result.link().getStatementId() : null;
+        var linkId = result.link() != null ? result.link().getId() : null;
 
         var accountNumber = fetchAccountNumber(statementId);
 
@@ -231,7 +246,7 @@ public class DownloadService {
             log.error("Decryption failed - statementId: {}, error: {}", statement.getId(), e.getMessage(), e);
             var errorAuditDetails =
                     getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.DECRYPTION_FAILED.getValue());
-            errorAuditDetails.put(AUDIT_KEY_ERROR, e.getMessage());
+            errorAuditDetails.put(AuditDetailKeys.ERROR, e.getMessage());
 
             auditService.record(
                     AuditAction.DOWNLOAD_FAILED.getValue(),
@@ -250,12 +265,7 @@ public class DownloadService {
     // its own not-yet-committed write.
     private void checkForSuspiciousRedemption(SignedLink link, String clientIp, String userAgent) {
         try {
-            var priorSuccesses = auditLogRepository.findBySignedLinkIdAndAction(
-                    link.getId(), AuditAction.DOWNLOAD_SUCCESS.getValue());
-            var suspicious = priorSuccesses.stream()
-                    .anyMatch(prior -> !Objects.equals(prior.getDetails().get(AUDIT_KEY_IP), clientIp)
-                            || !Objects.equals(prior.getDetails().get(AUDIT_KEY_USER_AGENT), userAgent));
-            if (suspicious) {
+            if (auditService.hasPriorSuccessfulDownloadFromDifferentContext(link.getId(), clientIp, userAgent)) {
                 log.warn(
                         "Signed link {} redeemed from a different ip/userAgent than a prior successful download",
                         link.getId());

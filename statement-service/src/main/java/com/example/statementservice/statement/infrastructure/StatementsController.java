@@ -41,9 +41,9 @@ public class StatementsController implements StatementsApi {
                 expires,
                 linkId,
                 fileName,
-                requestInfo.getClientIp(),
-                requestInfo.getUserAgent(),
-                requestInfo.getPerformedBy());
+                requestInfo.clientIp(),
+                requestInfo.userAgent(),
+                requestInfo.performedBy());
         return downloadResponseFactory.build(fileName, result);
     }
 

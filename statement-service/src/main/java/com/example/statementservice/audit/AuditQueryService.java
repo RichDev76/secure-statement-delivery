@@ -2,6 +2,7 @@ package com.example.statementservice.audit;
 
 import com.example.statementservice.shared.InvalidDateException;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +58,7 @@ public class AuditQueryService {
         try {
             var date = LocalDate.parse(dateString.trim());
             if (isEndOfDay) {
-                return date.atTime(23, 59, 59, 999999999)
+                return date.atTime(LocalTime.MAX)
                         .atZone(java.time.ZoneId.systemDefault())
                         .toOffsetDateTime();
             } else {

@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,19 +37,31 @@ public class SignedLinkService {
         var id = idGenerator.newId();
         var expires = OffsetDateTime.now(clock).plus(properties.getExpiry());
         var path = getFilesDownloadPath(fileName);
-        var rawToken = linkSigner.sign(path, expires.toEpochSecond(), HTTP_METHOD, id.toString());
 
-        var link = new SignedLink();
-        link.setId(id);
-        link.setStatementId(statementId);
-        link.setToken(rawToken);
-        link.setTokenHash(contentDigest.hexOf(rawToken.getBytes(StandardCharsets.UTF_8)));
-        link.setExpiresAt(expires);
-        link.setCreatedAt(OffsetDateTime.now(clock));
-        link.setCreatedBy(createdBy);
+        // Catch only the operational failure modes this block's own steps can produce: signing
+        // (SignatureException), persistence (DataAccessException), and the near-theoretical
+        // IllegalStateException from contentDigest.hexOf if SHA-256 were ever unavailable. An
+        // unrelated bug (e.g. a coding error) must NOT match here - StatementQueryService treats
+        // SignedLinkGenerationException as routine and swallows it, so over-catching here would
+        // silently mask real bugs as harmless missing-download-link responses.
+        try {
+            var rawToken = linkSigner.sign(path, expires.toEpochSecond(), HTTP_METHOD, id.toString());
 
-        signedLinkRepository.save(link);
-        return link;
+            var link = SignedLink.builder()
+                    .id(id)
+                    .statementId(statementId)
+                    .token(rawToken)
+                    .tokenHash(contentDigest.hexOf(rawToken.getBytes(StandardCharsets.UTF_8)))
+                    .expiresAt(expires)
+                    .createdAt(OffsetDateTime.now(clock))
+                    .createdBy(createdBy)
+                    .build();
+
+            signedLinkRepository.save(link);
+            return link;
+        } catch (SignatureException | IllegalStateException | DataAccessException e) {
+            throw new SignedLinkGenerationException("Failed to create signed link for statementId=" + statementId, e);
+        }
     }
 
     public URI buildSignedDownloadLink(SignedLink signedLink, String fileName) {

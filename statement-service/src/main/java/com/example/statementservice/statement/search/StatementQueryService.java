@@ -5,11 +5,10 @@ import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.statement.StatementDto;
 import com.example.statementservice.statement.StatementNotFoundException;
 import com.example.statementservice.statement.StatementService;
+import com.example.statementservice.statement.signedlink.SignedLinkGenerationException;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -26,26 +25,24 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class StatementQueryService {
 
-    private static final int DEFAULT_LIMIT = 50;
-    private static final int DEFAULT_OFFSET = 0;
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 50;
     private static final String INVALID_DATE_FORMAT_MSG = "date must be in YYYY-MM-DD format";
 
     private final StatementService statementService;
     private final SignedLinkService signedLinkService;
-    private final AuditHelper auditHelper;
+    private final StatementSearchAuditRecorder auditRecorder;
 
     public Optional<StatementDto> getStatementWithSignedDownloadLinkById(
             UUID statementId, String accountNumber, RequestInfo requestInfo) {
-        var performedBy = requestInfo.getPerformedBy();
-        var clientIp = requestInfo.getClientIp();
-        var userAgent = requestInfo.getUserAgent();
+        var performedBy = requestInfo.performedBy();
+        var clientIp = requestInfo.clientIp();
+        var userAgent = requestInfo.userAgent();
 
         try {
             var dto = this.statementService.getStatementDtoById(statementId);
             if (!dto.accountNumber().equals(accountNumber)) {
-                auditHelper.recordStatementNotFound(statementId, performedBy, clientIp, userAgent);
+                auditRecorder.recordStatementNotFound(statementId, performedBy, clientIp, userAgent);
                 return Optional.empty();
             }
 
@@ -54,45 +51,23 @@ public class StatementQueryService {
                 var signedLink = this.signedLinkService.createSignedLink(dto.statementId(), performedBy, fileName);
                 var signedDownloadLink = signedLinkService.buildSignedDownloadLink(signedLink, fileName);
                 dto = dto.withDownloadLink(signedDownloadLink);
-                auditHelper.recordLinkGenerated(
+                auditRecorder.recordLinkGenerated(
                         statementId, accountNumber, signedLink.getId(), performedBy, clientIp, userAgent);
 
-            } catch (Exception linkException) {
-                auditHelper.recordLinkGenerationFailed(
+            } catch (SignedLinkGenerationException | IllegalArgumentException linkException) {
+                auditRecorder.recordLinkGenerationFailed(
                         statementId, accountNumber, performedBy, linkException, clientIp, userAgent);
             }
 
             return Optional.of(dto);
 
         } catch (StatementNotFoundException e) {
-            auditHelper.recordStatementNotFound(statementId, performedBy, clientIp, userAgent);
+            auditRecorder.recordStatementNotFound(statementId, performedBy, clientIp, userAgent);
             return Optional.empty();
         } catch (Exception e) {
-            auditHelper.recordUnexpectedError(statementId, null, performedBy, e, clientIp, userAgent);
+            auditRecorder.recordUnexpectedError(statementId, null, performedBy, e, clientIp, userAgent);
             throw e;
         }
-    }
-
-    public List<StatementDto> searchByAccount(String accountNumber, Integer limit, Integer offset) {
-        int effectiveLimit = (limit != null) ? limit : DEFAULT_LIMIT;
-        int effectiveOffset = (offset != null) ? offset : DEFAULT_OFFSET;
-
-        try {
-            var statements = this.statementService.getStatementsDtoByAccountNumber(accountNumber);
-            int fromIndex = Math.min(effectiveOffset, statements.size());
-            int toIndex = Math.min(fromIndex + effectiveLimit, statements.size());
-            return new ArrayList<>(statements.subList(fromIndex, toIndex));
-        } catch (StatementNotFoundException e) {
-            return new ArrayList<>();
-        }
-    }
-
-    public List<StatementDto> searchByAccountAndDate(String accountNumber, String date) {
-        var parsedDate = parseDate(date);
-        return this.statementService
-                .getStatementDtoByAccountNumberAndStatementDate(accountNumber, parsedDate)
-                .map(List::of)
-                .orElseGet(List::of);
     }
 
     public Page<StatementDto> searchPaged(

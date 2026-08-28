@@ -16,20 +16,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class AuditHelperTest {
+class StatementSearchAuditRecorderTest {
 
     @Mock
     private AuditService auditService;
 
-    private AuditHelper auditHelper;
+    private StatementSearchAuditRecorder auditRecorder;
 
     @BeforeEach
     void setUp() {
-        auditHelper = new AuditHelper(auditService);
+        auditRecorder = new StatementSearchAuditRecorder(auditService);
     }
 
     @Test
-    void GivenAccountNumber_WhenAnyAuditHelperMethodLogs_ThenAccountNumberIsNeverEmitted() {
+    void GivenAccountNumber_WhenAnyStatementSearchAuditRecorderMethodLogs_ThenAccountNumberIsNeverEmitted() {
         // Given: the three methods that receive an account number
         var statementId = UUID.randomUUID();
         var signedLinkId = UUID.randomUUID();
@@ -37,13 +37,13 @@ class AuditHelperTest {
         var performedBy = "test-user";
         var failure = new RuntimeException("downstream failure");
 
-        try (var logs = LogCapture.forClass(AuditHelper.class)) {
+        try (var logs = LogCapture.forClass(StatementSearchAuditRecorder.class)) {
             // When
-            auditHelper.recordLinkGenerated(
+            auditRecorder.recordLinkGenerated(
                     statementId, accountNumber, signedLinkId, performedBy, "127.0.0.1", "JUnit");
-            auditHelper.recordLinkGenerationFailed(
+            auditRecorder.recordLinkGenerationFailed(
                     statementId, accountNumber, performedBy, failure, "127.0.0.1", "JUnit");
-            auditHelper.recordUnexpectedError(statementId, accountNumber, performedBy, failure, "127.0.0.1", "JUnit");
+            auditRecorder.recordUnexpectedError(statementId, accountNumber, performedBy, failure, "127.0.0.1", "JUnit");
 
             // Then
             assertThat(logs.lines())

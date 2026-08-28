@@ -1,5 +1,6 @@
 package com.example.statementservice.statement.upload;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -21,12 +22,12 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
-@DisplayName("ValidationUtil Unit Tests")
-class ValidationUtilTest {
+@DisplayName("UploadRequestValidator Unit Tests")
+class UploadRequestValidatorTest {
 
     private static final byte[] PDF_BYTES = {0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34}; // %PDF-1.4
 
-    private ValidationUtil validationUtil;
+    private UploadRequestValidator uploadRequestValidator;
 
     private UploadedFile validPdfFile;
     private String validAccountNumber;
@@ -40,20 +41,21 @@ class ValidationUtilTest {
         validAccountNumber = "123456789";
         validDate = "2024-01-15";
         validMessageDigest = new Sha256ContentDigest().hexOf(PDF_BYTES);
-        validationUtil = new ValidationUtil();
+        uploadRequestValidator = new UploadRequestValidator();
     }
 
     @Test
     void GivenAllValidInputs_WhenValidatingFileUploadInputs_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateFileUploadInputs(validPdfFile, validAccountNumber, validDate))
+        assertThatCode(() ->
+                        uploadRequestValidator.validateFileUploadInputs(validPdfFile, validAccountNumber, validDate))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void GivenNullFile_WhenValidatingFileUploadInputs_ThenThrowsMissingFileException() {
 
-        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(null, validAccountNumber, validDate))
+        assertThatThrownBy(() -> uploadRequestValidator.validateFileUploadInputs(null, validAccountNumber, validDate))
                 .isInstanceOf(MissingFileException.class)
                 .hasMessageContaining("file is required");
     }
@@ -63,7 +65,8 @@ class ValidationUtilTest {
 
         var emptyFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", "application/pdf", new byte[0]));
-        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(emptyFile, validAccountNumber, validDate))
+        assertThatThrownBy(
+                        () -> uploadRequestValidator.validateFileUploadInputs(emptyFile, validAccountNumber, validDate))
                 .isInstanceOf(MissingFileException.class)
                 .hasMessageContaining("file is required");
     }
@@ -74,8 +77,8 @@ class ValidationUtilTest {
 
         var pdfBytesWrongType =
                 new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", "text/plain", PDF_BYTES));
-        assertThatThrownBy(
-                        () -> validationUtil.validateFileUploadInputs(pdfBytesWrongType, validAccountNumber, validDate))
+        assertThatThrownBy(() -> uploadRequestValidator.validateFileUploadInputs(
+                        pdfBytesWrongType, validAccountNumber, validDate))
                 .isInstanceOf(UnsupportedContentTypeException.class)
                 .hasMessageContaining("Unsupported Media Type");
     }
@@ -85,7 +88,8 @@ class ValidationUtilTest {
 
         var traversalFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "../evil.pdf", "application/pdf", PDF_BYTES));
-        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(traversalFile, validAccountNumber, validDate))
+        assertThatThrownBy(() ->
+                        uploadRequestValidator.validateFileUploadInputs(traversalFile, validAccountNumber, validDate))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("path traversal is not allowed");
     }
@@ -97,7 +101,7 @@ class ValidationUtilTest {
         // Pins the ordering contract: string checks run before the magic-byte file read.
         var nonPdfFile = new MultipartFileAdapter(
                 new MockMultipartFile("file", "test.pdf", "application/pdf", "not a pdf".getBytes()));
-        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(nonPdfFile, "12AB", validDate))
+        assertThatThrownBy(() -> uploadRequestValidator.validateFileUploadInputs(nonPdfFile, "12AB", validDate))
                 .isInstanceOf(InvalidAccountNumberException.class)
                 .hasMessageContaining("Invalid account number");
     }
@@ -108,7 +112,8 @@ class ValidationUtilTest {
         // Pins that the magic-byte check is wired into the aggregate for spoofed content types.
         var spoofedFile = new MultipartFileAdapter(
                 new MockMultipartFile("file", "test.pdf", "application/pdf", "not a pdf".getBytes()));
-        assertThatThrownBy(() -> validationUtil.validateFileUploadInputs(spoofedFile, validAccountNumber, validDate))
+        assertThatThrownBy(() ->
+                        uploadRequestValidator.validateFileUploadInputs(spoofedFile, validAccountNumber, validDate))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("File is not a valid PDF");
     }
@@ -116,14 +121,14 @@ class ValidationUtilTest {
     @Test
     void GivenMatchingDigest_WhenValidatingMessageDigest_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateMessageDigest(validMessageDigest, validMessageDigest))
+        assertThatCode(() -> uploadRequestValidator.validateMessageDigest(validMessageDigest, validMessageDigest))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void GivenNullHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, null))
+        assertThatThrownBy(() -> uploadRequestValidator.validateMessageDigest(validMessageDigest, null))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -131,7 +136,7 @@ class ValidationUtilTest {
     @Test
     void GivenEmptyHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, ""))
+        assertThatThrownBy(() -> uploadRequestValidator.validateMessageDigest(validMessageDigest, ""))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -139,7 +144,7 @@ class ValidationUtilTest {
     @Test
     void GivenTooShortHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "abc123"))
+        assertThatThrownBy(() -> uploadRequestValidator.validateMessageDigest(validMessageDigest, "abc123"))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -147,7 +152,7 @@ class ValidationUtilTest {
     @Test
     void GivenTooLongHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "a".repeat(65)))
+        assertThatThrownBy(() -> uploadRequestValidator.validateMessageDigest(validMessageDigest, "a".repeat(65)))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -155,7 +160,7 @@ class ValidationUtilTest {
     @Test
     void GivenNonHexHeaderDigest_WhenValidatingMessageDigest_ThenThrowsInvalidMessageDigestException() {
 
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, "g".repeat(64)))
+        assertThatThrownBy(() -> uploadRequestValidator.validateMessageDigest(validMessageDigest, "g".repeat(64)))
                 .isInstanceOf(InvalidMessageDigestException.class)
                 .hasMessageContaining("X-Message-Digest must be a 64-character hex string");
     }
@@ -164,7 +169,7 @@ class ValidationUtilTest {
     void GivenMismatchedDigest_WhenValidatingMessageDigest_ThenThrowsDigestMismatchException() {
 
         var wrongDigest = "b".repeat(64);
-        assertThatThrownBy(() -> validationUtil.validateMessageDigest(validMessageDigest, wrongDigest))
+        assertThatThrownBy(() -> uploadRequestValidator.validateMessageDigest(validMessageDigest, wrongDigest))
                 .isInstanceOf(DigestMismatchException.class)
                 .hasMessageContaining("X-Message-Digest does not match file contents");
     }
@@ -172,20 +177,22 @@ class ValidationUtilTest {
     @Test
     void GivenUppercaseHeaderDigest_WhenValidatingMessageDigest_ThenComparisonIsCaseInsensitive() {
 
-        assertThatCode(() -> validationUtil.validateMessageDigest(validMessageDigest, validMessageDigest.toUpperCase()))
+        assertThatCode(() -> uploadRequestValidator.validateMessageDigest(
+                        validMessageDigest, validMessageDigest.toUpperCase()))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void GivenNonEmptyFile_WhenValidatingFileNotEmpty_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateFileNotEmpty(validPdfFile)).doesNotThrowAnyException();
+        assertThatCode(() -> uploadRequestValidator.validateFileNotEmpty(validPdfFile))
+                .doesNotThrowAnyException();
     }
 
     @Test
     void GivenNullFile_WhenValidatingFileNotEmpty_ThenThrowsMissingFileException() {
 
-        assertThatThrownBy(() -> validationUtil.validateFileNotEmpty(null))
+        assertThatThrownBy(() -> uploadRequestValidator.validateFileNotEmpty(null))
                 .isInstanceOf(MissingFileException.class)
                 .hasMessageContaining("file is required");
     }
@@ -195,7 +202,7 @@ class ValidationUtilTest {
 
         var emptyFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", "application/pdf", new byte[0]));
-        assertThatThrownBy(() -> validationUtil.validateFileNotEmpty(emptyFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validateFileNotEmpty(emptyFile))
                 .isInstanceOf(MissingFileException.class)
                 .hasMessageContaining("file is required");
     }
@@ -203,7 +210,7 @@ class ValidationUtilTest {
     @Test
     void GivenPdfContentType_WhenValidatingContentType_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateCorrectContentType(validPdfFile))
+        assertThatCode(() -> uploadRequestValidator.validateCorrectContentType(validPdfFile))
                 .doesNotThrowAnyException();
     }
 
@@ -211,7 +218,7 @@ class ValidationUtilTest {
     void GivenNonPdfContentType_WhenValidatingContentType_ThenThrowsUnsupportedContentTypeException() {
         var wrongTypeFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "test.txt", "text/plain", "content".getBytes()));
-        assertThatThrownBy(() -> validationUtil.validateCorrectContentType(wrongTypeFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validateCorrectContentType(wrongTypeFile))
                 .isInstanceOf(UnsupportedContentTypeException.class)
                 .hasMessageContaining("Unsupported Media Type");
     }
@@ -222,7 +229,7 @@ class ValidationUtilTest {
         var nullTypeFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", null, "content".getBytes()));
 
-        assertThatThrownBy(() -> validationUtil.validateCorrectContentType(nullTypeFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validateCorrectContentType(nullTypeFile))
                 .isInstanceOf(UnsupportedContentTypeException.class)
                 .hasMessageContaining("Unsupported Media Type");
     }
@@ -230,7 +237,8 @@ class ValidationUtilTest {
     @Test
     void GivenSafeFileName_WhenValidatingFileName_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateFileName(validPdfFile)).doesNotThrowAnyException();
+        assertThatCode(() -> uploadRequestValidator.validateFileName(validPdfFile))
+                .doesNotThrowAnyException();
     }
 
     @ParameterizedTest
@@ -239,7 +247,7 @@ class ValidationUtilTest {
 
         var traversalFile = new MultipartFileAdapter(
                 new MockMultipartFile("file", fileName, "application/pdf", "content".getBytes()));
-        assertThatThrownBy(() -> validationUtil.validateFileName(traversalFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validateFileName(traversalFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("path traversal is not allowed");
     }
@@ -249,7 +257,7 @@ class ValidationUtilTest {
 
         var namelessFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "", "application/pdf", "content".getBytes()));
-        assertThatThrownBy(() -> validationUtil.validateFileName(namelessFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validateFileName(namelessFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("Filename must not be empty");
     }
@@ -259,7 +267,7 @@ class ValidationUtilTest {
 
         var nullNameFile = mock(UploadedFile.class);
         when(nullNameFile.getOriginalFilename()).thenReturn(null);
-        assertThatThrownBy(() -> validationUtil.validateFileName(nullNameFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validateFileName(nullNameFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("Filename must not be empty");
     }
@@ -267,27 +275,28 @@ class ValidationUtilTest {
     @Test
     void GivenNineDigitAccountNumber_WhenValidatingAccountNumber_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateAccountNumber("123456789")).doesNotThrowAnyException();
+        assertThatCode(() -> uploadRequestValidator.validateAccountNumber("123456789"))
+                .doesNotThrowAnyException();
     }
 
     @Test
     void GivenFifteenDigitAccountNumber_WhenValidatingAccountNumber_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateAccountNumber("123456789012345"))
+        assertThatCode(() -> uploadRequestValidator.validateAccountNumber("123456789012345"))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void GivenTwelveDigitAccountNumber_WhenValidatingAccountNumber_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateAccountNumber("123456789012"))
+        assertThatCode(() -> uploadRequestValidator.validateAccountNumber("123456789012"))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void GivenNullAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
-        assertThatThrownBy(() -> validationUtil.validateAccountNumber(null))
+        assertThatThrownBy(() -> uploadRequestValidator.validateAccountNumber(null))
                 .isInstanceOf(InvalidAccountNumberException.class)
                 .hasMessageContaining("Invalid account number");
     }
@@ -295,7 +304,7 @@ class ValidationUtilTest {
     @Test
     void GivenEmptyAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
-        assertThatThrownBy(() -> validationUtil.validateAccountNumber(""))
+        assertThatThrownBy(() -> uploadRequestValidator.validateAccountNumber(""))
                 .isInstanceOf(InvalidAccountNumberException.class)
                 .hasMessageContaining("Invalid account number");
     }
@@ -303,7 +312,7 @@ class ValidationUtilTest {
     @Test
     void GivenTooShortAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
-        assertThatThrownBy(() -> validationUtil.validateAccountNumber("12345678"))
+        assertThatThrownBy(() -> uploadRequestValidator.validateAccountNumber("12345678"))
                 .isInstanceOf(InvalidAccountNumberException.class)
                 .hasMessageContaining("Invalid account number");
     }
@@ -311,7 +320,7 @@ class ValidationUtilTest {
     @Test
     void GivenTooLongAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
-        assertThatThrownBy(() -> validationUtil.validateAccountNumber("1234567890123456"))
+        assertThatThrownBy(() -> uploadRequestValidator.validateAccountNumber("1234567890123456"))
                 .isInstanceOf(InvalidAccountNumberException.class)
                 .hasMessageContaining("Invalid account number");
     }
@@ -319,7 +328,7 @@ class ValidationUtilTest {
     @Test
     void GivenNonNumericAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
-        assertThatThrownBy(() -> validationUtil.validateAccountNumber("12345678A"))
+        assertThatThrownBy(() -> uploadRequestValidator.validateAccountNumber("12345678A"))
                 .isInstanceOf(InvalidAccountNumberException.class)
                 .hasMessageContaining("Invalid account number");
     }
@@ -327,27 +336,45 @@ class ValidationUtilTest {
     @Test
     void GivenWhitespaceAccountNumber_WhenValidatingAccountNumber_ThenThrowsInvalidAccountNumberException() {
 
-        assertThatThrownBy(() -> validationUtil.validateAccountNumber("   "))
+        assertThatThrownBy(() -> uploadRequestValidator.validateAccountNumber("   "))
                 .isInstanceOf(InvalidAccountNumberException.class)
                 .hasMessageContaining("Invalid account number");
     }
 
     @Test
+    void GivenNineDigitAccountNumber_WhenCheckingIsValidAccountNumber_ThenReturnsTrue() {
+
+        assertThat(uploadRequestValidator.isValidAccountNumber("123456789")).isTrue();
+    }
+
+    @Test
+    void GivenTooShortAccountNumber_WhenCheckingIsValidAccountNumber_ThenReturnsFalse() {
+
+        assertThat(uploadRequestValidator.isValidAccountNumber("12345678")).isFalse();
+    }
+
+    @Test
+    void GivenNullAccountNumber_WhenCheckingIsValidAccountNumber_ThenReturnsFalse() {
+
+        assertThat(uploadRequestValidator.isValidAccountNumber(null)).isFalse();
+    }
+
+    @Test
     void GivenIsoDate_WhenValidatingDate_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateDate("2024-01-15")).doesNotThrowAnyException();
+        assertThatCode(() -> uploadRequestValidator.validateDate("2024-01-15")).doesNotThrowAnyException();
     }
 
     @Test
     void GivenLeapYearFebruary29_WhenValidatingDate_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validateDate("2024-02-29")).doesNotThrowAnyException();
+        assertThatCode(() -> uploadRequestValidator.validateDate("2024-02-29")).doesNotThrowAnyException();
     }
 
     @Test
     void GivenNullDate_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
-        assertThatThrownBy(() -> validationUtil.validateDate(null))
+        assertThatThrownBy(() -> uploadRequestValidator.validateDate(null))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("date must be in YYYY-MM-DD format");
     }
@@ -355,7 +382,7 @@ class ValidationUtilTest {
     @Test
     void GivenEmptyDate_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
-        assertThatThrownBy(() -> validationUtil.validateDate(""))
+        assertThatThrownBy(() -> uploadRequestValidator.validateDate(""))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("date must be in YYYY-MM-DD format");
     }
@@ -363,7 +390,7 @@ class ValidationUtilTest {
     @Test
     void GivenWrongFormatDate_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
-        assertThatThrownBy(() -> validationUtil.validateDate("01/15/2024"))
+        assertThatThrownBy(() -> uploadRequestValidator.validateDate("01/15/2024"))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("date must be in YYYY-MM-DD format");
     }
@@ -371,7 +398,7 @@ class ValidationUtilTest {
     @Test
     void GivenImpossibleDayOfMonth_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
-        assertThatThrownBy(() -> validationUtil.validateDate("2024-02-30"))
+        assertThatThrownBy(() -> uploadRequestValidator.validateDate("2024-02-30"))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("date must be in YYYY-MM-DD format");
     }
@@ -379,7 +406,7 @@ class ValidationUtilTest {
     @Test
     void GivenInvalidMonth_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
-        assertThatThrownBy(() -> validationUtil.validateDate("2024-13-01"))
+        assertThatThrownBy(() -> uploadRequestValidator.validateDate("2024-13-01"))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("date must be in YYYY-MM-DD format");
     }
@@ -387,7 +414,7 @@ class ValidationUtilTest {
     @Test
     void GivenNonLeapYearFebruary29_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
-        assertThatThrownBy(() -> validationUtil.validateDate("2023-02-29"))
+        assertThatThrownBy(() -> uploadRequestValidator.validateDate("2023-02-29"))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("date must be in YYYY-MM-DD format");
     }
@@ -395,7 +422,7 @@ class ValidationUtilTest {
     @Test
     void GivenWhitespaceDate_WhenValidatingDate_ThenThrowsInvalidDateException() {
 
-        assertThatThrownBy(() -> validationUtil.validateDate("   "))
+        assertThatThrownBy(() -> uploadRequestValidator.validateDate("   "))
                 .isInstanceOf(InvalidDateException.class)
                 .hasMessageContaining("date must be in YYYY-MM-DD format");
     }
@@ -403,7 +430,7 @@ class ValidationUtilTest {
     @Test
     void GivenPdfMagicBytes_WhenValidatingPdfMagicNumber_ThenNoExceptionIsThrown() {
 
-        assertThatCode(() -> validationUtil.validatePdfMagicNumber(validPdfFile))
+        assertThatCode(() -> uploadRequestValidator.validatePdfMagicNumber(validPdfFile))
                 .doesNotThrowAnyException();
     }
 
@@ -412,7 +439,7 @@ class ValidationUtilTest {
 
         var nonPdfFile = new MultipartFileAdapter(
                 new MockMultipartFile("file", "test.txt", "text/plain", "This is not a PDF".getBytes()));
-        assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(nonPdfFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validatePdfMagicNumber(nonPdfFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("File is not a valid PDF");
     }
@@ -422,7 +449,7 @@ class ValidationUtilTest {
 
         var smallFile = new MultipartFileAdapter(
                 new MockMultipartFile("file", "test.pdf", "application/pdf", new byte[] {0x25, 0x50}));
-        assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(smallFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validatePdfMagicNumber(smallFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("File is too small to be a valid PDF");
     }
@@ -432,7 +459,7 @@ class ValidationUtilTest {
 
         var emptyFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", "application/pdf", new byte[0]));
-        assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(emptyFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validatePdfMagicNumber(emptyFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("File is too small to be a valid PDF");
     }
@@ -443,7 +470,7 @@ class ValidationUtilTest {
         var rawMockFile = mock(MultipartFile.class);
         when(rawMockFile.getInputStream()).thenThrow(new IOException("IO error"));
         var mockFile = new MultipartFileAdapter(rawMockFile);
-        assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(mockFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validatePdfMagicNumber(mockFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("Failed to read file for magic number validation");
     }
@@ -454,7 +481,7 @@ class ValidationUtilTest {
         var wrongMagic = new byte[] {0x00, 0x50, 0x44, 0x46};
         var wrongFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", "application/pdf", wrongMagic));
-        assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(wrongFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validatePdfMagicNumber(wrongFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("File is not a valid PDF");
     }
@@ -465,7 +492,7 @@ class ValidationUtilTest {
         var wrongMagic = new byte[] {0x25, 0x50, 0x44, 0x00};
         var wrongFile =
                 new MultipartFileAdapter(new MockMultipartFile("file", "test.pdf", "application/pdf", wrongMagic));
-        assertThatThrownBy(() -> validationUtil.validatePdfMagicNumber(wrongFile))
+        assertThatThrownBy(() -> uploadRequestValidator.validatePdfMagicNumber(wrongFile))
                 .isInstanceOf(PdfValidationException.class)
                 .hasMessageContaining("File is not a valid PDF");
     }
@@ -482,7 +509,7 @@ class ValidationUtilTest {
                     }
                 });
 
-        assertThatCode(() -> validationUtil.validatePdfMagicNumber(tricklingFile))
+        assertThatCode(() -> uploadRequestValidator.validatePdfMagicNumber(tricklingFile))
                 .doesNotThrowAnyException();
     }
 }

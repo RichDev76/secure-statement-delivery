@@ -1,5 +1,6 @@
 package com.example.statementservice.infrastructure.crypto;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -27,8 +28,8 @@ public class MasterKeyProvider {
                 var s = new String(content).trim();
                 this.key = java.util.Base64.getDecoder().decode(s);
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load master key", e);
+        } catch (IOException | IllegalArgumentException | IllegalStateException e) {
+            throw new MasterKeyLoadException("Failed to load master key", e);
         }
     }
 

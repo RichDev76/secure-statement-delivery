@@ -3,6 +3,7 @@ package com.example.statementservice.infrastructure.crypto;
 import com.example.statementservice.statement.signedlink.LinkSigner;
 import com.example.statementservice.statement.signedlink.SignatureException;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.util.Base64;
 import javax.crypto.Mac;
@@ -25,7 +26,7 @@ public class HmacSha256LinkSigner implements LinkSigner {
             mac.init(new SecretKeySpec(secret, HMAC));
             var raw = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
-        } catch (Exception e) {
+        } catch (GeneralSecurityException | IllegalArgumentException | IllegalStateException e) {
             throw new SignatureException("Failed to sign path", e);
         }
     }

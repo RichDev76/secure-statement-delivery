@@ -18,7 +18,7 @@ public class S3StorageProperties {
     @NotBlank(message = "statement.storage.s3.region must not be blank")
     private String region;
 
-    /** Blank/unset in production (SDK resolves real AWS endpoints); set to the Floci URL in dev/test. */
+    // Blank/unset in production (SDK resolves real AWS endpoints); set to the Floci URL in dev/test.
     private String endpoint;
 
     private boolean pathStyleAccess = true;

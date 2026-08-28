@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,12 +16,11 @@ import com.example.statementservice.statement.StatementDto;
 import com.example.statementservice.statement.StatementNotFoundException;
 import com.example.statementservice.statement.StatementService;
 import com.example.statementservice.statement.signedlink.SignedLink;
+import com.example.statementservice.statement.signedlink.SignedLinkGenerationException;
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,7 +43,7 @@ class StatementQueryServiceTest {
     private SignedLinkService signedLinkService;
 
     @Mock
-    private AuditHelper auditHelper;
+    private StatementSearchAuditRecorder auditRecorder;
 
     @InjectMocks
     private StatementQueryService statementQueryService;
@@ -101,7 +101,7 @@ class StatementQueryServiceTest {
                 .isEqualTo(testStatementDto.withDownloadLink(
                         java.net.URI.create("http://localhost/download/statement.pdf")));
         verify(statementService).getStatementDtoById(testStatementId);
-        verify(auditHelper)
+        verify(auditRecorder)
                 .recordLinkGenerated(
                         eq(testStatementId),
                         eq(testAccountNumber),
@@ -117,7 +117,8 @@ class StatementQueryServiceTest {
         // Given
         when(statementService.getStatementDtoById(testStatementId)).thenReturn(testStatementDto);
         String fileName = testStatementDto.fileName();
-        RuntimeException linkFailure = new RuntimeException("signing key unavailable");
+        SignedLinkGenerationException linkFailure =
+                new SignedLinkGenerationException("signing key unavailable", new RuntimeException("cause"));
         when(signedLinkService.createSignedLink(testStatementId, "test-user", fileName))
                 .thenThrow(linkFailure);
 
@@ -128,7 +129,7 @@ class StatementQueryServiceTest {
         // Then
         assertThat(result).isPresent();
         assertThat(result.get().downloadLink()).isNull();
-        verify(auditHelper)
+        verify(auditRecorder)
                 .recordLinkGenerationFailed(
                         eq(testStatementId),
                         eq(testAccountNumber),
@@ -136,6 +137,27 @@ class StatementQueryServiceTest {
                         eq(linkFailure),
                         eq("127.0.0.1"),
                         eq("JUnit"));
+    }
+
+    @Test
+    void
+            GivenUnexpectedBugDuringLinkGeneration_WhenGettingSignedDownloadLink_ThenExceptionPropagatesInsteadOfBeingSwallowed() {
+        // Given: a NullPointerException is not a known signed-link-generation failure mode -
+        // it must not be masked as a routine "link generation failed" audit event.
+        when(statementService.getStatementDtoById(testStatementId)).thenReturn(testStatementDto);
+        String fileName = testStatementDto.fileName();
+        NullPointerException bug = new NullPointerException("unexpected null");
+        when(signedLinkService.createSignedLink(testStatementId, "test-user", fileName))
+                .thenThrow(bug);
+
+        // When / Then
+        assertThatThrownBy(() -> statementQueryService.getStatementWithSignedDownloadLinkById(
+                        testStatementId, testAccountNumber, testRequestInfo))
+                .isSameAs(bug);
+        verify(auditRecorder, never()).recordLinkGenerationFailed(any(), any(), any(), any(), any(), any());
+        verify(auditRecorder)
+                .recordUnexpectedError(
+                        eq(testStatementId), isNull(), eq("test-user"), eq(bug), eq("127.0.0.1"), eq("JUnit"));
     }
 
     @Test
@@ -148,7 +170,8 @@ class StatementQueryServiceTest {
 
         assertThat(result).isEmpty();
         verify(statementService).getStatementDtoById(testStatementId);
-        verify(auditHelper).recordStatementNotFound(eq(testStatementId), eq("test-user"), eq("127.0.0.1"), eq("JUnit"));
+        verify(auditRecorder)
+                .recordStatementNotFound(eq(testStatementId), eq("test-user"), eq("127.0.0.1"), eq("JUnit"));
     }
 
     @Test
@@ -163,91 +186,9 @@ class StatementQueryServiceTest {
 
         // Then
         assertThat(result).isEmpty();
-        verify(auditHelper).recordStatementNotFound(eq(testStatementId), eq("test-user"), eq("127.0.0.1"), eq("JUnit"));
+        verify(auditRecorder)
+                .recordStatementNotFound(eq(testStatementId), eq("test-user"), eq("127.0.0.1"), eq("JUnit"));
         verify(signedLinkService, never()).createSignedLink(any(UUID.class), any(String.class), any(String.class));
-    }
-
-    @Test
-    void GivenNullPagination_WhenSearchingByAccount_ThenDefaultsApply() {
-        var dtos = Arrays.asList(testStatementDto);
-        when(statementService.getStatementsDtoByAccountNumber(testAccountNumber))
-                .thenReturn(dtos);
-
-        var result = statementQueryService.searchByAccount(testAccountNumber, null, null);
-
-        assertThat(result).containsExactly(testStatementDto);
-        verify(statementService).getStatementsDtoByAccountNumber(testAccountNumber);
-    }
-
-    @Test
-    void GivenLimit_WhenSearchingByAccount_ThenResultIsTruncatedToLimit() {
-        var dtos = createMultipleDtos(10);
-        when(statementService.getStatementsDtoByAccountNumber(testAccountNumber))
-                .thenReturn(dtos);
-
-        var result = statementQueryService.searchByAccount(testAccountNumber, 5, 0);
-
-        assertThat(result).hasSize(5);
-    }
-
-    @Test
-    void GivenOffset_WhenSearchingByAccount_ThenResultSkipsOffsetEntries() {
-        var dtos = createMultipleDtos(10);
-        when(statementService.getStatementsDtoByAccountNumber(testAccountNumber))
-                .thenReturn(dtos);
-
-        var result = statementQueryService.searchByAccount(testAccountNumber, 5, 3);
-
-        assertThat(result).hasSize(5);
-        assertThat(result).isEqualTo(dtos.subList(3, 8));
-    }
-
-    @Test
-    void GivenNoStatementsFound_WhenSearchingByAccount_ThenEmptyListIsReturned() {
-        when(statementService.getStatementsDtoByAccountNumber(testAccountNumber))
-                .thenThrow(new StatementNotFoundException("Not found"));
-
-        var result = statementQueryService.searchByAccount(testAccountNumber, 50, 0);
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    void GivenOffsetBeyondListSize_WhenSearchingByAccount_ThenEmptyListIsReturned() {
-        var dtos = createMultipleDtos(5);
-        when(statementService.getStatementsDtoByAccountNumber(testAccountNumber))
-                .thenReturn(dtos);
-
-        var result = statementQueryService.searchByAccount(testAccountNumber, 10, 100);
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    void GivenExistingAccountAndDate_WhenSearchingByAccountAndDate_ThenSingleDtoIsReturned() {
-        when(statementService.getStatementDtoByAccountNumberAndStatementDate(testAccountNumber, testDate))
-                .thenReturn(Optional.of(testStatementDto));
-
-        var result = statementQueryService.searchByAccountAndDate(testAccountNumber, "2024-01-15");
-
-        assertThat(result).containsExactly(testStatementDto);
-        verify(statementService).getStatementDtoByAccountNumberAndStatementDate(testAccountNumber, testDate);
-    }
-
-    @Test
-    void GivenNoMatchForAccountAndDate_WhenSearchingByAccountAndDate_ThenEmptyListIsReturned() {
-        when(statementService.getStatementDtoByAccountNumberAndStatementDate(testAccountNumber, testDate))
-                .thenReturn(Optional.empty());
-
-        var result = statementQueryService.searchByAccountAndDate(testAccountNumber, "2024-01-15");
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    void GivenMalformedDate_WhenSearchingByAccountAndDate_ThenInvalidDateExceptionIsThrown() {
-        assertThatThrownBy(() -> statementQueryService.searchByAccountAndDate(testAccountNumber, "invalid-date"))
-                .isInstanceOf(InvalidDateException.class);
     }
 
     @Test
@@ -337,17 +278,5 @@ class StatementQueryServiceTest {
                         statementQueryService.searchPaged(testAccountNumber, "2024-02-01", "2024-01-01", 0, 50, null))
                 .isInstanceOf(InvalidInputException.class)
                 .hasMessageContaining("startDate cannot be after endDate");
-    }
-
-    private List<StatementDto> createMultipleDtos(int count) {
-        List<StatementDto> dtos = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            StatementDto dto = StatementDto.builder()
-                    .statementId(UUID.randomUUID())
-                    .accountNumber(testAccountNumber)
-                    .build();
-            dtos.add(dto);
-        }
-        return dtos;
     }
 }

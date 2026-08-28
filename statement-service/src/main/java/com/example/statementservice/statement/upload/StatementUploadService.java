@@ -1,6 +1,7 @@
 package com.example.statementservice.statement.upload;
 
 import com.example.statementservice.audit.AuditAction;
+import com.example.statementservice.audit.AuditDetailKeys;
 import com.example.statementservice.audit.AuditService;
 import com.example.statementservice.shared.ContentDigest;
 import com.example.statementservice.shared.InvalidDateException;
@@ -23,27 +24,18 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class StatementUploadService {
 
-    public static final String ADMIN_USER = "admin";
-
-    private static final String AUDIT_KEY_IP = "ip";
-    private static final String AUDIT_KEY_USER_AGENT = "userAgent";
-    private static final String AUDIT_KEY_REASON = "reason";
-    // Mirrors ValidationUtil's account-number rule: a failure audit must not persist arbitrary
-    // attacker or typo input as an account identifier.
-    private static final String AUDITABLE_ACCOUNT_NUMBER_PATTERN = "^[0-9]{9,15}$";
-
-    private final ValidationUtil validationUtil;
+    private final UploadRequestValidator uploadRequestValidator;
     private final StatementService statementService;
     private final AuditService auditService;
     private final ContentDigest contentDigest;
 
     public UploadResponseDto upload(
             String xMessageDigest, UploadedFile file, String accountNumber, String date, RequestInfo requestInfo) {
-        var performedBy = requestInfo.getPerformedBy() != null ? requestInfo.getPerformedBy() : ADMIN_USER;
+        var performedBy = requestInfo.performedBy() != null ? requestInfo.performedBy() : StatementService.ADMIN_USER;
         try {
-            this.validationUtil.validateFileUploadInputs(file, accountNumber, date);
+            this.uploadRequestValidator.validateFileUploadInputs(file, accountNumber, date);
             var contentHash = computeContentHash(file);
-            this.validationUtil.validateMessageDigest(contentHash, xMessageDigest);
+            this.uploadRequestValidator.validateMessageDigest(contentHash, xMessageDigest);
             var dto = this.statementService.uploadStatement(
                     accountNumber, LocalDate.parse(date), file, performedBy, contentHash);
             auditUploadSuccess(accountNumber, requestInfo, dto.statementId(), performedBy);
@@ -74,7 +66,7 @@ public class StatementUploadService {
             String accountNumber, RequestInfo requestInfo, String performedBy, RuntimeException cause) {
         try {
             var details = buildAuditDetails(requestInfo);
-            details.put(AUDIT_KEY_REASON, reasonFor(cause).getValue());
+            details.put(AuditDetailKeys.REASON, reasonFor(cause).getValue());
             auditService.record(
                     AuditAction.UPLOAD_FAILED.getValue(),
                     null,
@@ -98,8 +90,8 @@ public class StatementUploadService {
 
     private Map<String, Object> buildAuditDetails(RequestInfo requestInfo) {
         var details = new HashMap<String, Object>();
-        details.put(AUDIT_KEY_IP, requestInfo.getClientIp());
-        details.put(AUDIT_KEY_USER_AGENT, requestInfo.getUserAgent());
+        details.put(AuditDetailKeys.IP, requestInfo.clientIp());
+        details.put(AuditDetailKeys.USER_AGENT, requestInfo.userAgent());
         return details;
     }
 
@@ -119,7 +111,7 @@ public class StatementUploadService {
         };
     }
 
-    private static String auditableAccountNumber(String accountNumber) {
-        return accountNumber != null && accountNumber.matches(AUDITABLE_ACCOUNT_NUMBER_PATTERN) ? accountNumber : null;
+    private String auditableAccountNumber(String accountNumber) {
+        return uploadRequestValidator.isValidAccountNumber(accountNumber) ? accountNumber : null;
     }
 }

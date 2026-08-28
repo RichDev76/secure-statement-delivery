@@ -32,9 +32,9 @@ class LinkValidationResultTest {
         var result = LinkValidationResult.notFound();
 
         // Then
-        assertThat(result.getLink()).isNull();
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.NOT_FOUND);
+        assertThat(result.link()).isNull();
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.NOT_FOUND);
     }
 
     @Test
@@ -43,9 +43,9 @@ class LinkValidationResultTest {
         var result = LinkValidationResult.expired(mockLink);
 
         // Then
-        assertThat(result.getLink()).isEqualTo(mockLink);
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
+        assertThat(result.link()).isEqualTo(mockLink);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
     }
 
     @Test
@@ -54,9 +54,9 @@ class LinkValidationResultTest {
         var result = LinkValidationResult.expired(null);
 
         // Then
-        assertThat(result.getLink()).isNull();
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
+        assertThat(result.link()).isNull();
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
     }
 
     @Test
@@ -65,9 +65,9 @@ class LinkValidationResultTest {
         var result = LinkValidationResult.valid(mockLink);
 
         // Then
-        assertThat(result.getLink()).isEqualTo(mockLink);
-        assertThat(result.isValid()).isTrue();
-        assertThat(result.getFailureReason()).isNull();
+        assertThat(result.link()).isEqualTo(mockLink);
+        assertThat(result.valid()).isTrue();
+        assertThat(result.failureReason()).isNull();
     }
 
     @Test
@@ -76,9 +76,9 @@ class LinkValidationResultTest {
         var result = LinkValidationResult.valid(null);
 
         // Then
-        assertThat(result.getLink()).isNull();
-        assertThat(result.isValid()).isTrue();
-        assertThat(result.getFailureReason()).isNull();
+        assertThat(result.link()).isNull();
+        assertThat(result.valid()).isTrue();
+        assertThat(result.failureReason()).isNull();
     }
 
     @Test
@@ -88,10 +88,10 @@ class LinkValidationResultTest {
         var withoutLink = LinkValidationResult.invalidSignature(null);
 
         // Then
-        assertThat(withLink.isValid()).isFalse();
-        assertThat(withLink.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
-        assertThat(withoutLink.getLink()).isNull();
-        assertThat(withoutLink.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        assertThat(withLink.valid()).isFalse();
+        assertThat(withLink.failureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        assertThat(withoutLink.link()).isNull();
+        assertThat(withoutLink.failureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
     }
 
     @Test
@@ -100,9 +100,9 @@ class LinkValidationResultTest {
         var result = new LinkValidationResult(mockLink, false, ValidationFailureReason.EXPIRED);
 
         // Then
-        assertThat(result.getLink()).isEqualTo(mockLink);
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
+        assertThat(result.link()).isEqualTo(mockLink);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
     }
 
     @Test
@@ -113,9 +113,9 @@ class LinkValidationResultTest {
         var invalidSignatureResult = LinkValidationResult.invalidSignature(mockLink);
 
         // Then
-        assertThat(notFoundResult.getFailureReason())
-                .isNotEqualTo(expiredResult.getFailureReason())
-                .isNotEqualTo(invalidSignatureResult.getFailureReason());
-        assertThat(expiredResult.getFailureReason()).isNotEqualTo(invalidSignatureResult.getFailureReason());
+        assertThat(notFoundResult.failureReason())
+                .isNotEqualTo(expiredResult.failureReason())
+                .isNotEqualTo(invalidSignatureResult.failureReason());
+        assertThat(expiredResult.failureReason()).isNotEqualTo(invalidSignatureResult.failureReason());
     }
 }

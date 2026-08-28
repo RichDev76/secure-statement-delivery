@@ -1,7 +1,7 @@
 package com.example.statementservice.statement.download.infrastructure;
 
-import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
-import static com.example.statementservice.infrastructure.web.CommonUtil.createProblemDetail;
+import static com.example.statementservice.infrastructure.web.ProblemDetailSupport.buildProblemDetailTypeURI;
+import static com.example.statementservice.infrastructure.web.ProblemDetailSupport.createProblemDetail;
 
 import com.example.statementservice.infrastructure.web.ExceptionMetadata;
 import com.example.statementservice.statement.download.DecryptionFailedException;

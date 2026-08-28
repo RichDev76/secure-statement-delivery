@@ -10,8 +10,13 @@ public interface AuditLogEntityMapper {
 
     @Mappings({
         @Mapping(target = "action", source = "action"),
-        @Mapping(target = "ipAddress", expression = "java(extractDetail(entity, \"ip\"))"),
-        @Mapping(target = "userAgent", expression = "java(extractDetail(entity, \"userAgent\"))"),
+        @Mapping(
+                target = "ipAddress",
+                expression = "java(extractDetail(entity, com.example.statementservice.audit.AuditDetailKeys.IP))"),
+        @Mapping(
+                target = "userAgent",
+                expression =
+                        "java(extractDetail(entity, com.example.statementservice.audit.AuditDetailKeys.USER_AGENT))"),
         @Mapping(target = "details", expression = "java(extractReason(entity))")
     })
     AuditLogDto toDto(AuditLog entity);
@@ -28,7 +33,7 @@ public interface AuditLogEntityMapper {
         if (log == null || log.getDetails() == null) {
             return Collections.emptyMap();
         }
-        var reason = log.getDetails().get("reason");
-        return reason == null ? Collections.emptyMap() : Collections.singletonMap("reason", reason);
+        var reason = log.getDetails().get(AuditDetailKeys.REASON);
+        return reason == null ? Collections.emptyMap() : Collections.singletonMap(AuditDetailKeys.REASON, reason);
     }
 }

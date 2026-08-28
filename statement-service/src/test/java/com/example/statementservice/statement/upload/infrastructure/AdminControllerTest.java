@@ -269,7 +269,7 @@ class AdminControllerTest {
         verify(uploadResponseApiMapper).toApi(testDto);
     }
 
-    // The controller does not validate filenames; ValidationUtil rejects empty names downstream.
+    // The controller does not validate filenames; UploadRequestValidator rejects empty names downstream.
     @Test
     void GivenFileWithoutName_WhenUploadStatement_ThenEmptyNameIsPassedToServiceUnchanged() {
 

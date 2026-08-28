@@ -26,18 +26,11 @@ public class DownloadResponseFactory {
     public static final String REFERRER_POLICY_NO_REFERRER = "no-referrer";
 
     // Outcomes are already logged in DownloadService keyed by statementId/linkId - don't re-log fileName here.
+    // A switch expression (not statement) over the DownloadOutcome enum: the compiler enforces
+    // exhaustiveness, so a new outcome constant fails the build here until this factory handles it.
     public ResponseEntity<Resource> build(String fileName, DownloadService.DownloadStreamResult result) {
-        switch (result.outcome()) {
-            case OK -> {
-                var resource = new InputStreamResource(result.stream().get());
-                var headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-                headers.setContentDispositionFormData(CONTENT_DISPOSITION_ATTACHMENT, fileName);
-                headers.setCacheControl(CACHE_CONTROL);
-                headers.add(HTTP_HEADER_PRAGMA, PRAGMA_NO_CACHE);
-                headers.add(HTTP_HEADER_REFERRER_POLICY, REFERRER_POLICY_NO_REFERRER);
-                return ResponseEntity.ok().headers(headers).body(resource);
-            }
+        return switch (result.outcome()) {
+            case OK -> buildOkResponse(fileName, result);
             case INVALID_SIGNATURE ->
                 throw new DownloadInvalidSignatureException(
                         "The download link signature is invalid or has been tampered with.");
@@ -51,7 +44,17 @@ public class DownloadResponseFactory {
             case STORAGE_UNAVAILABLE ->
                 throw new DownloadStorageUnavailableException(
                         "The statement storage backend is temporarily unavailable. Please try again shortly.");
-            default -> throw new DownloadInvalidSignatureException("Access to the requested resource is denied.");
-        }
+        };
+    }
+
+    private ResponseEntity<Resource> buildOkResponse(String fileName, DownloadService.DownloadStreamResult result) {
+        var resource = new InputStreamResource(result.stream().get());
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDispositionFormData(CONTENT_DISPOSITION_ATTACHMENT, fileName);
+        headers.setCacheControl(CACHE_CONTROL);
+        headers.add(HTTP_HEADER_PRAGMA, PRAGMA_NO_CACHE);
+        headers.add(HTTP_HEADER_REFERRER_POLICY, REFERRER_POLICY_NO_REFERRER);
+        return ResponseEntity.ok().headers(headers).body(resource);
     }
 }

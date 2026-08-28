@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 @Component
-public class ValidationUtil {
+public class UploadRequestValidator {
 
     // Message Digest Constants
     private static final String MESSAGE_DIGEST_PATTERN = "^[A-Fa-f0-9]{64}$";
@@ -80,16 +80,20 @@ public class ValidationUtil {
 
     private String getOriginalFileName(UploadedFile file) {
         var originalFileName = file.getOriginalFilename();
-        if (org.apache.commons.lang3.StringUtils.isEmpty(originalFileName)) {
+        if (!StringUtils.hasText(originalFileName)) {
             throw new PdfValidationException("Filename must not be empty");
         }
         return originalFileName;
     }
 
     public void validateAccountNumber(String accountNumber) {
-        if (!StringUtils.hasText(accountNumber) || !accountNumber.matches(ACCOUNT_NUMBER_PATTERN)) {
+        if (!isValidAccountNumber(accountNumber)) {
             throw new InvalidAccountNumberException(INVALID_ACCOUNT_NUMBER_MSG);
         }
+    }
+
+    public boolean isValidAccountNumber(String accountNumber) {
+        return StringUtils.hasText(accountNumber) && accountNumber.matches(ACCOUNT_NUMBER_PATTERN);
     }
 
     public void validateDate(String date) {

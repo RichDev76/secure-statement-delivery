@@ -12,8 +12,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RateLimiterConfig {
 
-    private static final String TABLE_NAME = "signed_link_rate_limit_buckets";
-
     // Matches the bucket's own refill window, so every row is stale by the time
     // Bucket4jSignedLinkRateLimiter#deleteExpiredBuckets sweeps it.
     private static final Duration BUCKET_STATE_TTL = Duration.ofMinutes(1);
@@ -22,7 +20,7 @@ public class RateLimiterConfig {
     public ProxyManager<String> signedLinkRateLimitProxyManager(DataSource dataSource) {
         return Bucket4jPostgreSQL.selectForUpdateBasedBuilder(dataSource)
                 .primaryKeyMapper(PrimaryKeyMapper.STRING)
-                .table(TABLE_NAME)
+                .table(Bucket4jSignedLinkRateLimiter.TABLE_NAME)
                 .expirationAfterWrite(new FixedTtlExpirationAfterWriteStrategy(BUCKET_STATE_TTL))
                 .build();
     }

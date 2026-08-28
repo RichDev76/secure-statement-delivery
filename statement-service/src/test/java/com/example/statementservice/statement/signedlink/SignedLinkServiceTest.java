@@ -30,6 +30,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SignedLinkService Unit Tests")
@@ -137,6 +138,48 @@ class SignedLinkServiceTest {
     }
 
     @Test
+    void GivenLinkSignerFails_WhenCreateSignedLink_ThenWrapsFailureAsSignedLinkGenerationException() {
+        // Given
+        when(idGenerator.newId()).thenReturn(UUID.randomUUID());
+        SignatureException signingFailure = new SignatureException("signing key unavailable", null);
+        when(linkSigner.sign(anyString(), anyLong(), anyString(), anyString())).thenThrow(signingFailure);
+
+        // When / Then
+        assertThatThrownBy(() -> signedLinkService.createSignedLink(testStatementId, testCreatedBy, FILE_NAME))
+                .isInstanceOf(SignedLinkGenerationException.class)
+                .hasCause(signingFailure);
+        verifyNoInteractions(signedLinkRepository);
+    }
+
+    @Test
+    void GivenRepositorySaveFails_WhenCreateSignedLink_ThenWrapsFailureAsSignedLinkGenerationException() {
+        // Given
+        when(idGenerator.newId()).thenReturn(UUID.randomUUID());
+        when(linkSigner.sign(anyString(), anyLong(), anyString(), anyString())).thenReturn(RAW_TOKEN);
+        var persistenceFailure = new DataAccessResourceFailureException("database unavailable");
+        when(signedLinkRepository.save(any(SignedLink.class))).thenThrow(persistenceFailure);
+
+        // When / Then
+        assertThatThrownBy(() -> signedLinkService.createSignedLink(testStatementId, testCreatedBy, FILE_NAME))
+                .isInstanceOf(SignedLinkGenerationException.class)
+                .hasCause(persistenceFailure);
+    }
+
+    @Test
+    void GivenUnexpectedBugDuringLinkCreation_WhenCreateSignedLink_ThenExceptionPropagatesUnwrapped() {
+        // Given: a bug unrelated to signing or persistence (e.g. a coding error) must not be
+        // misclassified as a routine SignedLinkGenerationException - callers treat that type as
+        // an expected, swallow-and-degrade failure mode.
+        when(idGenerator.newId()).thenReturn(UUID.randomUUID());
+        NullPointerException bug = new NullPointerException("unexpected null");
+        when(linkSigner.sign(anyString(), anyLong(), anyString(), anyString())).thenThrow(bug);
+
+        // When / Then
+        assertThatThrownBy(() -> signedLinkService.createSignedLink(testStatementId, testCreatedBy, FILE_NAME))
+                .isSameAs(bug);
+    }
+
+    @Test
     void GivenValidLinkAndMatchingSignature_WhenValidate_ThenReturnsValid() {
         // Given
         var link = createTestLink(OffsetDateTime.now(clock).plusMinutes(10));
@@ -150,9 +193,9 @@ class SignedLinkServiceTest {
         var result = signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), linkId, FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isTrue();
-        assertThat(result.getLink()).isEqualTo(link);
-        assertThat(result.getFailureReason()).isNull();
+        assertThat(result.valid()).isTrue();
+        assertThat(result.link()).isEqualTo(link);
+        assertThat(result.failureReason()).isNull();
     }
 
     @Test
@@ -170,9 +213,9 @@ class SignedLinkServiceTest {
         var result = signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), linkId, FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
-        assertThat(result.getLink()).isEqualTo(link);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
+        assertThat(result.link()).isEqualTo(link);
     }
 
     @Test
@@ -186,8 +229,8 @@ class SignedLinkServiceTest {
         var result = signedLinkService.validate("tampered-token", 1234567890L, linkId, FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
         verifyNoInteractions(signedLinkRepository);
     }
 
@@ -203,9 +246,9 @@ class SignedLinkServiceTest {
         var result = signedLinkService.validate(RAW_TOKEN, 1234567890L, linkId, FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getLink()).isNull();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.NOT_FOUND);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.link()).isNull();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.NOT_FOUND);
     }
 
     @Test
@@ -222,8 +265,8 @@ class SignedLinkServiceTest {
                 signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), unrelatedLinkId, FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
     }
 
     @Test
@@ -239,8 +282,8 @@ class SignedLinkServiceTest {
                 RAW_TOKEN, link.getExpiresAt().toEpochSecond() + 3600, link.getId(), FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
     }
 
     @Test
@@ -256,8 +299,8 @@ class SignedLinkServiceTest {
                 signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), link.getId(), FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.EXPIRED);
     }
 
     @Test
@@ -275,8 +318,8 @@ class SignedLinkServiceTest {
                 signedLinkService.validate(RAW_TOKEN, link.getExpiresAt().toEpochSecond(), link.getId(), FILE_NAME);
 
         // Then
-        assertThat(first.isValid()).isTrue();
-        assertThat(second.isValid()).isTrue();
+        assertThat(first.valid()).isTrue();
+        assertThat(second.valid()).isTrue();
         verify(signedLinkRepository, never()).save(any());
         verify(signedLinkRepository, times(2)).recordRedemption(eq(link.getId()), anyInt());
     }
@@ -287,8 +330,8 @@ class SignedLinkServiceTest {
         var result = signedLinkService.validate(RAW_TOKEN, null, UUID.randomUUID(), FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
         verifyNoInteractions(linkSigner);
     }
 
@@ -298,8 +341,8 @@ class SignedLinkServiceTest {
         var result = signedLinkService.validate(RAW_TOKEN, 1234567890L, null, FILE_NAME);
 
         // Then
-        assertThat(result.isValid()).isFalse();
-        assertThat(result.getFailureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
+        assertThat(result.valid()).isFalse();
+        assertThat(result.failureReason()).isEqualTo(ValidationFailureReason.INVALID_SIGNATURE);
         verifyNoInteractions(linkSigner);
     }
 

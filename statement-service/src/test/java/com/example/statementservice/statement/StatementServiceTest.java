@@ -22,7 +22,6 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -405,48 +404,6 @@ class StatementServiceTest {
     }
 
     @Test
-    void GivenExistingAccount_WhenGettingStatementsByAccountNumber_ThenReturnsList() {
-        List<Statement> statements = Arrays.asList(testStatement);
-        when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.of(statements));
-        List<Statement> result = statementService.getStatementsByAccountNumber(testAccountNumber);
-        assertThat(result).isNotNull();
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getAccountNumber()).isEqualTo(testAccountNumber);
-        verify(statementRepository).findAllByAccountNumber(testAccountNumber);
-    }
-
-    @Test
-    void GivenUnknownAccount_WhenGettingStatementsByAccountNumber_ThenThrowsStatementNotFoundException() {
-        when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> statementService.getStatementsByAccountNumber(testAccountNumber))
-                .isInstanceOf(StatementNotFoundException.class)
-                .hasMessageContaining("Statement(s) not found for account number: " + testAccountNumber);
-        verify(statementRepository).findAllByAccountNumber(testAccountNumber);
-    }
-
-    @Test
-    void GivenExistingAccountAndDate_WhenGettingStatement_ThenReturnsIt() {
-        when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
-                .thenReturn(Optional.of(testStatement));
-        Optional<Statement> result =
-                statementService.getStatementByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
-        assertThat(result).isPresent();
-        assertThat(result.get().getAccountNumber()).isEqualTo(testAccountNumber);
-        assertThat(result.get().getStatementDate()).isEqualTo(testStatementDate);
-        verify(statementRepository).findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
-    }
-
-    @Test
-    void GivenUnknownAccountAndDate_WhenGettingStatement_ThenReturnsEmpty() {
-        when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
-                .thenReturn(Optional.empty());
-        Optional<Statement> result =
-                statementService.getStatementByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
-        assertThat(result).isEmpty();
-        verify(statementRepository).findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
-    }
-
-    @Test
     void GivenStatementEntity_WhenMappingToDto_ThenMapperResultIsReturned() {
         when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
         StatementDto result = statementService.toDto(testStatement);
@@ -464,44 +421,6 @@ class StatementServiceTest {
         assertThat(result.statementId()).isEqualTo(testId);
         verify(statementRepository).findStatementById(testId);
         verify(statementEntityMapper).toDto(testStatement);
-    }
-
-    @Test
-    void GivenExistingAccount_WhenGettingStatementDtos_ThenReturnsDtos() {
-        List<Statement> statements = Arrays.asList(testStatement);
-        List<StatementDto> dtos = Arrays.asList(testStatementDto);
-        when(statementRepository.findAllByAccountNumber(testAccountNumber)).thenReturn(Optional.of(statements));
-        when(statementEntityMapper.toDtos(statements)).thenReturn(dtos);
-        List<StatementDto> result = statementService.getStatementsDtoByAccountNumber(testAccountNumber);
-        assertThat(result).isNotNull();
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).statementId()).isEqualTo(testId);
-        verify(statementRepository).findAllByAccountNumber(testAccountNumber);
-        verify(statementEntityMapper).toDtos(statements);
-    }
-
-    @Test
-    void GivenExistingAccountAndDate_WhenGettingStatementDto_ThenReturnsDto() {
-        when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
-                .thenReturn(Optional.of(testStatement));
-        when(statementEntityMapper.toDto(testStatement)).thenReturn(testStatementDto);
-        Optional<StatementDto> result =
-                statementService.getStatementDtoByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
-        assertThat(result).isPresent();
-        assertThat(result.get().statementId()).isEqualTo(testId);
-        verify(statementRepository).findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
-        verify(statementEntityMapper).toDto(testStatement);
-    }
-
-    @Test
-    void GivenUnknownAccountAndDate_WhenGettingStatementDto_ThenReturnsEmpty() {
-        when(statementRepository.findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate))
-                .thenReturn(Optional.empty());
-        Optional<StatementDto> result =
-                statementService.getStatementDtoByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
-        assertThat(result).isEmpty();
-        verify(statementRepository).findByAccountNumberAndStatementDate(testAccountNumber, testStatementDate);
-        verify(statementEntityMapper, never()).toDto(any());
     }
 
     @ParameterizedTest

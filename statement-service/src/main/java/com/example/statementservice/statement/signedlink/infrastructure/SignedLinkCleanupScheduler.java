@@ -1,5 +1,6 @@
 package com.example.statementservice.statement.signedlink.infrastructure;
 
+import com.example.statementservice.infrastructure.web.CorrelationIdFilter;
 import com.example.statementservice.statement.signedlink.SignedLinkCleanupService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +13,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SignedLinkCleanupScheduler {
 
-    private static final String CORRELATION_ID_KEY = "correlationId";
-
     private final SignedLinkCleanupService cleanupService;
 
     @Scheduled(cron = "${statement.signed-link.cleanup.cron}")
@@ -22,11 +21,11 @@ public class SignedLinkCleanupScheduler {
             lockAtMostFor = "#{@signedLinkCleanupProperties.lockAtMostFor}",
             lockAtLeastFor = "#{@signedLinkCleanupProperties.lockAtLeastFor}")
     public void runCleanup() {
-        MDC.put(CORRELATION_ID_KEY, UUID.randomUUID().toString());
+        MDC.put(CorrelationIdFilter.CORRELATION_ID_MDC_KEY, UUID.randomUUID().toString());
         try {
             cleanupService.cleanup();
         } finally {
-            MDC.remove(CORRELATION_ID_KEY);
+            MDC.remove(CorrelationIdFilter.CORRELATION_ID_MDC_KEY);
         }
     }
 }

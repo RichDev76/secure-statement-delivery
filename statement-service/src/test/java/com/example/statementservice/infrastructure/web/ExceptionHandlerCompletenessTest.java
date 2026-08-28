@@ -38,7 +38,13 @@ class ExceptionHandlerCompletenessTest {
             com.example.statementservice.statement.StatementStorageUnavailableException.class,
             "translated to a DownloadOutcome (STORAGE_UNAVAILABLE) before the web layer",
             com.example.statementservice.statement.FileCipherException.class,
-            "wrapped into StatementUploadException on upload; DECRYPTION_FAILED outcome on download");
+            "wrapped into StatementUploadException on upload; DECRYPTION_FAILED outcome on download",
+            com.example.statementservice.statement.signedlink.SignedLinkGenerationException.class,
+            "caught in StatementQueryService and degraded to a statement DTO without a download "
+                    + "link; never propagates to the web layer",
+            com.example.statementservice.infrastructure.crypto.MasterKeyLoadException.class,
+            "thrown from MasterKeyProvider's constructor at application startup; fails bean "
+                    + "creation before any request-handling web layer exists");
 
     // Advices whose handler methods look up response metadata in a private static map keyed by
     // exception class.

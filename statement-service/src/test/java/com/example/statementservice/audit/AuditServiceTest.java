@@ -19,10 +19,9 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -326,47 +325,52 @@ class AuditServiceTest {
     }
 
     @Test
-    void GivenStoredLogs_WhenGettingAllAuditLogs_ThenAllAreReturned() {
-        var log1 = createAuditLog("ACTION1");
-        var log2 = createAuditLog("ACTION2");
-        var logs = Arrays.asList(log1, log2);
-        when(auditLogRepository.findAll()).thenReturn(logs);
-        var result = auditService.getAllAuditLogs();
-        assertThat(result).hasSize(2);
-        assertThat(result).containsExactly(log1, log2);
-        verify(auditLogRepository).findAll();
+    void GivenNoPriorSuccessfulDownloads_WhenCheckingForDifferentContext_ThenReturnsFalse() {
+        when(auditLogRepository.findBySignedLinkIdAndAction(testSignedLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue()))
+                .thenReturn(List.of());
+
+        var suspicious =
+                auditService.hasPriorSuccessfulDownloadFromDifferentContext(testSignedLinkId, "10.0.0.1", "Chrome");
+
+        assertThat(suspicious).isFalse();
     }
 
     @Test
-    void GivenNoLogs_WhenGettingAllAuditLogs_ThenReturnsEmptyList() {
-        when(auditLogRepository.findAll()).thenReturn(Collections.emptyList());
-        var result = auditService.getAllAuditLogs();
-        assertThat(result).isEmpty();
-        verify(auditLogRepository).findAll();
+    void GivenPriorSuccessWithSameIpAndUserAgent_WhenCheckingForDifferentContext_ThenReturnsFalse() {
+        var priorLog = new AuditLog();
+        priorLog.setDetails(Map.of(AuditDetailKeys.IP, "10.0.0.1", AuditDetailKeys.USER_AGENT, "Chrome"));
+        when(auditLogRepository.findBySignedLinkIdAndAction(testSignedLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue()))
+                .thenReturn(List.of(priorLog));
+
+        var suspicious =
+                auditService.hasPriorSuccessfulDownloadFromDifferentContext(testSignedLinkId, "10.0.0.1", "Chrome");
+
+        assertThat(suspicious).isFalse();
     }
 
     @Test
-    void GivenMultipleLogs_WhenGettingAllAuditLogs_ThenAllAreReturned() {
-        var logs = new ArrayList<AuditLog>();
-        for (int i = 0; i < 10; i++) {
-            logs.add(createAuditLog("ACTION" + i));
-        }
-        when(auditLogRepository.findAll()).thenReturn(logs);
-        var result = auditService.getAllAuditLogs();
-        assertThat(result).hasSize(10);
-        verify(auditLogRepository).findAll();
+    void GivenPriorSuccessWithDifferentIp_WhenCheckingForDifferentContext_ThenReturnsTrue() {
+        var priorLog = new AuditLog();
+        priorLog.setDetails(Map.of(AuditDetailKeys.IP, "10.0.0.99", AuditDetailKeys.USER_AGENT, "Chrome"));
+        when(auditLogRepository.findBySignedLinkIdAndAction(testSignedLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue()))
+                .thenReturn(List.of(priorLog));
+
+        var suspicious =
+                auditService.hasPriorSuccessfulDownloadFromDifferentContext(testSignedLinkId, "10.0.0.1", "Chrome");
+
+        assertThat(suspicious).isTrue();
     }
 
-    private AuditLog createAuditLog(String action) {
-        var log = new AuditLog();
-        log.setId(UUID.randomUUID());
-        log.setAction(action);
-        log.setStatementId(testStatementId);
-        log.setAccountNumber(testAccountNumber);
-        log.setSignedLinkId(testSignedLinkId);
-        log.setPerformedBy(testPerformedBy);
-        log.setPerformedAt(OffsetDateTime.now());
-        log.setDetails(testDetails);
-        return log;
+    @Test
+    void GivenPriorSuccessWithDifferentUserAgent_WhenCheckingForDifferentContext_ThenReturnsTrue() {
+        var priorLog = new AuditLog();
+        priorLog.setDetails(Map.of(AuditDetailKeys.IP, "10.0.0.1", AuditDetailKeys.USER_AGENT, "curl/8.0"));
+        when(auditLogRepository.findBySignedLinkIdAndAction(testSignedLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue()))
+                .thenReturn(List.of(priorLog));
+
+        var suspicious =
+                auditService.hasPriorSuccessfulDownloadFromDifferentContext(testSignedLinkId, "10.0.0.1", "Chrome");
+
+        assertThat(suspicious).isTrue();
     }
 }

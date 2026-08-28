@@ -1,6 +1,7 @@
 package com.example.statementservice.statement.search;
 
 import com.example.statementservice.audit.AuditAction;
+import com.example.statementservice.audit.AuditDetailKeys;
 import com.example.statementservice.audit.AuditService;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,12 +13,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AuditHelper {
+public class StatementSearchAuditRecorder {
     private static final String AUDIT_KEY_MESSAGE = "message";
-    private static final String AUDIT_KEY_ERROR = "error";
-    private static final String AUDIT_KEY_IP = "ip";
-    private static final String AUDIT_KEY_USER_AGENT = "userAgent";
-    private static final String AUDIT_UNKNOWN = "unknown";
 
     private final AuditService auditService;
 
@@ -110,10 +107,10 @@ public class AuditHelper {
     private Map<String, Object> buildDetails(String message, String errorMessage, String clientIp, String userAgent) {
         var details = new HashMap<String, Object>();
         details.put(AUDIT_KEY_MESSAGE, message);
-        details.put(AUDIT_KEY_IP, clientIp != null ? clientIp : AUDIT_UNKNOWN);
-        details.put(AUDIT_KEY_USER_AGENT, userAgent != null ? userAgent : AUDIT_UNKNOWN);
+        details.put(AuditDetailKeys.IP, clientIp != null ? clientIp : AuditDetailKeys.UNKNOWN);
+        details.put(AuditDetailKeys.USER_AGENT, userAgent != null ? userAgent : AuditDetailKeys.UNKNOWN);
         if (errorMessage != null) {
-            details.put(AUDIT_KEY_ERROR, errorMessage);
+            details.put(AuditDetailKeys.ERROR, errorMessage);
         }
         return details;
     }

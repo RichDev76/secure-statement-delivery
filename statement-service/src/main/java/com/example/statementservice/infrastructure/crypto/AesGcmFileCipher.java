@@ -21,6 +21,7 @@ public class AesGcmFileCipher implements FileCipher {
     private static final String ALGORITHM_AES = "AES";
     private static final String ALGO = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128;
+    private static final int GCM_TAG_LENGTH_BYTES = GCM_TAG_LENGTH / 8;
     private static final int INITIALIZATION_VECTOR_LENGTH = 12;
     private static final int DEK_LENGTH = 32;
     private static final byte DEK_WRAP_VERSION_GCM = 0x01;
@@ -50,12 +51,8 @@ public class AesGcmFileCipher implements FileCipher {
     public byte[] wrapDek(byte[] dek) {
         var iv = generateInitializationVector();
         try {
-            var cipher = Cipher.getInstance(ALGO);
-            cipher.init(
-                    Cipher.ENCRYPT_MODE,
-                    new SecretKeySpec(masterKeyProvider.getKey(), ALGORITHM_AES),
-                    new GCMParameterSpec(GCM_TAG_LENGTH, iv));
-            var ciphertext = cipher.doFinal(dek);
+            var ciphertext = createCipher(Cipher.ENCRYPT_MODE, masterKeyProvider.getKey(), iv)
+                    .doFinal(dek);
             var wrapped = new byte[1 + iv.length + ciphertext.length];
             wrapped[0] = DEK_WRAP_VERSION_GCM;
             System.arraycopy(iv, 0, wrapped, 1, iv.length);
@@ -75,12 +72,8 @@ public class AesGcmFileCipher implements FileCipher {
         var iv = Arrays.copyOfRange(wrapped, 1, minLength);
         var ciphertext = Arrays.copyOfRange(wrapped, minLength, wrapped.length);
         try {
-            var cipher = Cipher.getInstance(ALGO);
-            cipher.init(
-                    Cipher.DECRYPT_MODE,
-                    new SecretKeySpec(masterKeyProvider.getKey(), ALGORITHM_AES),
-                    new GCMParameterSpec(GCM_TAG_LENGTH, iv));
-            return cipher.doFinal(ciphertext);
+            return createCipher(Cipher.DECRYPT_MODE, masterKeyProvider.getKey(), iv)
+                    .doFinal(ciphertext);
         } catch (GeneralSecurityException e) {
             throw new FileCipherException("Failed to unwrap DEK", e);
         }
@@ -90,9 +83,7 @@ public class AesGcmFileCipher implements FileCipher {
     public InputStream encryptingStream(InputStream plaintext, byte[] initializationVector, byte[] dek)
             throws IOException {
         try {
-            var secretKeySpec = new SecretKeySpec(dek, ALGORITHM_AES);
-            var cipher = Cipher.getInstance(ALGO);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, initializationVector));
+            var cipher = createCipher(Cipher.ENCRYPT_MODE, dek, initializationVector);
             return new SequenceInputStream(
                     new ByteArrayInputStream(initializationVector), new CipherInputStream(plaintext, cipher));
         } catch (GeneralSecurityException e) {
@@ -110,7 +101,7 @@ public class AesGcmFileCipher implements FileCipher {
 
     @Override
     public long ciphertextLength(long plaintextLength) {
-        return INITIALIZATION_VECTOR_LENGTH + plaintextLength + (GCM_TAG_LENGTH / 8);
+        return INITIALIZATION_VECTOR_LENGTH + plaintextLength + GCM_TAG_LENGTH_BYTES;
     }
 
     @Override
@@ -120,14 +111,17 @@ public class AesGcmFileCipher implements FileCipher {
         }
         var initializationVector = Arrays.copyOfRange(ciphertext, 0, INITIALIZATION_VECTOR_LENGTH);
         try {
-            var keySpec = new SecretKeySpec(dek, ALGORITHM_AES);
-            var cipher = Cipher.getInstance(ALGO);
-            var spec = new GCMParameterSpec(GCM_TAG_LENGTH, initializationVector);
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, spec);
-            return cipher.doFinal(
-                    ciphertext, INITIALIZATION_VECTOR_LENGTH, ciphertext.length - INITIALIZATION_VECTOR_LENGTH);
+            return createCipher(Cipher.DECRYPT_MODE, dek, initializationVector)
+                    .doFinal(
+                            ciphertext, INITIALIZATION_VECTOR_LENGTH, ciphertext.length - INITIALIZATION_VECTOR_LENGTH);
         } catch (GeneralSecurityException e) {
             throw new FileCipherException("Ciphertext integrity check failed", e);
         }
+    }
+
+    private Cipher createCipher(int mode, byte[] key, byte[] iv) throws GeneralSecurityException {
+        var cipher = Cipher.getInstance(ALGO);
+        cipher.init(mode, new SecretKeySpec(key, ALGORITHM_AES), new GCMParameterSpec(GCM_TAG_LENGTH, iv));
+        return cipher;
     }
 }

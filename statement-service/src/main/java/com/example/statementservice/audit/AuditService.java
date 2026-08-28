@@ -4,8 +4,8 @@ import com.example.statementservice.shared.IdGenerator;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
@@ -62,14 +62,21 @@ public class AuditService {
         }
     }
 
+    // Query side of the audit trail's detail schema - keeps callers from reaching into
+    // AuditLogRepository directly and re-interpreting the details map themselves.
+    public boolean hasPriorSuccessfulDownloadFromDifferentContext(
+            UUID signedLinkId, String clientIp, String userAgent) {
+        var priorSuccesses =
+                auditLogRepository.findBySignedLinkIdAndAction(signedLinkId, AuditAction.DOWNLOAD_SUCCESS.getValue());
+        return priorSuccesses.stream()
+                .anyMatch(prior -> !Objects.equals(prior.getDetails().get(AuditDetailKeys.IP), clientIp)
+                        || !Objects.equals(prior.getDetails().get(AuditDetailKeys.USER_AGENT), userAgent));
+    }
+
     private void recordDroppedAudit(AuditLog auditLog) {
         meterRegistry
                 .counter(AUDIT_DROPPED_METRIC, ACTION_TAG, auditLog.getAction())
                 .increment();
-    }
-
-    public List<AuditLog> getAllAuditLogs() {
-        return this.auditLogRepository.findAll();
     }
 
     private AuditLog buildAuditLog(

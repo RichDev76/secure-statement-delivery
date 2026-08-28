@@ -30,6 +30,8 @@ COPY --chown=config-server:config-server --chmod=755 config-server/docker/config
 # No USER here: the entrypoint must read root-only mounted Vault secrets, then drops to
 # config-server via setpriv before exec'ing the JVM.
 
+EXPOSE 8888
+
 # Self-sufficient outside docker-compose too (compose's healthcheck block takes precedence).
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=6 \
     CMD curl -fsS http://localhost:8888/actuator/health || exit 1

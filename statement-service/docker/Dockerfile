@@ -45,6 +45,8 @@ RUN chmod +x /app/wait-for-config.sh /app/entrypoint.sh \
 
 USER statement-service
 
+EXPOSE 8080
+
 # Self-sufficient outside docker-compose too (compose's own healthcheck block, when present,
 # takes precedence over this - they're not redundant, this is the fallback).
 HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=6 \

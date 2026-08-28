@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class Bucket4jSignedLinkRateLimiter implements SignedLinkRateLimiter {
 
-    private static final String TABLE_NAME = "signed_link_rate_limit_buckets";
+    static final String TABLE_NAME = "signed_link_rate_limit_buckets";
 
     private final ProxyManager<String> proxyManager;
     private final SignedLinkProperties properties;

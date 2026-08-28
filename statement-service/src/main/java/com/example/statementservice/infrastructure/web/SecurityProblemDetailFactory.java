@@ -1,7 +1,7 @@
 package com.example.statementservice.infrastructure.web;
 
-import static com.example.statementservice.infrastructure.web.CommonUtil.buildProblemDetailTypeURI;
-import static com.example.statementservice.infrastructure.web.CommonUtil.createProblemDetail;
+import static com.example.statementservice.infrastructure.web.ProblemDetailSupport.buildProblemDetailTypeURI;
+import static com.example.statementservice.infrastructure.web.ProblemDetailSupport.createProblemDetail;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -37,6 +37,13 @@ public final class SecurityProblemDetailFactory {
                         "You do not have permission to access this resource",
                         ERROR_CODE_ACCESS_DENIED),
                 request);
+    }
+
+    // Shared by the AccessDeniedHandler bean and the MVC exception handler, so both surfaces of
+    // a denial log the same line instead of drifting.
+    public static ProblemDetail loggedAccessDenied(HttpServletRequest request) {
+        log.warn("Access denied - path={}, method={}", EndpointLabel.of(request.getRequestURI()), request.getMethod());
+        return accessDenied(request);
     }
 
     private static ProblemDetail withInstance(ProblemDetail problemDetail, HttpServletRequest request) {

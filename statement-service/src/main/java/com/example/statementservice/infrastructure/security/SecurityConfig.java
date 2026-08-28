@@ -98,13 +98,8 @@ public class SecurityConfig {
     // Unreachable on current paths (403s arise in MVC); kept as backstop for future URL-level rules.
     @Bean
     public AccessDeniedHandler problemDetailAccessDeniedHandler(JsonMapper jsonMapper) {
-        return (request, response, accessDeniedException) -> {
-            log.warn(
-                    "Access denied - path={}, method={}",
-                    EndpointLabel.of(request.getRequestURI()),
-                    request.getMethod());
-            writeProblemDetail(response, SecurityProblemDetailFactory.accessDenied(request), jsonMapper);
-        };
+        return (request, response, accessDeniedException) ->
+                writeProblemDetail(response, SecurityProblemDetailFactory.loggedAccessDenied(request), jsonMapper);
     }
 
     private static void writeProblemDetail(

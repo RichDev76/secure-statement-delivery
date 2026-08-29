@@ -85,7 +85,7 @@
         <mxCell id="hla-row3" parent="hla-svc" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;startSize=24" value="Feature Slices (Screaming Architecture)" vertex="1">
           <mxGeometry height="130" width="1400" x="20" y="250" as="geometry" />
         </mxCell>
-        <mxCell id="hla-row3-1" parent="hla-row3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="statement.upload&#xa;StatementUploadService&#xa;ValidationUtil&#xa;Streaming SHA-256 digest" vertex="1">
+        <mxCell id="hla-row3-1" parent="hla-row3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="statement.upload&#xa;StatementUploadService&#xa;UploadRequestValidator&#xa;Streaming SHA-256 digest" vertex="1">
           <mxGeometry height="90" width="256" x="20" y="30" as="geometry" />
         </mxCell>
         <mxCell id="hla-row3-2" parent="hla-row3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;" value="statement.download&#xa;DownloadService&#xa;DownloadResponseFactory" vertex="1">

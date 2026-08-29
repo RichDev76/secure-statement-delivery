@@ -4,9 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.statementservice.statement.download.DecryptionFailedException;
 import com.example.statementservice.statement.download.DownloadOutcome;
-import com.example.statementservice.statement.download.DownloadService;
 import java.io.ByteArrayInputStream;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,9 +36,7 @@ class DownloadResponseFactoryTest {
 
         var testData = "PDF content".getBytes();
         var inputStream = new ByteArrayInputStream(testData);
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.OK, Optional.of(inputStream));
-        var response = downloadResponseFactory.build(fileName, result);
+        var response = downloadResponseFactory.build(fileName, DownloadOutcome.OK, inputStream);
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -58,69 +54,57 @@ class DownloadResponseFactoryTest {
     @Test
     void GivenRateLimitedOutcome_WhenBuildingResponse_ThenThrowsDownloadRateLimitedException() {
 
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.RATE_LIMITED, Optional.empty());
         assertThrows(
                 com.example.statementservice.statement.download.DownloadRateLimitedException.class,
-                () -> downloadResponseFactory.build(fileName, result));
+                () -> downloadResponseFactory.build(fileName, DownloadOutcome.RATE_LIMITED, null));
     }
 
     @Test
     void GivenInvalidSignatureOutcome_WhenBuildingResponse_ThenThrowsDownloadInvalidSignatureException() {
 
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.INVALID_SIGNATURE, Optional.empty());
         assertThrows(
                 com.example.statementservice.statement.download.DownloadInvalidSignatureException.class,
-                () -> downloadResponseFactory.build(fileName, result));
+                () -> downloadResponseFactory.build(fileName, DownloadOutcome.INVALID_SIGNATURE, null));
     }
 
     @Test
     void GivenLinkExpiredOutcome_WhenBuildingResponse_ThenThrowsDownloadLinkExpiredException() {
 
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.LINK_EXPIRED, Optional.empty());
         assertThrows(
                 com.example.statementservice.statement.download.DownloadLinkExpiredException.class,
-                () -> downloadResponseFactory.build(fileName, result));
+                () -> downloadResponseFactory.build(fileName, DownloadOutcome.LINK_EXPIRED, null));
     }
 
     @Test
     void GivenStatementNotFoundOutcome_WhenBuildingResponse_ThenThrowsStatementNotFoundException() {
 
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.STATEMENT_NOT_FOUND, Optional.empty());
         assertThrows(
                 com.example.statementservice.statement.StatementNotFoundException.class,
-                () -> downloadResponseFactory.build(fileName, result));
+                () -> downloadResponseFactory.build(fileName, DownloadOutcome.STATEMENT_NOT_FOUND, null));
     }
 
     @Test
     void GivenFileMissingOutcome_WhenBuildingResponse_ThenThrowsDownloadFileMissingException() {
 
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
         assertThrows(
                 com.example.statementservice.statement.download.DownloadFileMissingException.class,
-                () -> downloadResponseFactory.build(fileName, result));
+                () -> downloadResponseFactory.build(fileName, DownloadOutcome.FILE_MISSING, null));
     }
 
     @Test
     void GivenDecryptionFailedOutcome_WhenBuildingResponse_ThenThrowsDecryptionFailedException() {
 
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.DECRYPTION_FAILED, Optional.empty());
-        assertThrows(DecryptionFailedException.class, () -> downloadResponseFactory.build(fileName, result));
+        assertThrows(
+                DecryptionFailedException.class,
+                () -> downloadResponseFactory.build(fileName, DownloadOutcome.DECRYPTION_FAILED, null));
     }
 
     @Test
     void GivenStorageUnavailableOutcome_WhenBuildingResponse_ThenThrowsDownloadStorageUnavailableException() {
 
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty());
         assertThrows(
                 com.example.statementservice.statement.download.DownloadStorageUnavailableException.class,
-                () -> downloadResponseFactory.build(fileName, result));
+                () -> downloadResponseFactory.build(fileName, DownloadOutcome.STORAGE_UNAVAILABLE, null));
     }
 
     @Test
@@ -128,9 +112,8 @@ class DownloadResponseFactoryTest {
 
         var customFileName = "annual-report-2024.pdf";
         var inputStream = new ByteArrayInputStream("test".getBytes());
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.OK, Optional.of(inputStream));
-        ResponseEntity<Resource> response = downloadResponseFactory.build(customFileName, result);
+        ResponseEntity<Resource> response =
+                downloadResponseFactory.build(customFileName, DownloadOutcome.OK, inputStream);
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -142,9 +125,8 @@ class DownloadResponseFactoryTest {
 
         var specialFileName = "statement-2023-01 (copy).pdf";
         var inputStream = new ByteArrayInputStream("data".getBytes());
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.OK, Optional.of(inputStream));
-        ResponseEntity<Resource> response = downloadResponseFactory.build(specialFileName, result);
+        ResponseEntity<Resource> response =
+                downloadResponseFactory.build(specialFileName, DownloadOutcome.OK, inputStream);
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -155,9 +137,7 @@ class DownloadResponseFactoryTest {
     void GivenOkOutcome_WhenBuildingResponse_ThenAllSecurityHeadersAreSet() {
 
         var inputStream = new ByteArrayInputStream("secure content".getBytes());
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.OK, Optional.of(inputStream));
-        ResponseEntity<Resource> response = downloadResponseFactory.build(fileName, result);
+        ResponseEntity<Resource> response = downloadResponseFactory.build(fileName, DownloadOutcome.OK, inputStream);
         assertNotNull(response);
         var headers = response.getHeaders();
         assertEquals("no-store, no-cache, must-revalidate", headers.getCacheControl());
@@ -172,9 +152,8 @@ class DownloadResponseFactoryTest {
     void GivenEmptyInputStream_WhenBuildingOkResponse_ThenReturnsOkWithEmptyBody() {
 
         var emptyInputStream = new ByteArrayInputStream(new byte[0]);
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.OK, Optional.of(emptyInputStream));
-        ResponseEntity<Resource> response = downloadResponseFactory.build(fileName, result);
+        ResponseEntity<Resource> response =
+                downloadResponseFactory.build(fileName, DownloadOutcome.OK, emptyInputStream);
         assertNotNull(response);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -185,10 +164,15 @@ class DownloadResponseFactoryTest {
     void GivenOkOutcome_WhenBuildingResponse_ThenContentTypeIsPdf() {
 
         var inputStream = new ByteArrayInputStream("content".getBytes());
-        DownloadService.DownloadStreamResult result =
-                new DownloadService.DownloadStreamResult(DownloadOutcome.OK, Optional.of(inputStream));
-        ResponseEntity<Resource> response = downloadResponseFactory.build(fileName, result);
+        ResponseEntity<Resource> response = downloadResponseFactory.build(fileName, DownloadOutcome.OK, inputStream);
         assertNotNull(response);
         assertEquals(MediaType.APPLICATION_OCTET_STREAM, response.getHeaders().getContentType());
+    }
+
+    @Test
+    void GivenOkOutcomeWithNullStream_WhenBuildingResponse_ThenThrowsNullPointerException() {
+
+        assertThrows(
+                NullPointerException.class, () -> downloadResponseFactory.build(fileName, DownloadOutcome.OK, null));
     }
 }

@@ -29,8 +29,6 @@ public class StatementService {
 
     private static final String PDF_EXTENSION = ".pdf";
     private static final String FALLBACK_FILE_NAME_STEM = "statement";
-    private static final String DUPLICATE_STATEMENT_MESSAGE =
-            "A statement already exists for this account number and statement date";
     private static final String ACCOUNT_DATE_UNIQUE_INDEX = "idx_statements_account_date";
 
     private final StatementRepository statementRepository;
@@ -55,7 +53,7 @@ public class StatementService {
     // Pre-check avoids orphaning an S3 object on the common duplicate path.
     private void rejectDuplicateUpload(String accountNumber, LocalDate statementDate) {
         if (statementRepository.existsByAccountNumberAndStatementDate(accountNumber, statementDate)) {
-            throw new DuplicateStatementException(DUPLICATE_STATEMENT_MESSAGE);
+            throw new DuplicateStatementException();
         }
     }
 
@@ -102,7 +100,7 @@ public class StatementService {
         } catch (DataIntegrityViolationException e) {
             deleteStoredFileBestEffort(reference);
             if (isAccountDateUniqueViolation(e)) {
-                throw new DuplicateStatementException(DUPLICATE_STATEMENT_MESSAGE, e);
+                throw new DuplicateStatementException(e);
             }
             throw new StatementUploadException("Failed to persist statement metadata", e);
         } catch (RuntimeException e) {

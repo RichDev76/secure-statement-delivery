@@ -89,7 +89,7 @@ sequenceDiagram
 
     Admin->>AC: POST /api/v1/statements/upload<br/>multipart PDF + X-Message-Digest
     AC->>US: upload(digest, file, accountNumber, date)
-    US->>US: validate inputs (ValidationUtil):<br/>content type, size, magic bytes,<br/>filename, account number, date
+    US->>US: validate inputs (UploadRequestValidator):<br/>content type, size, magic bytes,<br/>filename, account number, date
     US->>US: single-pass streaming SHA-256<br/>of the disk-spooled part
     US->>US: compare digest with X-Message-Digest
     US->>SS: uploadStatement(...)
@@ -325,8 +325,8 @@ sequenceDiagram
 The `statement-service` module is organised by **business capability** (Screaming Architecture), with **ports & adapters** (Hexagonal Architecture) at each IO boundary. Package names state what the system does, not which technical layer a class belongs to; boundaries are enforced by an ArchUnit suite (`ArchitectureTest`) that fails the build on violations, including that generated OpenAPI types are only touched from `infrastructure` packages and that file/crypto/object-storage APIs are confined to shared infrastructure.
 
 - **`statement`** — statement lifecycle core (`Statement`, `StatementRepository`, `StatementService`), plus outbound ports owned by the domain: `StatementFileStore`, `FileCipher`, `EncryptedFileFetcher`.
-    - **`statement.upload`** — validation and upload orchestration (`StatementUploadService`, `ValidationUtil`, streaming digest via the shared `ContentDigest` port), fronted by `statement.upload.infrastructure.AdminController`.
-    - **`statement.search`** — statement querying (`StatementQueryService`, `AuditHelper`).
+    - **`statement.upload`** — validation and upload orchestration (`StatementUploadService`, `UploadRequestValidator`, streaming digest via the shared `ContentDigest` port), fronted by `statement.upload.infrastructure.AdminController`.
+    - **`statement.search`** — statement querying (`StatementQueryService`, `StatementSearchAuditRecorder`).
     - **`statement.download`** — signed-link download streaming (`DownloadService`), with response-building in `statement.download.infrastructure.DownloadResponseFactory`.
     - **`statement.signedlink`** — signed-link lifecycle, rate limiting and cleanup (`SignedLinkService`, `SignedLinkCleanupService`), with ports `LinkSigner`, `DownloadUrlProvider`, `SignedLinkRateLimiter`; the `@Scheduled`/`@SchedulerLock` trigger lives in `statement.signedlink.infrastructure.SignedLinkCleanupScheduler`.
     - **`statement.infrastructure`** — `StatementsController` (link, download, and search endpoints) and `StatementApiMapper`.
@@ -621,7 +621,7 @@ Six capabilities were deliberately evaluated and scoped out. Each is recorded he
 
 - **Considered because**: antivirus/malware scanning at upload (e.g. ClamAV) is a standard control for a user-supplied file pipeline — without it, a malicious or compromised upstream could have its file stored and later redistributed via signed links, effectively laundered through encryption and access control unchanged.
 - **Deferred because**: the upload path is an internal admin endpoint, not a public one — the same trust boundary that scopes out full object-level authorization on link generation (see "Scope" above) scopes out content scanning here too. It's also nontrivial to add: a scanning daemon/sidecar or embedded engine, signature-definition updates, a scan hook in the upload path, and a fail-open-vs-fail-closed policy decision consistent with the rest of the platform's failure doctrine.
-- **The door is open**: existing controls already narrow the surface without inspecting content — contract-enforced content type, the 10MB size cap, digest verification, authentication/authorization, and envelope encryption at rest (ADR-0026). `StatementUploadService` and `ValidationUtil` are the integration points a future scan hook would extend.
+- **The door is open**: existing controls already narrow the surface without inspecting content — contract-enforced content type, the 10MB size cap, digest verification, authentication/authorization, and envelope encryption at rest (ADR-0026). `StatementUploadService` and `UploadRequestValidator` are the integration points a future scan hook would extend.
 - **Adoption path**: a synchronous ClamAV daemon/sidecar scan on the upload path is the direct option; cloud-provider malware scanning (e.g. S3-integrated) becomes viable once the S3-compatible storage backend is the only one in play, without tying the decision to a specific provider today. Revisit before upload sources broaden beyond the current trusted pipeline, or before accepting end-user-supplied files directly.
 
 #### Upload Concurrency Bulkhead

@@ -189,8 +189,7 @@ class StatementUploadServiceTest {
         // Given
         doNothing().when(uploadRequestValidator).validateFileUploadInputs(any(), any(), any());
         when(statementService.uploadStatement(any(), any(), any(), any(), any()))
-                .thenThrow(new DuplicateStatementException(
-                        "A statement already exists for this account number and statement date"));
+                .thenThrow(new DuplicateStatementException());
 
         // When / Then
         assertThatThrownBy(() -> statementUploadService.upload(

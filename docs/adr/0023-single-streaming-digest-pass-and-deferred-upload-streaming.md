@@ -23,7 +23,7 @@ Streaming ciphertext to S3 and a concurrency bulkhead are deferred.
 - Full streaming redesign now — rejected: a wrong computed Content-Length silently corrupts uploads,
   and a misordered bulkhead filter is an unauthenticated DoS vector; not worth it at 10MB.
 - Do nothing — rejected: the duplicate reads were pure waste, removable safely.
-- Hash inside `ValidationUtil` — rejected: validators shouldn't do file I/O.
+- Hash inside `UploadRequestValidator` — rejected: validators shouldn't do file I/O.
 
 ## Consequences
 
@@ -36,7 +36,7 @@ Streaming ciphertext to S3 and a concurrency bulkhead are deferred.
 
 - `Sha256Digest`: streaming overload, caller owns the stream.
 - `StatementUploadService.computeContentHash`: wraps `IOException` in `DigestComputationException`.
-- `ValidationUtil.validateMessageDigest(String, String)`: comparison-only.
+- `UploadRequestValidator.validateMessageDigest(String, String)`: comparison-only.
 - `StatementService.uploadStatement`: gains `contentHash` param; `readBytes` deleted.
 - `application.yml`: explicit `file-size-threshold: 0` (digest pass re-reads the disk-spooled part).
 

@@ -14,8 +14,10 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,14 +36,16 @@ public class DownloadService {
     private final AuditService auditService;
     private final SignedLinkRateLimiter rateLimiter;
 
-    public DownloadStreamResult validateAndStreamDetailed(
+    public DownloadOutcome validateAndStreamDetailed(
             String token,
             Long expires,
             UUID linkId,
             String fileName,
             String clientIp,
             String userAgent,
-            String performedBy) {
+            String performedBy,
+            Consumer<InputStream> onSuccess) {
+        Objects.requireNonNull(onSuccess, "onSuccess must not be null");
         log.debug("Download request (detailed) - token: {}, ip: {}, user: {}", maskToken(token), clientIp, performedBy);
 
         var rateLimited = enforceRateLimit(linkId, token, clientIp, userAgent, performedBy);
@@ -59,7 +63,7 @@ public class DownloadService {
         var statementOpt = statementService.findStatementById(link.getStatementId());
         if (statementOpt.isEmpty()) {
             handleMissingStatement(link, token, clientIp, userAgent, performedBy);
-            return new DownloadStreamResult(DownloadOutcome.STATEMENT_NOT_FOUND, Optional.empty());
+            return DownloadOutcome.STATEMENT_NOT_FOUND;
         }
         var statement = statementOpt.get();
 
@@ -68,12 +72,12 @@ public class DownloadService {
             return missingOrUnavailable.get();
         }
 
-        return decryptAndStream(statement, link, token, clientIp, userAgent, performedBy);
+        return decryptAndStream(statement, link, token, clientIp, userAgent, performedBy, onSuccess);
     }
 
     // Ahead of signature validation deliberately: a signature-guessing flood against a known
     // real linkId is throttled too, not just genuinely valid requests.
-    private Optional<DownloadStreamResult> enforceRateLimit(
+    private Optional<DownloadOutcome> enforceRateLimit(
             UUID linkId, String token, String clientIp, String userAgent, String performedBy) {
         if (linkId == null || rateLimiter.tryConsume(linkId)) {
             return Optional.empty();
@@ -86,30 +90,30 @@ public class DownloadService {
                 linkId,
                 performedBy,
                 getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.RATE_LIMITED.getValue()));
-        return Optional.of(new DownloadStreamResult(DownloadOutcome.RATE_LIMITED, Optional.empty()));
+        return Optional.of(DownloadOutcome.RATE_LIMITED);
     }
 
-    private Optional<DownloadStreamResult> requireValidLink(
+    private Optional<DownloadOutcome> requireValidLink(
             LinkValidationResult result, String token, String clientIp, String userAgent, String performedBy) {
         if (result.valid()) {
             return Optional.empty();
         }
         handleInvalidLink(result, token, clientIp, userAgent, performedBy);
-        return Optional.of(new DownloadStreamResult(getDownloadOutcome(result), Optional.empty()));
+        return Optional.of(getDownloadOutcome(result));
     }
 
-    private Optional<DownloadStreamResult> ensureFileExists(
+    private Optional<DownloadOutcome> ensureFileExists(
             Statement statement, SignedLink link, String token, String clientIp, String userAgent, String performedBy) {
         try {
             if (statementService.fileExists(statement)) {
                 return Optional.empty();
             }
             handleMissingFile(statement, link, token, clientIp, userAgent, performedBy);
-            return Optional.of(new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty()));
+            return Optional.of(DownloadOutcome.FILE_MISSING);
         } catch (StatementStorageUnavailableException e) {
             handleStorageUnavailable(
                     statement, link, token, clientIp, userAgent, performedBy, STAGE_EXISTENCE_CHECK, e);
-            return Optional.of(new DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty()));
+            return Optional.of(DownloadOutcome.STORAGE_UNAVAILABLE);
         }
     }
 
@@ -120,8 +124,6 @@ public class DownloadService {
             default -> DownloadOutcome.INVALID_SIGNATURE;
         };
     }
-
-    public record DownloadStreamResult(DownloadOutcome outcome, Optional<InputStream> stream) {}
 
     private String getReason(LinkValidationResult result) {
         return switch (result.failureReason()) {
@@ -213,35 +215,24 @@ public class DownloadService {
                 getUserAuditDetails(token, clientIp, userAgent, DownloadFailureReason.STORAGE_UNAVAILABLE.getValue()));
     }
 
-    private DownloadStreamResult decryptAndStream(
-            Statement statement, SignedLink link, String token, String clientIp, String userAgent, String performedBy) {
+    private DownloadOutcome decryptAndStream(
+            Statement statement,
+            SignedLink link,
+            String token,
+            String clientIp,
+            String userAgent,
+            String performedBy,
+            Consumer<InputStream> onSuccess) {
+        InputStream decrypted;
         try {
-            var decrypted = statementService.openDecryptedFile(statement);
-
-            log.info("Download successful - statementId: {}", statement.getId());
-
-            checkForSuspiciousRedemption(link, clientIp, userAgent);
-
-            try {
-                auditService.record(
-                        AuditAction.DOWNLOAD_SUCCESS.getValue(),
-                        statement.getId(),
-                        statement.getAccountNumber(),
-                        link.getId(),
-                        performedBy,
-                        getUserAuditDetails(token, clientIp, userAgent, null));
-            } catch (Exception auditEx) {
-                // Log but don't fail the download
-                log.warn("Failed to record download audit", auditEx);
-            }
-            return new DownloadStreamResult(DownloadOutcome.OK, Optional.of(decrypted));
+            decrypted = statementService.openDecryptedFile(statement);
         } catch (StatementStorageUnavailableException e) {
             handleStorageUnavailable(statement, link, token, clientIp, userAgent, performedBy, STAGE_OPENING_FILE, e);
-            return new DownloadStreamResult(DownloadOutcome.STORAGE_UNAVAILABLE, Optional.empty());
+            return DownloadOutcome.STORAGE_UNAVAILABLE;
         } catch (FileNotFoundException e) {
             // Object deleted between the exists() check and open().
             handleMissingFile(statement, link, token, clientIp, userAgent, performedBy);
-            return new DownloadStreamResult(DownloadOutcome.FILE_MISSING, Optional.empty());
+            return DownloadOutcome.FILE_MISSING;
         } catch (Exception e) {
             log.error("Decryption failed - statementId: {}, error: {}", statement.getId(), e.getMessage(), e);
             var errorAuditDetails =
@@ -256,8 +247,27 @@ public class DownloadService {
                     performedBy,
                     errorAuditDetails);
 
-            return new DownloadStreamResult(DownloadOutcome.DECRYPTION_FAILED, Optional.empty());
+            return DownloadOutcome.DECRYPTION_FAILED;
         }
+
+        log.info("Download successful - statementId: {}", statement.getId());
+
+        checkForSuspiciousRedemption(link, clientIp, userAgent);
+
+        try {
+            auditService.record(
+                    AuditAction.DOWNLOAD_SUCCESS.getValue(),
+                    statement.getId(),
+                    statement.getAccountNumber(),
+                    link.getId(),
+                    performedBy,
+                    getUserAuditDetails(token, clientIp, userAgent, null));
+        } catch (Exception auditEx) {
+            // Log but don't fail the download
+            log.warn("Failed to record download audit", auditEx);
+        }
+        onSuccess.accept(decrypted);
+        return DownloadOutcome.OK;
     }
 
     // Must be called before auditService.record(DOWNLOAD_SUCCESS, ...), not after: that call

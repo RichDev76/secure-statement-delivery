@@ -5,9 +5,11 @@ import com.example.statementservice.statement.download.DecryptionFailedException
 import com.example.statementservice.statement.download.DownloadFileMissingException;
 import com.example.statementservice.statement.download.DownloadInvalidSignatureException;
 import com.example.statementservice.statement.download.DownloadLinkExpiredException;
+import com.example.statementservice.statement.download.DownloadOutcome;
 import com.example.statementservice.statement.download.DownloadRateLimitedException;
-import com.example.statementservice.statement.download.DownloadService;
 import com.example.statementservice.statement.download.DownloadStorageUnavailableException;
+import java.io.InputStream;
+import java.util.Objects;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -28,9 +30,9 @@ public class DownloadResponseFactory {
     // Outcomes are already logged in DownloadService keyed by statementId/linkId - don't re-log fileName here.
     // A switch expression (not statement) over the DownloadOutcome enum: the compiler enforces
     // exhaustiveness, so a new outcome constant fails the build here until this factory handles it.
-    public ResponseEntity<Resource> build(String fileName, DownloadService.DownloadStreamResult result) {
-        return switch (result.outcome()) {
-            case OK -> buildOkResponse(fileName, result);
+    public ResponseEntity<Resource> build(String fileName, DownloadOutcome outcome, InputStream stream) {
+        return switch (outcome) {
+            case OK -> buildOkResponse(fileName, stream);
             case INVALID_SIGNATURE ->
                 throw new DownloadInvalidSignatureException(
                         "The download link signature is invalid or has been tampered with.");
@@ -47,8 +49,8 @@ public class DownloadResponseFactory {
         };
     }
 
-    private ResponseEntity<Resource> buildOkResponse(String fileName, DownloadService.DownloadStreamResult result) {
-        var resource = new InputStreamResource(result.stream().get());
+    private ResponseEntity<Resource> buildOkResponse(String fileName, InputStream stream) {
+        var resource = new InputStreamResource(Objects.requireNonNull(stream, "stream must be present for OK outcome"));
         var headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData(CONTENT_DISPOSITION_ATTACHMENT, fileName);

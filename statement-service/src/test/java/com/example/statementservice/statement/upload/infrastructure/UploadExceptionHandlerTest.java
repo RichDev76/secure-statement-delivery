@@ -126,8 +126,7 @@ class UploadExceptionHandlerTest {
     @Test
     void GivenDuplicateStatementException_WhenHandled_ThenReturns409WithStatementAlreadyExistsCode() {
         // Given
-        var ex = new DuplicateStatementException(
-                "A statement already exists for this account number and statement date");
+        var ex = new DuplicateStatementException();
 
         // When
         var response = handler.handleDuplicateStatement(ex, request);

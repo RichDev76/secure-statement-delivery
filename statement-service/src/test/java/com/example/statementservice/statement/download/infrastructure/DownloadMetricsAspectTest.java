@@ -3,10 +3,8 @@ package com.example.statementservice.statement.download.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.statementservice.statement.download.DownloadOutcome;
-import com.example.statementservice.statement.download.DownloadService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Locale;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -19,11 +17,8 @@ class DownloadMetricsAspectTest {
     @ParameterizedTest
     @EnumSource(DownloadOutcome.class)
     void GivenAnyDownloadOutcome_WhenRecorded_ThenIncrementsOutcomeCounterWithLowercaseTag(DownloadOutcome outcome) {
-        // Given
-        var result = new DownloadService.DownloadStreamResult(outcome, Optional.empty());
-
         // When
-        aspect.recordDownloadOutcome(result);
+        aspect.recordDownloadOutcome(outcome);
 
         // Then
         var counter = meterRegistry.counter(
@@ -35,12 +30,9 @@ class DownloadMetricsAspectTest {
 
     @Test
     void GivenSameOutcomeTwice_WhenRecorded_ThenCounterAccumulates() {
-        // Given
-        var result = new DownloadService.DownloadStreamResult(DownloadOutcome.RATE_LIMITED, Optional.empty());
-
         // When
-        aspect.recordDownloadOutcome(result);
-        aspect.recordDownloadOutcome(result);
+        aspect.recordDownloadOutcome(DownloadOutcome.RATE_LIMITED);
+        aspect.recordDownloadOutcome(DownloadOutcome.RATE_LIMITED);
 
         // Then
         var counter = meterRegistry.counter(DownloadMetricsAspect.DOWNLOAD_OUTCOME_METRIC, "outcome", "rate_limited");

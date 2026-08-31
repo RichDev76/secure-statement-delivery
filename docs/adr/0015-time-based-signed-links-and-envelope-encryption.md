@@ -18,7 +18,8 @@ verbatim, and files were encrypted directly with the flat Master Encryption Key 
 ## Decision
 
 1. **Links become purely time-based.** `SignedLinkService.validate()` replaces
-   `validateAndConsume()`; the same link can be validated any number of times until `expiresAt`.
+   `validateAndConsume()`; the same link can be validated repeatedly until `expiresAt`
+   (later bounded by [0020](0020-signed-link-abuse-hardening.md)'s redemption cap).
 2. **Tokens are hashed at rest** (`signed_links.token_hash`, SHA-256, unique-indexed); the raw
    token is `@Transient`, never persisted.
 3. **`LinkSigner` gains independent `verify()` plus a nonce.** Validity was previously a bare DB
@@ -65,3 +66,4 @@ verbatim, and files were encrypted directly with the flat Master Encryption Key 
 - [0004 — AES-GCM encryption at rest](0004-aes-gcm-encryption-at-rest.md)
 - [0011 — Adopt feature-first hexagonal packaging](0011-adopt-feature-first-hexagonal-packaging.md)
 - [0014 — Local disk storage to Floci/S3 migration](0014-local-storage-to-floci-s3-migration.md)
+- [0020 — Signed-link abuse hardening](0020-signed-link-abuse-hardening.md) (amends decision 1 with a redemption cap)

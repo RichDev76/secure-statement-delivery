@@ -1,5 +1,9 @@
 # 0010 — Migrate to Spring Boot 4.0.7 / Spring Cloud 2025.1.2
 
+**Addendum (2026-08):** the deferred 4.1 bump has since happened as the routine minor
+upgrade anticipated below — the poms now pin Boot 4.1.1 / Cloud 2025.1.3 / ShedLock 7.9.0
+via ordinary dependency bumps. The migration decision itself is unchanged.
+
 ## Context
 
 statement-service and config-server ran Spring Boot 3.5.7 / Spring Cloud 2025.0.0.

@@ -26,12 +26,16 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class StatementQueryServiceTest {
@@ -256,6 +260,79 @@ class StatementQueryServiceTest {
 
         assertThat(result.getNumber()).isEqualTo(2);
         assertThat(result.getSize()).isEqualTo(25);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "'statementId,asc', id, ASC",
+        "'date,desc', statementDate, DESC",
+        "'accountNumber,asc', accountNumber, ASC",
+        "'uploadedAt,asc', uploadedAt, ASC",
+        "'fileName,asc', uploadFileName, ASC",
+        "'fileSize,desc', sizeBytes, DESC"
+    })
+    void GivenApiSortField_WhenSearchingPaged_ThenSortUsesEntityProperty(
+            String sort, String entityProperty, Sort.Direction direction) {
+        // Given
+        stubSearchPage();
+
+        // When
+        statementQueryService.searchPaged(testAccountNumber, "2024-01-01", "2024-01-31", 0, 50, sort);
+
+        // Then
+        var order = capturedSort().getOrderFor(entityProperty);
+        assertThat(order)
+                .as("API sort key in '%s' must translate to entity property %s", sort, entityProperty)
+                .isNotNull();
+        assertThat(order.getDirection()).isEqualTo(direction);
+    }
+
+    @Test
+    void GivenExplicitSort_WhenSearchingPaged_ThenIdTiebreakerIsAppended() {
+        // Given
+        stubSearchPage();
+
+        // When
+        statementQueryService.searchPaged(testAccountNumber, "2024-01-01", "2024-01-31", 0, 50, "fileSize,asc");
+
+        // Then
+        var tiebreaker = capturedSort().getOrderFor("id");
+        assertThat(tiebreaker)
+                .as("explicit sorts need a unique tiebreaker so paging over tied values is stable")
+                .isNotNull();
+        assertThat(tiebreaker.getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void GivenInvalidSortDirection_WhenSearchingPaged_ThenDefaultSortIsApplied() {
+        // Given
+        stubSearchPage();
+
+        // When
+        statementQueryService.searchPaged(testAccountNumber, "2024-01-01", "2024-01-31", 0, 50, "fileName,ascending");
+
+        // Then
+        var capturedSort = capturedSort();
+        assertThat(capturedSort.getOrderFor("uploadFileName"))
+                .as("a typo'd direction must not silently invert the requested order")
+                .isNull();
+        assertThat(capturedSort.getOrderFor("uploadedAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    private void stubSearchPage() {
+        Page<Statement> page = new PageImpl<>(Arrays.asList(testStatement));
+        when(statementService.getStatementsByAccountNumberAndDateRange(
+                        eq(testAccountNumber), any(LocalDate.class), any(LocalDate.class), any(Pageable.class)))
+                .thenReturn(page);
+        when(statementService.toDto(any())).thenReturn(testStatementDto);
+    }
+
+    private Sort capturedSort() {
+        var pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(statementService)
+                .getStatementsByAccountNumberAndDateRange(
+                        eq(testAccountNumber), any(LocalDate.class), any(LocalDate.class), pageableCaptor.capture());
+        return pageableCaptor.getValue().getSort();
     }
 
     @Test

@@ -51,8 +51,9 @@ loud generically - and which dependencies gate container health/readiness?
   metric yet.
 - `STORAGE_UNAVAILABLE` is additive; existing clients unaffected.
 - Redis outages no longer show in readiness/liveness - operators must watch overall health or logs.
-- No timeouts/retries/breakers added here - a stalled (not fully down) call is still only bounded
-  by SDK/client defaults.
+- No retries/breakers added here, but explicit transport timeouts were: S3 (`S3ClientConfig` -
+  apiCall 20s, socket 10s, connection 2s, acquisition 5s) and Redis (`timeout: 2s`,
+  `connect-timeout: 1s`), so a stalled call is bounded by pinned values, not SDK defaults.
 
 ## Implementation Notes
 

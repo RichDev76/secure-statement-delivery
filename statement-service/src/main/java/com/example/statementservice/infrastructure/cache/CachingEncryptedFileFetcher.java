@@ -21,6 +21,8 @@ public class CachingEncryptedFileFetcher implements EncryptedFileFetcher {
     @Override
     @Cacheable(STATEMENT_CIPHERTEXT_CACHE)
     public byte[] fetch(String storageKey) throws IOException {
-        return fileStore.open(storageKey).readAllBytes();
+        try (var ciphertext = fileStore.open(storageKey)) {
+            return ciphertext.readAllBytes();
+        }
     }
 }

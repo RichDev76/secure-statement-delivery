@@ -45,7 +45,7 @@ The **Secure Statement Delivery Platform** implements a robust, production‑gra
 
 - **HashiCorp Vault** (`:8200`)
     - Stores the **encryption master key** and other secrets
-    - Reachable only from `config-server`; `statement-service` never calls Vault directly — it receives the master key as a config property (or a mounted secret file as a fallback) at bootstrap
+    - Only `config-server` talks to Vault; `statement-service` never calls Vault directly — it receives the master key as a config property (or a mounted secret file as a fallback) at bootstrap. In the local docker-compose runtime the key also reaches the container as an `.env`-sourced environment variable (`STATEMENT_MASTER_KEY`) that the config-repo property resolves against, so Vault is the seed store rather than the sole delivery path there.
 
 - **Keycloak** (`:8081`)
     - Identity provider (OAuth2 / OpenID Connect)
@@ -100,7 +100,7 @@ sequenceDiagram
     SS-->>US: UploadResponseDto
     US--)AU: UPLOAD_SUCCESS (async, virtual thread)
     US-->>AC: response
-    AC-->>Admin: 200 statementId + file metadata
+    AC-->>Admin: 201 statementId + file metadata
 
     Note over US,AU: Any validation or storage failure → async UPLOAD_FAILED audit<br/>with a categorised reason — the error propagates as RFC 9457 ProblemDetail
 ```
@@ -136,10 +136,11 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant AU as AuditService
 
-    P->>SC: GET /api/v1/statements/link/{statementId}
+    P->>SC: GET /api/v1/statements/link/{statementId}?accountNumber=...
     SC->>QS: getStatementWithSignedDownloadLinkById(...)
     QS->>SS: getStatementDtoById(statementId)
     SS->>DB: load statement
+    QS->>QS: verify statement belongs to accountNumber<br/>(404 on mismatch — BOLA guard)
     QS->>SL: createSignedLink(statementId, performedBy, fileName)
     SL->>SL: generate UUIDv7 linkId,<br/>expiresAt = now + expiry (default 3 min)
     SL->>LS: sign(method|path|expires|linkId)
@@ -155,8 +156,8 @@ sequenceDiagram
 
 1. Caller (e.g. portal backend) obtains a JWT with role `GenerateSignedLink`.
 2. Calls:
-    - `GET /api/v1/statements/link/{statementId}`
-3. `StatementsController` delegates to `StatementQueryService.getStatementWithSignedDownloadLinkById`, which loads the statement and calls `SignedLinkService.createSignedLink`:
+    - `GET /api/v1/statements/link/{statementId}?accountNumber=<accountNumber>` (the `accountNumber` query parameter is required)
+3. `StatementsController` delegates to `StatementQueryService.getStatementWithSignedDownloadLinkById`, which loads the statement, verifies it belongs to the supplied `accountNumber` (404 on mismatch — the BOLA guard), and calls `SignedLinkService.createSignedLink`:
     - Generates a UUIDv7 link id and an HMAC-SHA256 signature over `{method}|{path}|{expires}|{linkId}`
     - Persists a `SignedLink` row containing only the signature's **hash** (`tokenHash`), never the raw signature
     - Sets `expiresAt` a configurable duration ahead (3 minutes by default)
@@ -458,7 +459,7 @@ There is no `singleUse`/`used` boolean: redemption is **bounded, not binary** (`
 
 - `Bucket4jSignedLinkRateLimiter` (implementing `SignedLinkRateLimiter`) enforces a **per-link** token bucket, backed by **PostgreSQL** (`Bucket4jPostgreSQL`'s `SELECT FOR UPDATE`-based proxy manager, table `signed_link_rate_limit_buckets`), default 10 requests/minute (`statement.signed-link.rate-limit-per-minute`).
 - The rate-limit check runs **before** signature validation in `DownloadService`, so a brute-force signature-guessing flood against a real `linkId` is throttled too, not just genuinely valid requests. It smooths burst speed against one leaked link; it does not reduce a leaked link's total exposure, only how fast that exposure can be drained.
-- **Fails open**: if the rate limiter itself is unavailable (Postgres contention, connection error), the request is allowed through rather than blocking legitimate downloads on a rate-limiter outage.
+- **Fails closed**: if the rate limiter itself is unavailable (Postgres contention, connection error), the request is rejected with 429 — as the sole abuse control on an unauthenticated endpoint, a limiter outage must not open the door (`Bucket4jSignedLinkRateLimiter` logs and returns false).
 - Bucket rows carry a TTL matched to the bucket's own refill window and are swept by `deleteExpiredBuckets()`, invoked from the same ShedLock-scheduled trigger that cleans up expired signed links (no separate job for one extra `DELETE`).
 
 #### Cleanup

@@ -1,13 +1,19 @@
 openapi: 3.0.0
 info:
   title: Statement Upload & Search API
-  version: 1.14.0
+  version: 1.15.0
   description: >
     Upload a PDF account statement with metadata and strict validation rules.
     Also provides search endpoints to retrieve statements by statementId,
     and to search by account number and/or date using paginated results.
     Includes audit log retrieval capabilities.
     All endpoints require JWT bearer authentication and support the x-correlation-id header for request tracing.
+
+    1.15.0: additive. Adds STATEMENT_ALREADY_EXISTS to the errorCode enum — the 409 duplicate-upload
+    response already emitted it (and the 409 example already used it), but the enum omitted it, so a
+    schema-validating client would have rejected the service's own payload. Also documents the sort
+    parameter truthfully: single criterion only (the old text claimed multiple), sortable properties
+    enumerated (response field names), unknown property/direction falls back to the default sort.
 
     1.14.0: BREAKING. `accountNumber` is now a required query parameter on `GET /link/{statementId}`
     (new parameter) and `GET /audit/logs` (was optional). Closes an object-level authorization gap
@@ -597,10 +603,12 @@ components:
       in: query
       required: false
       description: >
-        Sort criteria in the format: property,(asc|desc). E.g. uploadedAt,desc.
-        Multiple sort parameters are allowed.
+        Single sort criterion in the format: property,(asc|desc). E.g. uploadedAt,desc.
+        Sortable properties: statementId, accountNumber, date, uploadedAt, fileName, fileSize.
+        An unrecognized property or direction falls back to the default sort (uploadedAt,desc).
       schema:
         type: string
+        pattern: '^(statementId|accountNumber|date|uploadedAt|fileName|fileSize),(asc|desc)$'
         example: "uploadedAt,desc"
 
   schemas:
@@ -792,6 +800,7 @@ components:
             - INVALID_DATE
             - DIGEST_MISMATCH
             - DIGEST_ERROR
+            - STATEMENT_ALREADY_EXISTS
             - STATEMENT_UPLOAD_FAILED
             - UNSUPPORTED_MEDIA_TYPE
             - INTERNAL_ERROR

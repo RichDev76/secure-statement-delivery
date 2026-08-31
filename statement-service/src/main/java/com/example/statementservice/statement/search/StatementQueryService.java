@@ -9,8 +9,9 @@ import com.example.statementservice.statement.signedlink.SignedLinkGenerationExc
 import com.example.statementservice.statement.signedlink.SignedLinkService;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,15 @@ public class StatementQueryService {
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 50;
     private static final String INVALID_DATE_FORMAT_MSG = "date must be in YYYY-MM-DD format";
+
+    // Keys are the search response's field names; values are the entity property paths.
+    private static final Map<String, String> SORTABLE_API_FIELDS_TO_ENTITY_PROPERTIES = Map.of(
+            "uploadedAt", "uploadedAt",
+            "date", "statementDate",
+            "accountNumber", "accountNumber",
+            "statementId", "id",
+            "fileName", "uploadFileName",
+            "fileSize", "sizeBytes");
 
     private final StatementService statementService;
     private final SignedLinkService signedLinkService;
@@ -107,16 +117,26 @@ public class StatementQueryService {
             }
 
             var property = parts[0].trim();
-            var direction = parts[1].trim().toLowerCase();
+            var direction = parts[1].trim().toLowerCase(Locale.ROOT);
 
-            if (!isValidSortProperty(property)) {
+            var entityProperty = SORTABLE_API_FIELDS_TO_ENTITY_PROPERTIES.get(property);
+            if (entityProperty == null) {
                 log.warn("Invalid sort property '{}', using default sort", property);
                 return defaultSort;
             }
 
-            Sort.Direction sortDirection = "asc".equals(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            if (!"asc".equals(direction) && !"desc".equals(direction)) {
+                log.warn("Invalid sort direction '{}', using default sort", direction);
+                return defaultSort;
+            }
 
-            return Sort.by(sortDirection, property);
+            var sortDirection = "asc".equals(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+
+            // Unique tiebreaker keeps paging stable when the sorted column has duplicate values.
+            if ("id".equals(entityProperty)) {
+                return Sort.by(sortDirection, entityProperty);
+            }
+            return Sort.by(sortDirection, entityProperty).and(Sort.by(Sort.Direction.DESC, "id"));
         } catch (Exception e) {
             log.warn("Failed to parse sort parameter '{}', using default sort: {}", sort, e.getMessage());
             return defaultSort;
@@ -129,10 +149,5 @@ public class StatementQueryService {
         } catch (DateTimeParseException e) {
             throw new InvalidDateException(INVALID_DATE_FORMAT_MSG, e);
         }
-    }
-
-    private boolean isValidSortProperty(String property) {
-        return Set.of("uploadedAt", "statementDate", "accountNumber", "id", "fileName", "fileSize")
-                .contains(property);
     }
 }

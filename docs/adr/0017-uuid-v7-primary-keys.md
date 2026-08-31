@@ -15,7 +15,7 @@ tables as they grow — most acutely `audit_logs`.
 
 ## Decision
 
-1. **Application-generated UUIDv7 behind a port.** New `shared/IdGeneratorPort` (`UUID newId()`),
+1. **Application-generated UUIDv7 behind a port.** New `shared/IdGenerator` (`UUID newId()`),
    implemented by `infrastructure/id/UuidV7IdGenerator` via `com.github.f4b6a3:uuid-creator`'s
    `UuidCreator.getTimeOrderedEpoch()`. `StatementService`, `SignedLinkService`, and
    `AuditService` depend on the port instead of calling `UUID.randomUUID()` directly. Not

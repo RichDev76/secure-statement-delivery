@@ -24,8 +24,12 @@ class StatementSearchIT extends AbstractIntegrationTest {
     private MockMvc mockMvc;
 
     private void upload(String accountNumber, String date) throws Exception {
-        var bytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
-        var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, bytes);
+        upload(accountNumber, date, "statement.pdf", 0);
+    }
+
+    private void upload(String accountNumber, String date, String fileName, int paddingBytes) throws Exception {
+        var bytes = ("%PDF-1.4\n" + UUID.randomUUID() + "x".repeat(paddingBytes) + "\n%%EOF").getBytes();
+        var file = new MockMultipartFile("file", fileName, MediaType.APPLICATION_PDF_VALUE, bytes);
         mockMvc.perform(multipart("/api/v1/statements/upload")
                         .file(file)
                         .param("accountNumber", accountNumber)
@@ -98,6 +102,48 @@ class StatementSearchIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.content.length()").value(1));
+    }
+
+    @Test
+    void GivenStatementsOfVaryingSizes_WhenSearchingSortedByFileSize_ThenResultsOrderBySizeAscending()
+            throws Exception {
+        // Given: fileSize maps to the entity's sizeBytes - this must survive a real JPA query
+        var accountNumber = uniqueAccountNumber();
+        upload(accountNumber, "2026-01-15", "statement.pdf", 200);
+        upload(accountNumber, "2026-02-15", "statement.pdf", 0);
+        upload(accountNumber, "2026-03-15", "statement.pdf", 100);
+
+        // When / Then
+        mockMvc.perform(get("/api/v1/statements/search")
+                        .queryParam("accountNumber", accountNumber)
+                        .queryParam("startDate", "2026-01-01")
+                        .queryParam("endDate", "2026-12-31")
+                        .queryParam("sort", "fileSize,asc")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_Search"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].date")
+                        .value(org.hamcrest.Matchers.contains("2026-02-15", "2026-03-15", "2026-01-15")));
+    }
+
+    @Test
+    void GivenStatementsWithDistinctFileNames_WhenSearchingSortedByFileName_ThenResultsOrderByNameDescending()
+            throws Exception {
+        // Given: fileName maps to the entity's uploadFileName - this must survive a real JPA query
+        var accountNumber = uniqueAccountNumber();
+        upload(accountNumber, "2026-01-15", "alpha.pdf", 0);
+        upload(accountNumber, "2026-02-15", "charlie.pdf", 0);
+        upload(accountNumber, "2026-03-15", "bravo.pdf", 0);
+
+        // When / Then
+        mockMvc.perform(get("/api/v1/statements/search")
+                        .queryParam("accountNumber", accountNumber)
+                        .queryParam("startDate", "2026-01-01")
+                        .queryParam("endDate", "2026-12-31")
+                        .queryParam("sort", "fileName,desc")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_Search"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].fileName")
+                        .value(org.hamcrest.Matchers.contains("charlie.pdf", "bravo.pdf", "alpha.pdf")));
     }
 
     private static org.hamcrest.Matcher<Iterable<? extends String>> everyItemIs(String expected) {

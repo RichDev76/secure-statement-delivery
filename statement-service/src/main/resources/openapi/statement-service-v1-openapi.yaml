@@ -642,7 +642,6 @@ components:
         An unrecognized property or direction falls back to the default sort (uploadedAt,desc).
       schema:
         type: string
-        pattern: '^(statementId|accountNumber|date|uploadedAt|fileName|fileSize),(asc|desc)$'
         example: "uploadedAt,desc"
 
   schemas:

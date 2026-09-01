@@ -10,9 +10,7 @@ import com.example.statementservice.statement.StatementNotFoundException;
 import com.example.statementservice.statement.download.DownloadService;
 import com.example.statementservice.statement.download.infrastructure.DownloadResponseFactory;
 import com.example.statementservice.statement.search.StatementQueryService;
-import java.io.InputStream;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
@@ -38,8 +36,7 @@ public class StatementsController implements StatementsApi {
     public ResponseEntity<Resource> downloadStatementByFileName(
             String fileName, Long expires, UUID linkId, String signature, String xCorrelationId) {
         var requestInfo = requestInfoProvider.get();
-        var streamHolder = new AtomicReference<InputStream>();
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 signature,
                 expires,
                 linkId,
@@ -47,8 +44,8 @@ public class StatementsController implements StatementsApi {
                 requestInfo.clientIp(),
                 requestInfo.userAgent(),
                 requestInfo.performedBy(),
-                streamHolder::set);
-        return downloadResponseFactory.build(fileName, outcome, streamHolder.get());
+                stream -> downloadResponseFactory.ok(fileName, stream));
+        return downloadResponseFactory.build(attempt.outcome(), attempt.result());
     }
 
     @Override

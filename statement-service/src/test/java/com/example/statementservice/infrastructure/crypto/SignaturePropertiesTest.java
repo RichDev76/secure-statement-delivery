@@ -2,6 +2,8 @@ package com.example.statementservice.infrastructure.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -9,7 +11,8 @@ import org.springframework.context.annotation.Configuration;
 
 class SignaturePropertiesTest {
 
-    private static final String STRONG_SECRET = "c2lnbmF0dXJlLXNlY3JldC0zMi1ieXRlcy1taW4hIQ==";
+    // Generated per run so no secret-shaped literal lives in the repo.
+    private static final String STRONG_SECRET = randomBase64Secret();
 
     @EnableConfigurationProperties(SignatureProperties.class)
     @Configuration(proxyBeanMethods = false)
@@ -45,5 +48,11 @@ class SignaturePropertiesTest {
             assertThat(context).hasFailed();
             assertThat(context.getStartupFailure()).hasStackTraceContaining("secret");
         });
+    }
+
+    private static String randomBase64Secret() {
+        var bytes = new byte[32];
+        new SecureRandom().nextBytes(bytes);
+        return Base64.getEncoder().encodeToString(bytes);
     }
 }

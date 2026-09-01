@@ -1,6 +1,7 @@
 package com.example.statementservice.audit;
 
 import com.example.statementservice.shared.InvalidDateException;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -25,6 +26,7 @@ public class AuditQueryService {
 
     private final AuditLogRepository auditLogRepository;
     private final AuditLogEntityMapper auditLogEntityMapper;
+    private final Clock clock;
 
     public Page<AuditLogDto> getFilteredAuditLogs(
             String accountNumber, String startDate, String endDate, Integer page, Integer size) {
@@ -58,11 +60,9 @@ public class AuditQueryService {
         try {
             var date = LocalDate.parse(dateString.trim());
             if (isEndOfDay) {
-                return date.atTime(LocalTime.MAX)
-                        .atZone(java.time.ZoneId.systemDefault())
-                        .toOffsetDateTime();
+                return date.atTime(LocalTime.MAX).atZone(clock.getZone()).toOffsetDateTime();
             } else {
-                return date.atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
+                return date.atStartOfDay(clock.getZone()).toOffsetDateTime();
             }
         } catch (DateTimeParseException e) {
             var dateType = isEndOfDay ? "end" : "start";

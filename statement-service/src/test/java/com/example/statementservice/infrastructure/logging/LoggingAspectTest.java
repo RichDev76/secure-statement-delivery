@@ -6,6 +6,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.example.statementservice.shared.Identified;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,11 +41,22 @@ class LoggingAspectTest {
         public String redeem(String token, UUID linkId) {
             return "secret-plaintext-result";
         }
+
+        public String process(IdentifiedFixture fixture) {
+            return "processed";
+        }
     }
 
     static class PlainBean {
         public String run() {
             return "ran";
+        }
+    }
+
+    record IdentifiedFixture(UUID fixtureId) implements Identified {
+        @Override
+        public UUID getId() {
+            return fixtureId;
         }
     }
 
@@ -138,6 +150,21 @@ class LoggingAspectTest {
         assertThat(appender.list)
                 .extracting(ILoggingEvent::getFormattedMessage)
                 .anySatisfy(message -> assertThat(message).contains(linkId.toString()));
+    }
+
+    @Test
+    void GivenServiceMethodWithIdentifiedArgument_WhenDebugLogged_ThenTypeAndIdAppearWithoutContents() {
+        // Given
+        var service = advisedProxy(new SampleService());
+        var fixtureId = UUID.randomUUID();
+
+        // When
+        service.process(new IdentifiedFixture(fixtureId));
+
+        // Then
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> assertThat(message).contains("IdentifiedFixture{id=" + fixtureId + "}"));
     }
 
     @Test

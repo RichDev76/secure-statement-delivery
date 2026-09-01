@@ -12,8 +12,11 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Level;
 import com.example.statementservice.shared.InvalidDateException;
 import com.example.statementservice.support.LogCapture;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +28,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -38,11 +42,16 @@ class AuditQueryServiceTest {
 
     private static final String ACCOUNT_NUMBER = "123456789";
 
+    private static final ZoneId QUERY_ZONE = ZoneId.of("Pacific/Kiritimati");
+
     @Mock
     private AuditLogRepository auditLogRepository;
 
     @Mock
     private AuditLogEntityMapper auditLogEntityMapper;
+
+    @Spy
+    private Clock clock = Clock.fixed(Instant.parse("2026-08-11T12:00:00Z"), QUERY_ZONE);
 
     @InjectMocks
     private AuditQueryService auditQueryService;
@@ -200,6 +209,26 @@ class AuditQueryServiceTest {
 
         // Then
         assertThat(result.getSize()).isEqualTo(1);
+    }
+
+    @Test
+    void GivenClockInNonSystemZone_WhenQueryingAuditLogs_ThenDayBoundariesUseTheClockZone() {
+        try (MockedStatic<AuditLogSpecifications> specs = mockStatic(AuditLogSpecifications.class)) {
+            // Given
+            when(auditLogRepository.findAll(ArgumentMatchers.<Specification<AuditLog>>isNull(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
+            when(auditLogEntityMapper.toDtos(Collections.emptyList())).thenReturn(Collections.emptyList());
+
+            // When
+            auditQueryService.getFilteredAuditLogs(ACCOUNT_NUMBER, "2024-01-15", null, null, null);
+
+            // Then
+            ArgumentCaptor<OffsetDateTime> startCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
+            specs.verify(() -> AuditLogSpecifications.filter(eq(ACCOUNT_NUMBER), startCaptor.capture(), isNull()));
+            assertThat(startCaptor.getValue().toInstant())
+                    .isEqualTo(
+                            LocalDate.of(2024, 1, 15).atStartOfDay(QUERY_ZONE).toInstant());
+        }
     }
 
     @Test

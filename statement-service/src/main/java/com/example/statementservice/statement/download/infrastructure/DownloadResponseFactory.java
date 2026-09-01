@@ -30,9 +30,9 @@ public class DownloadResponseFactory {
     // Outcomes are already logged in DownloadService keyed by statementId/linkId - don't re-log fileName here.
     // A switch expression (not statement) over the DownloadOutcome enum: the compiler enforces
     // exhaustiveness, so a new outcome constant fails the build here until this factory handles it.
-    public ResponseEntity<Resource> build(String fileName, DownloadOutcome outcome, InputStream stream) {
+    public ResponseEntity<Resource> build(DownloadOutcome outcome, ResponseEntity<Resource> okResponse) {
         return switch (outcome) {
-            case OK -> buildOkResponse(fileName, stream);
+            case OK -> Objects.requireNonNull(okResponse, "okResponse must be present for OK outcome");
             case INVALID_SIGNATURE ->
                 throw new DownloadInvalidSignatureException(
                         "The download link signature is invalid or has been tampered with.");
@@ -49,7 +49,7 @@ public class DownloadResponseFactory {
         };
     }
 
-    private ResponseEntity<Resource> buildOkResponse(String fileName, InputStream stream) {
+    public ResponseEntity<Resource> ok(String fileName, InputStream stream) {
         var resource = new InputStreamResource(Objects.requireNonNull(stream, "stream must be present for OK outcome"));
         var headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);

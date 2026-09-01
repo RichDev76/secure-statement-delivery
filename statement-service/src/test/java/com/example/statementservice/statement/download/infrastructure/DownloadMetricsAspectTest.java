@@ -2,6 +2,7 @@ package com.example.statementservice.statement.download.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.example.statementservice.statement.download.DownloadAttempt;
 import com.example.statementservice.statement.download.DownloadOutcome;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Locale;
@@ -18,7 +19,7 @@ class DownloadMetricsAspectTest {
     @EnumSource(DownloadOutcome.class)
     void GivenAnyDownloadOutcome_WhenRecorded_ThenIncrementsOutcomeCounterWithLowercaseTag(DownloadOutcome outcome) {
         // When
-        aspect.recordDownloadOutcome(outcome);
+        aspect.recordDownloadOutcome(new DownloadAttempt<>(outcome, null));
 
         // Then
         var counter = meterRegistry.counter(
@@ -31,8 +32,8 @@ class DownloadMetricsAspectTest {
     @Test
     void GivenSameOutcomeTwice_WhenRecorded_ThenCounterAccumulates() {
         // When
-        aspect.recordDownloadOutcome(DownloadOutcome.RATE_LIMITED);
-        aspect.recordDownloadOutcome(DownloadOutcome.RATE_LIMITED);
+        aspect.recordDownloadOutcome(new DownloadAttempt<>(DownloadOutcome.RATE_LIMITED, null));
+        aspect.recordDownloadOutcome(new DownloadAttempt<>(DownloadOutcome.RATE_LIMITED, null));
 
         // Then
         var counter = meterRegistry.counter(DownloadMetricsAspect.DOWNLOAD_OUTCOME_METRIC, "outcome", "rate_limited");

@@ -1,5 +1,6 @@
 package com.example.statementservice.statement.signedlink;
 
+import com.example.statementservice.shared.Identified;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -22,7 +23,7 @@ import lombok.ToString;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-public class SignedLink {
+public class SignedLink implements Identified {
 
     @Id
     private UUID id;

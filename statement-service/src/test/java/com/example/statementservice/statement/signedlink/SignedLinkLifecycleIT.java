@@ -12,6 +12,7 @@ import com.example.statementservice.infrastructure.crypto.Sha256ContentDigest;
 import com.example.statementservice.statement.Statement;
 import com.example.statementservice.statement.StatementRepository;
 import com.jayway.jsonpath.JsonPath;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -204,10 +205,14 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
 
     @Test
     void Given_ExpiredLink_When_Downloading_Then_RejectedAndFailureAudited() throws Exception {
-        // Given: statement.signed-link.expiry is overridden to 2s for this test class.
+        // Given: waits on the link's own expires epoch - polling the endpoint instead would burn
+        // redemptions and pass via the redemption cap, not time expiry.
         var statement = seedStatement();
         var uri = mintLinkUri(statement.getId(), statement.getAccountNumber()).build();
-        Thread.sleep(2100);
+        var expiresEpoch = Long.parseLong(uri.getQueryParams().getFirst("expires"));
+        await().atMost(5, TimeUnit.SECONDS)
+                .pollInterval(50, TimeUnit.MILLISECONDS)
+                .until(() -> Instant.now().getEpochSecond() > expiresEpoch + 1);
 
         // When / Then
         mockMvc.perform(get(uri.getPath())

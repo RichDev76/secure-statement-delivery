@@ -32,8 +32,6 @@ public interface StatementApiMapper {
         return toApi(toBase(dto), dto.downloadLink());
     }
 
-    List<StatementSummary> toApis(List<StatementDto> dtos);
-
     @Mapping(target = "downloadLink", source = "downloadLink")
     StatementSummary toApi(BaseStatement base, URI downloadLink);
 

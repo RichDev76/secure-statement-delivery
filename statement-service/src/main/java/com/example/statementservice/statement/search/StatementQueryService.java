@@ -30,7 +30,6 @@ public class StatementQueryService {
     private static final int DEFAULT_SIZE = 50;
     private static final String INVALID_DATE_FORMAT_MSG = "date must be in YYYY-MM-DD format";
 
-    // Keys are the search response's field names; values are the entity property paths.
     private static final Map<String, String> SORTABLE_API_FIELDS_TO_ENTITY_PROPERTIES = Map.of(
             "uploadedAt", "uploadedAt",
             "date", "statementDate",

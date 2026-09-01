@@ -107,7 +107,7 @@ class StatementSearchIT extends AbstractIntegrationTest {
     @Test
     void GivenStatementsOfVaryingSizes_WhenSearchingSortedByFileSize_ThenResultsOrderBySizeAscending()
             throws Exception {
-        // Given: fileSize maps to the entity's sizeBytes - this must survive a real JPA query
+        // Given
         var accountNumber = uniqueAccountNumber();
         upload(accountNumber, "2026-01-15", "statement.pdf", 200);
         upload(accountNumber, "2026-02-15", "statement.pdf", 0);
@@ -128,7 +128,7 @@ class StatementSearchIT extends AbstractIntegrationTest {
     @Test
     void GivenStatementsWithDistinctFileNames_WhenSearchingSortedByFileName_ThenResultsOrderByNameDescending()
             throws Exception {
-        // Given: fileName maps to the entity's uploadFileName - this must survive a real JPA query
+        // Given
         var accountNumber = uniqueAccountNumber();
         upload(accountNumber, "2026-01-15", "alpha.pdf", 0);
         upload(accountNumber, "2026-02-15", "charlie.pdf", 0);

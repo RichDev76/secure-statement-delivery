@@ -27,6 +27,8 @@ public class Statement {
     @Id
     private UUID id;
 
+    // PII - excluded per the ADR 0025 no-PII-in-logs policy.
+    @ToString.Exclude
     @Column(name = "account_number")
     private String accountNumber;
 

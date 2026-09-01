@@ -11,10 +11,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface StatementRepository extends JpaRepository<Statement, UUID> {
 
-    Page<Statement> findByAccountNumber(String accountNumber, Pageable pageable);
-
-    Optional<Statement> findByAccountNumberAndStatementDate(String accountNumber, LocalDate statementDate);
-
     boolean existsByAccountNumberAndStatementDate(String accountNumber, LocalDate statementDate);
 
     Optional<Statement> findStatementById(UUID id);

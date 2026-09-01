@@ -7,9 +7,9 @@ for format and process.
 |---|---|---|
 | 0001 | [Record architecture decisions](0001-record-architecture-decisions.md) | Accepted |
 | 0002 | [Contract-first OpenAPI](0002-contract-first-openapi.md) | Accepted |
-| 0003 | [HMAC-signed, single-use, time-limited download links](0003-hmac-signed-single-use-download-links.md) | Accepted |
-| 0004 | [AES-GCM encryption at rest](0004-aes-gcm-encryption-at-rest.md) | Accepted |
-| 0005 | [Local filesystem storage for encrypted statements](0005-local-filesystem-statement-storage.md) | Accepted |
+| 0003 | [HMAC-signed, single-use, time-limited download links](0003-hmac-signed-single-use-download-links.md) | Superseded by 0015 |
+| 0004 | [AES-GCM encryption at rest](0004-aes-gcm-encryption-at-rest.md) | Superseded by 0015 |
+| 0005 | [Local filesystem storage for encrypted statements](0005-local-filesystem-statement-storage.md) | Superseded by 0014 |
 | 0006 | [Keycloak JWT with per-endpoint RBAC](0006-keycloak-jwt-rbac.md) | Accepted |
 | 0007 | [Config Server and Vault for configuration and secrets](0007-config-server-vault-secrets.md) | Accepted |
 | 0008 | [Scheduled signed-link cleanup with ShedLock](0008-scheduled-cleanup-shedlock.md) | Accepted |

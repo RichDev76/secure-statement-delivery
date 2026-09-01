@@ -1,4 +1,10 @@
-# ADR-0023: Compute the upload content hash in one streaming pass; defer upload streaming and bulkhead
+# 0023 — Compute the upload content hash in one streaming pass; defer upload streaming and bulkhead
+
+**Addendum (2026-08):** the deferred ciphertext streaming has since been implemented:
+`StatementFileStore` is now a pull-based port (`StreamSupplier`), `FileCipher` exposes
+`encryptingStream()`/`ciphertextLength()`, and the S3 adapter PUTs with a precomputed
+Content-Length — no ciphertext buffer remains. The one-pass streaming digest decision
+below stands unchanged; the concurrency bulkhead remains deferred.
 
 ## Context
 
@@ -13,7 +19,8 @@ bulkhead) to implement now, given the cap already bounds the risk.
 
 ## Decision
 
-We will hash each upload exactly once, streaming (`Sha256Digest.hexOf(InputStream)`):
+We will hash each upload exactly once, streaming (`ContentDigest.hexOf(InputStream)`,
+adapter `Sha256ContentDigest`):
 `StatementUploadService` computes the hash, validates it against `X-Message-Digest`
 (now a pure string compare), and passes it to `uploadStatement` for persistence.
 Streaming ciphertext to S3 and a concurrency bulkhead are deferred.
@@ -27,14 +34,15 @@ Streaming ciphertext to S3 and a concurrency bulkhead are deferred.
 
 ## Consequences
 
-- Per-upload heap drops from ~3x to ~1x file size (the S3 adapter's ciphertext buffer).
-- Accepted limitation: ciphertext still buffered; upload concurrency unbounded under
-  virtual threads. Raising the size cap without the deferred streaming work reopens OOM risk.
+- Per-upload heap drops from ~3x to ~1x file size (the S3 adapter's ciphertext buffer;
+  since removed entirely — see addendum).
+- Accepted limitation: upload concurrency unbounded under virtual threads (the
+  ciphertext-buffering limitation was closed by the addendum's streaming work).
 - Externally observable behavior unchanged (validation order, error codes, audit reasons).
 
 ## Implementation Notes
 
-- `Sha256Digest`: streaming overload, caller owns the stream.
+- `Sha256ContentDigest`: streaming overload, caller owns the stream.
 - `StatementUploadService.computeContentHash`: wraps `IOException` in `DigestComputationException`.
 - `UploadRequestValidator.validateMessageDigest(String, String)`: comparison-only.
 - `StatementService.uploadStatement`: gains `contentHash` param; `readBytes` deleted.

@@ -33,7 +33,7 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_ExistingTokenHash_When_InsertingDuplicate_Then_UniqueConstraintViolationRaised() {
+    void GivenExistingTokenHash_WhenInsertingDuplicate_ThenUniqueConstraintViolationRaised() {
         // Given
         var rawToken = "duplicate-token-" + UUID.randomUUID();
         persistLink(rawToken, OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(10));
@@ -51,7 +51,7 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_PersistedLink_When_FindByTokenHash_Then_LinkIsReturned() {
+    void GivenPersistedLink_WhenFindByTokenHash_ThenLinkIsReturned() {
         // Given
         var rawToken = "findable-token-" + UUID.randomUUID();
         var persisted = persistLink(rawToken, OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(10));
@@ -65,7 +65,7 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_ExpiredAndActiveLinks_When_DeletingExpired_Then_OnlyExpiredLinksRemoved() {
+    void GivenExpiredAndActiveLinks_WhenDeletingExpired_ThenOnlyExpiredLinksRemoved() {
         // Given
         var now = OffsetDateTime.now(ZoneOffset.UTC);
         var expired = persistLink("expired-token-" + UUID.randomUUID(), now.minusMinutes(5));
@@ -81,7 +81,7 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_CreatedLink_When_ReadingRawRowFromDb_Then_StoredValueIsNotUsableAsToken() {
+    void GivenCreatedLink_WhenReadingRawRowFromDb_ThenStoredValueIsNotUsableAsToken() {
         // Given
         var rawToken = "raw-jdbc-token-" + UUID.randomUUID();
         var persisted = persistLink(rawToken, OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(10));
@@ -102,7 +102,7 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_FreshLink_When_RecordingRedemptionsUpToMax_Then_EachCallSucceeds() {
+    void GivenFreshLink_WhenRecordingRedemptionsUpToMax_ThenEachCallSucceeds() {
         // Given
         var link = persistLink(
                 "redeemable-token-" + UUID.randomUUID(),
@@ -115,7 +115,7 @@ class SignedLinkRepositoryIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_LinkAlreadyAtMaxRedemptions_When_RecordingAnotherRedemption_Then_ZeroRowsAffected() {
+    void GivenLinkAlreadyAtMaxRedemptions_WhenRecordingAnotherRedemption_ThenZeroRowsAffected() {
         // Given
         var link = persistLink(
                 "exhausted-token-" + UUID.randomUUID(),

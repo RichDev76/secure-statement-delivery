@@ -29,11 +29,10 @@ spring:
 
 statement:
   encryption:
-    algorithm: AES/GCM/NoPadding
     # Test-only AES-256 key (base64 of 32 bytes), not a real secret.
     master-key: QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
     signature:
-      secret: test-signature-secret
+      secret: test-signature-secret-32-chars-minimum!!
   signed-link:
     expiry: 15m
     download-path: /api/v1/statements/download/

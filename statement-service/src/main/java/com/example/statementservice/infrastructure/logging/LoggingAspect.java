@@ -1,7 +1,7 @@
 package com.example.statementservice.infrastructure.logging;
 
+import com.example.statementservice.shared.Identified;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -134,14 +134,9 @@ public class LoggingAspect {
         }
 
         String simple = ClassUtils.getShortName(arg.getClass());
-        try {
-            var idField = arg.getClass().getDeclaredField("id");
-            idField.setAccessible(true);
-            Object id = idField.get(arg);
-            return simple + "{id=" + Objects.toString(id) + "}";
-        } catch (NoSuchFieldException | IllegalAccessException ignored) {
+        if (arg instanceof Identified identified) {
+            return simple + "{id=" + identified.getId() + "}";
         }
-
         return simple;
     }
 
@@ -164,7 +159,7 @@ public class LoggingAspect {
                 String bodyType = body == null ? "null" : ClassUtils.getShortName(body.getClass());
                 return "ResponseEntity(status=" + status + ", body=" + bodyType + ")";
             }
-            case Resource resource -> {
+            case Resource ignored -> {
                 return "Resource[" + ClassUtils.getShortName(result.getClass()) + "]";
             }
             default -> {}

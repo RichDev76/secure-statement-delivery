@@ -1,6 +1,5 @@
 package com.example.statementservice.statement.signedlink;
 
-import jakarta.transaction.Transactional;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +16,6 @@ public class SignedLinkCleanupService {
     private final SignedLinkRateLimiter rateLimiter;
     private final Clock clock;
 
-    @Transactional
     public void cleanup() {
         if (!properties.isEnabled()) {
             log.debug("SignedLink cleanup is disabled");

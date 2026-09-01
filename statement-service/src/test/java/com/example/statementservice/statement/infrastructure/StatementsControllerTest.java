@@ -15,6 +15,7 @@ import com.example.statementservice.model.api.StatementSummary;
 import com.example.statementservice.shared.RequestInfo;
 import com.example.statementservice.statement.StatementDto;
 import com.example.statementservice.statement.StatementNotFoundException;
+import com.example.statementservice.statement.download.DownloadAttempt;
 import com.example.statementservice.statement.download.DownloadOutcome;
 import com.example.statementservice.statement.download.DownloadService;
 import com.example.statementservice.statement.download.infrastructure.DownloadResponseFactory;
@@ -24,7 +25,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -105,11 +106,11 @@ class StatementsControllerTest {
                         eq("testUser"),
                         any()))
                 .thenAnswer(invocation -> {
-                    Consumer<InputStream> onSuccess = invocation.getArgument(7);
-                    onSuccess.accept(testStream);
-                    return DownloadOutcome.OK;
+                    Function<InputStream, ResponseEntity<Resource>> onSuccess = invocation.getArgument(7);
+                    return DownloadAttempt.success(onSuccess.apply(testStream));
                 });
-        when(downloadResponseFactory.build(fileName, DownloadOutcome.OK, testStream))
+        when(downloadResponseFactory.ok(fileName, testStream)).thenReturn(expectedResponse);
+        when(downloadResponseFactory.build(DownloadOutcome.OK, expectedResponse))
                 .thenReturn(expectedResponse);
 
         var response = statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
@@ -129,7 +130,7 @@ class StatementsControllerTest {
                         eq("Mozilla/5.0"),
                         eq("testUser"),
                         any());
-        verify(downloadResponseFactory).build(fileName, DownloadOutcome.OK, testStream);
+        verify(downloadResponseFactory).build(DownloadOutcome.OK, expectedResponse);
     }
 
     @Test
@@ -146,8 +147,8 @@ class StatementsControllerTest {
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(downloadService.validateAndStreamDetailed(
                         anyString(), anyLong(), any(), anyString(), anyString(), anyString(), anyString(), any()))
-                .thenReturn(DownloadOutcome.INVALID_SIGNATURE);
-        when(downloadResponseFactory.build(fileName, DownloadOutcome.INVALID_SIGNATURE, null))
+                .thenReturn(DownloadAttempt.failure(DownloadOutcome.INVALID_SIGNATURE));
+        when(downloadResponseFactory.build(DownloadOutcome.INVALID_SIGNATURE, null))
                 .thenReturn(forbiddenResponse);
 
         var response = statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
@@ -171,9 +172,8 @@ class StatementsControllerTest {
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(downloadService.validateAndStreamDetailed(
                         anyString(), anyLong(), any(), anyString(), anyString(), anyString(), anyString(), any()))
-                .thenReturn(DownloadOutcome.LINK_EXPIRED);
-        when(downloadResponseFactory.build(fileName, DownloadOutcome.LINK_EXPIRED, null))
-                .thenReturn(notFoundResponse);
+                .thenReturn(DownloadAttempt.failure(DownloadOutcome.LINK_EXPIRED));
+        when(downloadResponseFactory.build(DownloadOutcome.LINK_EXPIRED, null)).thenReturn(notFoundResponse);
 
         var response = statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
 
@@ -194,8 +194,9 @@ class StatementsControllerTest {
         when(requestInfoProvider.get()).thenReturn(customRequestInfo);
         when(downloadService.validateAndStreamDetailed(
                         anyString(), anyLong(), any(), anyString(), anyString(), anyString(), anyString(), any()))
-                .thenReturn(DownloadOutcome.OK);
-        when(downloadResponseFactory.build(anyString(), any(), any()))
+                .thenReturn(
+                        DownloadAttempt.success(ResponseEntity.<Resource>ok().build()));
+        when(downloadResponseFactory.build(any(), any()))
                 .thenReturn(ResponseEntity.ok().build());
 
         statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
@@ -223,8 +224,9 @@ class StatementsControllerTest {
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(downloadService.validateAndStreamDetailed(
                         eq(signature), anyLong(), any(), anyString(), anyString(), anyString(), anyString(), any()))
-                .thenReturn(DownloadOutcome.OK);
-        when(downloadResponseFactory.build(anyString(), any(), any()))
+                .thenReturn(
+                        DownloadAttempt.success(ResponseEntity.<Resource>ok().build()));
+        when(downloadResponseFactory.build(any(), any()))
                 .thenReturn(ResponseEntity.ok().build());
 
         statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);
@@ -248,8 +250,8 @@ class StatementsControllerTest {
         when(requestInfoProvider.get()).thenReturn(testRequestInfo);
         when(downloadService.validateAndStreamDetailed(
                         anyString(), anyLong(), any(), anyString(), anyString(), anyString(), anyString(), any()))
-                .thenReturn(DownloadOutcome.STATEMENT_NOT_FOUND);
-        when(downloadResponseFactory.build(fileName, DownloadOutcome.STATEMENT_NOT_FOUND, null))
+                .thenReturn(DownloadAttempt.failure(DownloadOutcome.STATEMENT_NOT_FOUND));
+        when(downloadResponseFactory.build(DownloadOutcome.STATEMENT_NOT_FOUND, null))
                 .thenReturn(notFoundResponse);
 
         var response = statementsController.downloadStatementByFileName(fileName, expires, linkId, signature, null);

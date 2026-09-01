@@ -1,6 +1,7 @@
 package com.example.statementservice.infrastructure.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -18,6 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -104,48 +107,46 @@ class RequestInfoProviderTest {
     }
 
     @Test
-    void GivenNullSecurityContext_WhenGettingRequestInfo_ThenPerformedByIsSystem() {
-        when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
-        when(requestAttributes.getRequest()).thenReturn(request);
-        when(request.getRemoteAddr()).thenReturn("192.168.0.50");
-        when(request.getHeader("User-Agent")).thenReturn("Edge/91.0");
-        when(SecurityContextHolder.getContext()).thenReturn(null);
-        var result = requestInfoProvider.get();
-        assertNotNull(result);
-        assertEquals("192.168.0.50", result.clientIp());
-        assertEquals("Edge/91.0", result.userAgent());
-        assertEquals("system", result.performedBy());
-    }
-
-    @Test
-    void GivenAuthResolutionThrows_WhenGettingRequestInfo_ThenPerformedByFallsBackToSystem() {
+    void GivenMalformedPreferredUsernameClaim_WhenGettingRequestInfo_ThenFallsBackToAuthName() {
+        // Given: a wrong-typed claim must fall back to the token subject, not "system"
         when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
         when(requestAttributes.getRequest()).thenReturn(request);
         when(request.getRemoteAddr()).thenReturn("192.168.10.20");
         when(request.getHeader("User-Agent")).thenReturn("Firefox/89.0");
-        when(SecurityContextHolder.getContext()).thenThrow(new RuntimeException("Auth error"));
-        var result = requestInfoProvider.get();
-        assertNotNull(result);
-        assertEquals("192.168.10.20", result.clientIp());
-        assertEquals("Firefox/89.0", result.userAgent());
-        assertEquals("system", result.performedBy());
-    }
-
-    @Test
-    void GivenAuthResolutionThrows_WhenGettingRequestInfo_ThenFailureIsLoggedNotSwallowedSilently() {
-        when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
-        when(requestAttributes.getRequest()).thenReturn(request);
-        when(request.getRemoteAddr()).thenReturn("192.168.10.20");
-        when(request.getHeader("User-Agent")).thenReturn("Firefox/89.0");
-        when(SecurityContextHolder.getContext()).thenThrow(new RuntimeException("Auth error"));
+        var jwt = mock(Jwt.class);
+        when(jwt.getClaimAsString("preferred_username")).thenThrow(new IllegalArgumentException("wrong claim type"));
+        var jwtAuth = mock(JwtAuthenticationToken.class);
+        when(jwtAuth.isAuthenticated()).thenReturn(true);
+        when(jwtAuth.getToken()).thenReturn(jwt);
+        when(jwtAuth.getName()).thenReturn("jwt-subject");
+        when(SecurityContextHolder.getContext()).thenReturn(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(jwtAuth);
 
         try (var logs = LogCapture.forClass(RequestInfoProvider.class)) {
-            requestInfoProvider.get();
+            // When
+            var result = requestInfoProvider.get();
 
+            // Then
+            assertEquals("jwt-subject", result.performedBy());
             assertThat(logs.lines())
-                    .as("a swallowed auth-resolution failure must still be visible, not silent")
-                    .anyMatch(line -> line.contains("system") && line.contains("Auth error"));
+                    .as("a malformed claim must be visible in logs, not silent")
+                    .anyMatch(line -> line.contains("preferred_username"));
         }
+    }
+
+    @Test
+    void GivenUnexpectedFailureResolvingUsername_WhenGettingRequestInfo_ThenExceptionPropagates() {
+        // Given: an unexpected bug must not be masked as performedBy="system" in audit rows.
+        when(RequestContextHolder.getRequestAttributes()).thenReturn(requestAttributes);
+        when(requestAttributes.getRequest()).thenReturn(request);
+        when(SecurityContextHolder.getContext()).thenReturn(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.isAuthenticated()).thenReturn(true);
+        var bug = new IllegalStateException("unexpected");
+        when(authentication.getName()).thenThrow(bug);
+
+        // When / Then
+        assertThatThrownBy(() -> requestInfoProvider.get()).isSameAs(bug);
     }
 
     @Test
@@ -214,7 +215,8 @@ class RequestInfoProviderTest {
     @Test
     void GivenAllNullRequestValues_WhenGettingRequestInfo_ThenNullsAreReturned() {
         when(RequestContextHolder.getRequestAttributes()).thenReturn(null);
-        when(SecurityContextHolder.getContext()).thenReturn(null);
+        when(SecurityContextHolder.getContext()).thenReturn(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(null);
         var result = requestInfoProvider.get();
         assertNotNull(result);
         assertEquals("unknown", result.clientIp());

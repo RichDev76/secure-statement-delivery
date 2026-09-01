@@ -1,5 +1,6 @@
 package com.example.statementservice.audit;
 
+import com.example.statementservice.shared.Identified;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -24,7 +25,7 @@ import org.hibernate.type.SqlTypes;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuditLog {
+public class AuditLog implements Identified {
     @Id
     private UUID id;
 

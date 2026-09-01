@@ -27,7 +27,7 @@ download links.
 - `statement-service/` - Spring Boot application exposing the Statement Upload & Search API
 - `config-server/` - Spring Cloud Config Server (reads configuration from `infra/config-repo` and Vault)
 - `infra/` - Docker Compose infrastructure (database, Vault, Keycloak, Config Server)
-- `infra/config-repo/` - Git-style configuration repo mounted into Config Server
+- `infra/config-repo/` - Local filesystem configuration repo mounted into Config Server (served via its `native` backend)
 
 ---
 
@@ -108,10 +108,10 @@ AWS_SECRET_ACCESS_KEY=test
 STATEMENT_MASTER_KEY=<32-byte-key>
 STATEMENT_SIGNATURE_SECRET=<your-signature-secret>
 ```
-```aiignore
-Sample command to use if you want to generate master key and/or signature secret : 
-openssl rand -base64 32
+Sample command to generate the master key and/or signature secret:
 
+```bash
+openssl rand -base64 32
 ```
 #### Step 2: Initial Bootstrap (First Time Only)
 
@@ -154,6 +154,8 @@ docker compose down
 | Service | URL |
 |---------|-----|
 | PostgreSQL | `localhost:5432` |
+| Redis | `localhost:6379` |
+| Floci (S3-compatible storage) | `http://localhost:4566` |
 | Vault | `http://localhost:8200` |
 | Keycloak | `http://localhost:8081` |
 | Config Server | `http://localhost:8888` |
@@ -176,7 +178,7 @@ curl http://localhost:8080/api/v1/statements/actuator/health
 This option runs Keycloak, PostgreSQL, Redis, and Floci (S3-compatible storage) in Docker, while
 running the Statement Service locally via Maven. This is useful for development and debugging.
 
-> The `local` profile talks to all four of these — Redis backs the signed-link download cache and
+> The `local` profile talks to all four of these — Redis backs the statement ciphertext cache and
 > Floci is where statement files actually live, so both need to be up, not just Postgres/Keycloak,
 > or `/actuator/health` will report `DOWN` and uploads/downloads will fail.
 
@@ -243,9 +245,9 @@ mvn -pl statement-service spring-boot:run -Dspring-boot.run.profiles=local
 The `local` profile (`application-local.yml`) is preconfigured to:
 - Connect to PostgreSQL at `localhost:5432/statementdb`
 - Use Keycloak at `http://localhost:8081/realms/statement-service` for JWT validation
-- Use Redis at `localhost:6379` for the signed-link download cache
+- Use Redis at `localhost:6379` for the statement ciphertext cache
 - Use Floci at `localhost:4566` for statement storage
-- Disable Config Server dependency
+- Tolerate a missing Config Server (the `optional:configserver:` config import means startup doesn't block on it)
 
 #### Step 5: Verify the Service
 

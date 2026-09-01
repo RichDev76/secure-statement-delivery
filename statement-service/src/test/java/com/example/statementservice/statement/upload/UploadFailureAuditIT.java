@@ -77,8 +77,8 @@ class UploadFailureAuditIT extends AbstractIntegrationTest {
         performUploadWithMismatchedDigest(accountNumber).andExpect(status().isBadRequest());
 
         // Then: no metadata row, and the bucket holds exactly what it held before
-        assertThat(statementRepository.findByAccountNumberAndStatementDate(accountNumber, LocalDate.of(2026, 7, 1)))
-                .isEmpty();
+        assertThat(statementRepository.existsByAccountNumberAndStatementDate(accountNumber, LocalDate.of(2026, 7, 1)))
+                .isFalse();
         assertThat(totalBucketObjectCount()).isEqualTo(objectCountBefore);
     }
 

@@ -12,9 +12,10 @@ wastes DB work and risks lock contention.
 
 ## Decision
 
-`SignedLinkCleanupService` runs on a configurable cron schedule, deleting expired links in
-batches via `SignedLinkRepository`, guarded by a ShedLock `@SchedulerLock` (backed by a `shedlock`
-table in Postgres) so only one instance executes per run. Configurable via
+`SignedLinkCleanupScheduler` runs on a configurable cron schedule, guarded by a ShedLock
+`@SchedulerLock` (backed by a `shedlock` table in Postgres) so only one instance executes per
+run, and delegates to `SignedLinkCleanupService`, which deletes expired links in batches via
+`SignedLinkRepository`. Configurable via
 `SignedLinkCleanupProperties` (`enabled`, `cron`, `retentionPeriod`, `batchSize`, `lockAtMostFor`,
 `lockAtLeastFor`).
 
@@ -30,8 +31,9 @@ Exactly-one-instance execution without an external scheduler; adds a `shedlock` 
 
 ## Implementation Notes
 
-`SignedLinkCleanupService`, `SignedLinkCleanupProperties`.
+`SignedLinkCleanupScheduler`, `SignedLinkCleanupService`, `SignedLinkCleanupProperties`.
 
 ## References
 
 - [ShedLock](https://github.com/lukas-krecan/ShedLock)
+- [0019 — Keep ShedLock over a hand-rolled `SKIP LOCKED` scheduler mutex](0019-shedlock-over-skip-locked.md)

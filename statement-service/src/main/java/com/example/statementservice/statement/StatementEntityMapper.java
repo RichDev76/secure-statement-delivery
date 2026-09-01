@@ -1,6 +1,5 @@
 package com.example.statementservice.statement;
 
-import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -12,6 +11,4 @@ public interface StatementEntityMapper {
     @Mapping(target = "fileSize", source = "sizeBytes")
     @Mapping(target = "downloadLink", ignore = true)
     StatementDto toDto(Statement entity);
-
-    List<StatementDto> toDtos(List<Statement> entities);
 }

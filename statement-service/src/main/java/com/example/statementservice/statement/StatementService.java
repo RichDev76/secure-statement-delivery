@@ -119,10 +119,6 @@ public class StatementService {
         return this.statementRepository.findStatementById(id);
     }
 
-    public Page<Statement> getStatementsByAccountNumber(String accountNumber, Pageable pageable) {
-        return statementRepository.findByAccountNumber(accountNumber, pageable);
-    }
-
     public StatementDto toDto(Statement s) {
         return statementEntityMapper.toDto(s);
     }

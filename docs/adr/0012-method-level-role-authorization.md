@@ -42,9 +42,8 @@ were contract, not environment, data.
 
 ## Alternatives
 
-- Role groups in yml mapped to `AppRole` inside `SecurityConfig`: rejected — roles are contract,
-  not environment config; invisible at the endpoint they protect, and a forgotten yml entry
-  silently degrades an endpoint to any-authenticated-caller with no build-time detection.
+- Keep the status quo (yml-driven role matchers): rejected — roles are contract, not environment
+  config (see Problem).
 - Keeping both layers (yml matchers *and* `@PreAuthorize`): rejected — every rule stated twice
   with no compiler link, and a passing test cannot tell which layer satisfied it.
 - Group-name-to-role via a `Map<String, String>` lookup: rejected — a yml key typo would silently

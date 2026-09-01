@@ -65,6 +65,30 @@ class MasterKeyProviderTest {
     }
 
     @Test
+    void GivenSixteenByteKey_WhenConstructing_ThenFailsNamingRequiredKeyLength() {
+        // Given
+        var shortKey = Base64.getEncoder().encodeToString("0123456789abcdef".getBytes());
+
+        // When / Then
+        assertThatThrownBy(() -> new MasterKeyProvider(
+                        shortKey, tempDir.resolve("absent").toString()))
+                .isInstanceOf(MasterKeyLoadException.class)
+                .hasMessageContaining("32 bytes");
+    }
+
+    @Test
+    void GivenSixteenByteKeyInFile_WhenConstructing_ThenFailsNamingRequiredKeyLength() throws Exception {
+        // Given
+        var keyFile = tempDir.resolve("master-key");
+        Files.writeString(keyFile, Base64.getEncoder().encodeToString("0123456789abcdef".getBytes()));
+
+        // When / Then
+        assertThatThrownBy(() -> new MasterKeyProvider("", keyFile.toString()))
+                .isInstanceOf(MasterKeyLoadException.class)
+                .hasMessageContaining("32 bytes");
+    }
+
+    @Test
     void GivenConstructedProvider_WhenMutatingReturnedKey_ThenSubsequentGetKeyIsUnaffected() {
         // Given
         var provider =

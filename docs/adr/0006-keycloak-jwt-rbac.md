@@ -16,7 +16,7 @@ session state itself.
 Keycloak. `KeycloakRoleConverter` maps the JWT's `roles` (or `realm_access.roles`) claim to
 `ROLE_<name>` authorities. `@PreAuthorize` on each controller handler enforces one distinct role per operation
 (`Upload`, `GenerateSignedLink`, `Search`, `AuditLogsSearch` — see 0012); the download endpoint is whitelisted
-and relies solely on its signed-link signature (see 0003).
+and relies solely on its signed-link signature (see 0015, 0020).
 
 ## Alternatives
 
@@ -36,3 +36,4 @@ public keys being reachable.
 
 - `docs/standards/security.md`
 - [Keycloak Documentation](https://www.keycloak.org/documentation)
+- [0012 — Method-level role authorization with config-driven whitelist](0012-method-level-role-authorization.md)

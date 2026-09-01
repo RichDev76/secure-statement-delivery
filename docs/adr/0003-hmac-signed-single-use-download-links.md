@@ -2,7 +2,8 @@
 
 > **Superseded by [0015](0015-time-based-signed-links-and-envelope-encryption.md).** Single-use
 > consumption and raw-token storage described below were later replaced by purely time-based
-> validity and hashed tokens at rest.
+> validity and hashed tokens at rest — later bounded by a redemption cap in
+> [0020](0020-signed-link-abuse-hardening.md).
 
 ## Context
 
@@ -45,3 +46,4 @@ link lifecycle; `SignedLinkRepository` persists.
 
 - `docs/standards/security.md`
 - [0015 — Time-based signed links and envelope encryption](0015-time-based-signed-links-and-envelope-encryption.md)
+- [0020 — Signed-link abuse hardening](0020-signed-link-abuse-hardening.md)

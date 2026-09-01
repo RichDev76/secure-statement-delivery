@@ -1,5 +1,10 @@
 # 0014 — Local disk storage to Floci/S3 migration
 
+**Addendum (2026-08):** decisions 1 and 4 were later revised by the streaming upload work
+(see the addendum on [0023](0023-single-streaming-digest-pass-and-deferred-upload-streaming.md)):
+`StatementFileStore` became a pull-based streaming port and `store()` no longer buffers
+ciphertext — it PUTs with a precomputed Content-Length.
+
 ## Context
 
 Statement files are stored encrypted on a shared local disk volume via `LocalStatementFileStore`,
@@ -41,7 +46,8 @@ no durability/versioning story.
 - Uploads/downloads now depend on the S3/Floci endpoint; `S3HealthIndicator` surfaces that on
   `/actuator/health`.
 - The service can run as multiple replicas against the same bucket.
-- `store()` buffers the full ciphertext in memory — acceptable at current statement sizes.
+- `store()` buffers the full ciphertext in memory — acceptable at current statement sizes
+  (since removed by the streaming work; see addendum).
 - Out of scope: multipart upload, S3 versioning/lifecycle, migrating pre-existing statements
   (none exist in production yet).
 

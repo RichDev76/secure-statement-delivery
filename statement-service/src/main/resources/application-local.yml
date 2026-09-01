@@ -34,7 +34,6 @@ spring:
 
 statement:
   encryption:
-    algorithm: AES/GCM/NoPadding
     master-key: ${STATEMENT_MASTER_KEY}
     signature:
       secret: ${STATEMENT_SIGNATURE_SECRET}

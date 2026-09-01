@@ -19,6 +19,13 @@ shared object store was not yet in scope.
 `{baseDir}/statements/{sha256(accountNumber)}/{year}/{month}/{statementId}.pdf.enc` — the account
 number is hashed before it appears in any path, for privacy.
 
+## Alternatives
+
+- Object storage (S3/Floci) from day one: rejected as premature — later adopted in
+  [0014](0014-local-storage-to-floci-s3-migration.md) once horizontal scaling was actually needed.
+- Storing file bytes as a DB blob: rejected — bloats Postgres backups for no benefit over a
+  filesystem path.
+
 ## Consequences
 
 - Simple, dependency-free storage for a single-instance deployment.

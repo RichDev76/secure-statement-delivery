@@ -29,35 +29,32 @@ public class RequestInfoProvider {
     }
 
     private String resolveUsername() {
-        try {
-            var auth = SecurityContextHolder.getContext() != null
-                    ? SecurityContextHolder.getContext().getAuthentication()
-                    : null;
-
-            if (auth == null || !auth.isAuthenticated()) {
-                return SYSTEM_DEFAULT;
-            }
-
-            // Prefer Keycloak's preferred_username claim when using JWT auth
-            if (auth instanceof JwtAuthenticationToken jwtAuth) {
-                var jwt = jwtAuth.getToken();
-                var preferredUsername = jwt.getClaimAsString(JWT_CLAIM_PREFERRED_USERNAME);
-
-                if (preferredUsername != null && !preferredUsername.isBlank()) {
-                    return preferredUsername;
-                }
-            }
-
-            // Fallback to the standard Spring Security username
-            var name = auth.getName();
-            if (name != null && !name.isBlank()) {
-                return name;
-            }
-        } catch (Exception e) {
-            log.warn(
-                    "Failed to resolve authenticated username, falling back to '{}': {}", SYSTEM_DEFAULT, e.toString());
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return SYSTEM_DEFAULT;
         }
 
-        return SYSTEM_DEFAULT;
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            var preferredUsername = preferredUsername(jwtAuth);
+            if (preferredUsername != null && !preferredUsername.isBlank()) {
+                return preferredUsername;
+            }
+        }
+
+        var name = auth.getName();
+        return (name != null && !name.isBlank()) ? name : SYSTEM_DEFAULT;
+    }
+
+    // Only the claim read may fall back - any other failure must propagate, not mislabel audit rows.
+    private String preferredUsername(JwtAuthenticationToken jwtAuth) {
+        try {
+            return jwtAuth.getToken().getClaimAsString(JWT_CLAIM_PREFERRED_USERNAME);
+        } catch (IllegalArgumentException e) {
+            log.warn(
+                    "Malformed {} claim, falling back to token subject: {}",
+                    JWT_CLAIM_PREFERRED_USERNAME,
+                    e.toString());
+            return null;
+        }
     }
 }

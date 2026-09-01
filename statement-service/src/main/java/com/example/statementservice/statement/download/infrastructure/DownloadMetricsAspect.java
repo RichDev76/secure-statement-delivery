@@ -1,6 +1,6 @@
 package com.example.statementservice.statement.download.infrastructure;
 
-import com.example.statementservice.statement.download.DownloadOutcome;
+import com.example.statementservice.statement.download.DownloadAttempt;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +22,13 @@ public class DownloadMetricsAspect {
     @AfterReturning(
             pointcut =
                     "execution(* com.example.statementservice.statement.download.DownloadService.validateAndStreamDetailed(..))",
-            returning = "outcome")
-    public void recordDownloadOutcome(DownloadOutcome outcome) {
+            returning = "attempt")
+    public void recordDownloadOutcome(DownloadAttempt<?> attempt) {
         meterRegistry
-                .counter(DOWNLOAD_OUTCOME_METRIC, OUTCOME_TAG, outcome.name().toLowerCase(Locale.ROOT))
+                .counter(
+                        DOWNLOAD_OUTCOME_METRIC,
+                        OUTCOME_TAG,
+                        attempt.outcome().name().toLowerCase(Locale.ROOT))
                 .increment();
     }
 }

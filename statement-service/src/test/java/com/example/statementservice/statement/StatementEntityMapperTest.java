@@ -85,50 +85,7 @@ class StatementEntityMapperTest {
     }
 
     @Test
-    void GivenMultipleEntities_WhenMappingToDtos_ThenAllAreMapped() {
-        var entity1 = createStatement("ACC001", "file1.pdf", 1024L);
-        var entity2 = createStatement("ACC002", "file2.pdf", 2048L);
-        var entity3 = createStatement("ACC003", "file3.pdf", 4096L);
-        var entities = Arrays.asList(entity1, entity2, entity3);
-        var result = statementEntityMapper.toDtos(entities);
-        assertThat(result).hasSize(3);
-        assertThat(result.get(0).accountNumber()).isEqualTo("ACC001");
-        assertThat(result.get(0).fileName()).isEqualTo("file1.pdf");
-        assertThat(result.get(0).downloadLink()).isNull();
-        assertThat(result.get(1).accountNumber()).isEqualTo("ACC002");
-        assertThat(result.get(1).fileName()).isEqualTo("file2.pdf");
-        assertThat(result.get(1).downloadLink()).isNull();
-        assertThat(result.get(2).accountNumber()).isEqualTo("ACC003");
-        assertThat(result.get(2).fileName()).isEqualTo("file3.pdf");
-        assertThat(result.get(2).downloadLink()).isNull();
-    }
-
-    @Test
-    void GivenNullList_WhenMappingToDtos_ThenReturnsNull() {
-        var result = statementEntityMapper.toDtos(null);
-        assertThat(result).isNull();
-    }
-
-    @Test
-    void GivenEmptyList_WhenMappingToDtos_ThenReturnsEmptyList() {
-        List<Statement> emptyList = Collections.emptyList();
-        var result = statementEntityMapper.toDtos(emptyList);
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    void GivenSingleEntity_WhenMappingToDtos_ThenOneDtoIsReturned() {
-        var entity = createStatement("ACC123", "single.pdf", 1024L);
-        var entities = Collections.singletonList(entity);
-        var result = statementEntityMapper.toDtos(entities);
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).accountNumber()).isEqualTo("ACC123");
-        assertThat(result.get(0).fileName()).isEqualTo("single.pdf");
-        assertThat(result.get(0).downloadLink()).isNull();
-    }
-
-    @Test
-    void GivenEntities_WhenMappingToDtos_ThenAllPropertiesArePreserved() {
+    void GivenFullyPopulatedEntity_WhenMappingToDto_ThenAllPropertiesArePreserved() {
         var id = UUID.randomUUID();
         var date = LocalDate.of(2024, 5, 15);
         var uploadedAt = OffsetDateTime.now();
@@ -139,10 +96,7 @@ class StatementEntityMapperTest {
         entity.setUploadFileName("full.pdf");
         entity.setSizeBytes(16384L);
         entity.setUploadedAt(uploadedAt);
-        var entities = Collections.singletonList(entity);
-        var result = statementEntityMapper.toDtos(entities);
-        assertThat(result).hasSize(1);
-        var dto = result.get(0);
+        var dto = statementEntityMapper.toDto(entity);
         assertThat(dto.statementId()).isEqualTo(id);
         assertThat(dto.accountNumber()).isEqualTo("ACC777");
         assertThat(dto.statementDate()).isEqualTo(date);
@@ -150,18 +104,6 @@ class StatementEntityMapperTest {
         assertThat(dto.fileSize()).isEqualTo(16384L);
         assertThat(dto.uploadedAt()).isEqualTo(uploadedAt);
         assertThat(dto.downloadLink()).isNull();
-    }
-
-    @Test
-    void GivenLargeList_WhenMappingToDtos_ThenAllAreMapped() {
-        var entities = new ArrayList<Statement>();
-        for (int i = 0; i < 100; i++) {
-            entities.add(createStatement("ACC" + i, "file" + i + ".pdf", 1024L * i));
-        }
-        var result = statementEntityMapper.toDtos(entities);
-        assertThat(result).hasSize(100);
-        assertThat(result.get(0).accountNumber()).isEqualTo("ACC0");
-        assertThat(result.get(99).accountNumber()).isEqualTo("ACC99");
     }
 
     @Test

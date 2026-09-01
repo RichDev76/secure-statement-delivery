@@ -96,4 +96,21 @@ class SignedLinkCleanupServiceTest {
         // Then
         verify(rateLimiter).deleteExpiredBuckets();
     }
+
+    @Test
+    void GivenBatchedDeletes_WhenInspectingCleanup_ThenNoOuterTransactionSpansTheLoop() throws Exception {
+        // Then: an outer transaction on cleanup() would fold every batch into one long-running
+        // transaction and defeat the bounded-lock purpose of batching
+        var cleanupMethod = SignedLinkCleanupService.class.getMethod("cleanup");
+
+        assertThat(cleanupMethod.getAnnotation(jakarta.transaction.Transactional.class))
+                .isNull();
+        assertThat(cleanupMethod.getAnnotation(org.springframework.transaction.annotation.Transactional.class))
+                .isNull();
+        assertThat(SignedLinkCleanupService.class.getAnnotation(jakarta.transaction.Transactional.class))
+                .isNull();
+        assertThat(SignedLinkCleanupService.class.getAnnotation(
+                        org.springframework.transaction.annotation.Transactional.class))
+                .isNull();
+    }
 }

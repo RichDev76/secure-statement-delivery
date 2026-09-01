@@ -24,13 +24,12 @@ import com.example.statementservice.statement.signedlink.SignedLinkService;
 import com.example.statementservice.support.LogCapture;
 import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,7 +68,6 @@ class DownloadServiceTest {
     private String testPerformedBy;
     private UUID testStatementId;
     private UUID testLinkId;
-    private AtomicReference<InputStream> streamHolder;
 
     @BeforeEach
     void setUp() {
@@ -79,7 +77,6 @@ class DownloadServiceTest {
         testClientIp = "192.168.1.1";
         testUserAgent = "Mozilla/5.0";
         testPerformedBy = "testUser";
-        streamHolder = new AtomicReference<>();
 
         testLink = new SignedLink();
         testLink.setId(testLinkId);
@@ -121,7 +118,7 @@ class DownloadServiceTest {
         when(statementService.openDecryptedFile(testStatement)).thenReturn(mockStream);
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -129,11 +126,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.OK);
-        assertThat(streamHolder.get()).isSameAs(mockStream);
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.OK);
+        assertThat(attempt.result()).isSameAs(mockStream);
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_SUCCESS.getValue()),
@@ -165,7 +162,7 @@ class DownloadServiceTest {
                     testClientIp,
                     testUserAgent,
                     testPerformedBy,
-                    streamHolder::set);
+                    stream -> stream);
 
             // Then
             assertThat(logs.lines())
@@ -187,7 +184,7 @@ class DownloadServiceTest {
                 .thenReturn(notFoundResult);
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -195,11 +192,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.STATEMENT_NOT_FOUND);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.STATEMENT_NOT_FOUND);
+        assertThat(attempt.result()).isNull();
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -220,7 +217,7 @@ class DownloadServiceTest {
         when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -228,11 +225,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.LINK_EXPIRED);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.LINK_EXPIRED);
+        assertThat(attempt.result()).isNull();
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -251,7 +248,7 @@ class DownloadServiceTest {
                 .thenReturn(invalidResult);
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -259,11 +256,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.INVALID_SIGNATURE);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.INVALID_SIGNATURE);
+        assertThat(attempt.result()).isNull();
     }
 
     @Test
@@ -276,7 +273,7 @@ class DownloadServiceTest {
         when(statementService.findStatementById(testStatementId)).thenReturn(Optional.empty());
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -284,11 +281,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.STATEMENT_NOT_FOUND);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.STATEMENT_NOT_FOUND);
+        assertThat(attempt.result()).isNull();
         verify(statementService, never()).fileExists(any());
         verify(statementService, never()).openDecryptedFile(any());
         verify(auditService)
@@ -311,7 +308,7 @@ class DownloadServiceTest {
         when(statementService.fileExists(testStatement)).thenReturn(false);
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -319,11 +316,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.FILE_MISSING);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.FILE_MISSING);
+        assertThat(attempt.result()).isNull();
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -345,7 +342,7 @@ class DownloadServiceTest {
         when(statementService.openDecryptedFile(testStatement)).thenThrow(new RuntimeException("Decryption error"));
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -353,11 +350,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.DECRYPTION_FAILED);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.DECRYPTION_FAILED);
+        assertThat(attempt.result()).isNull();
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -382,7 +379,7 @@ class DownloadServiceTest {
                 .thenThrow(new FileCipherException("Unrecognised DEK wrap format"));
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -390,11 +387,37 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.DECRYPTION_FAILED);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.DECRYPTION_FAILED);
+        assertThat(attempt.result()).isNull();
+    }
+
+    @Test
+    void GivenTransientIoFailureOnOpen_WhenValidateAndStreamDetailed_ThenReturnsStorageUnavailable() throws Exception {
+        // Given: a mid-open network reset is an outage, not a crypto failure - retryable 503
+        var validResult = LinkValidationResult.valid(testLink);
+        when(signedLinkService.validate(testToken, testExpires, testLinkId, FILE_NAME))
+                .thenReturn(validResult);
+        when(statementService.findStatementById(testStatementId)).thenReturn(Optional.of(testStatement));
+        when(statementService.fileExists(testStatement)).thenReturn(true);
+        when(statementService.openDecryptedFile(testStatement)).thenThrow(new IOException("connection reset"));
+
+        // When
+        var attempt = downloadService.validateAndStreamDetailed(
+                testToken,
+                testExpires,
+                testLinkId,
+                FILE_NAME,
+                testClientIp,
+                testUserAgent,
+                testPerformedBy,
+                stream -> stream);
+
+        // Then
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.STORAGE_UNAVAILABLE);
+        assertThat(attempt.result()).isNull();
     }
 
     @Test
@@ -412,7 +435,7 @@ class DownloadServiceTest {
                 .record(any(), any(), any(), any(), any(), any());
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -420,11 +443,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.OK);
-        assertThat(streamHolder.get()).isNotNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.OK);
+        assertThat(attempt.result()).isNotNull();
     }
 
     @Test
@@ -435,11 +458,11 @@ class DownloadServiceTest {
                 .thenReturn(notFoundResult);
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
-                testToken, testExpires, testLinkId, FILE_NAME, null, testUserAgent, testPerformedBy, streamHolder::set);
+        var attempt = downloadService.validateAndStreamDetailed(
+                testToken, testExpires, testLinkId, FILE_NAME, null, testUserAgent, testPerformedBy, stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.STATEMENT_NOT_FOUND);
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.STATEMENT_NOT_FOUND);
         verify(auditService).record(any(), any(), any(), any(), any(), any(Map.class));
     }
 
@@ -451,11 +474,11 @@ class DownloadServiceTest {
                 .thenReturn(notFoundResult);
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
-                testToken, testExpires, testLinkId, FILE_NAME, testClientIp, null, testPerformedBy, streamHolder::set);
+        var attempt = downloadService.validateAndStreamDetailed(
+                testToken, testExpires, testLinkId, FILE_NAME, testClientIp, null, testPerformedBy, stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.STATEMENT_NOT_FOUND);
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.STATEMENT_NOT_FOUND);
         verify(auditService).record(any(), any(), any(), any(), any(), any(Map.class));
     }
 
@@ -476,7 +499,7 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
         verify(auditService)
@@ -495,7 +518,7 @@ class DownloadServiceTest {
         when(rateLimiter.tryConsume(testLinkId)).thenReturn(false);
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -503,11 +526,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.RATE_LIMITED);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.RATE_LIMITED);
+        assertThat(attempt.result()).isNull();
         verifyNoInteractions(signedLinkService, statementService);
         verify(auditService)
                 .record(
@@ -528,7 +551,7 @@ class DownloadServiceTest {
                 .thenReturn(invalidResult);
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 null,
@@ -536,10 +559,10 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.INVALID_SIGNATURE);
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.INVALID_SIGNATURE);
         verifyNoInteractions(rateLimiter);
     }
 
@@ -556,7 +579,7 @@ class DownloadServiceTest {
                 .thenThrow(new StatementStorageUnavailableException("S3 outage", new RuntimeException("cause")));
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -564,11 +587,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.STORAGE_UNAVAILABLE);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.STORAGE_UNAVAILABLE);
+        assertThat(attempt.result()).isNull();
         verify(statementService, never()).openDecryptedFile(any());
         verify(auditService)
                 .record(
@@ -594,7 +617,7 @@ class DownloadServiceTest {
                 .thenThrow(new StatementStorageUnavailableException("S3 outage", new RuntimeException("cause")));
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -602,11 +625,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.STORAGE_UNAVAILABLE);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.STORAGE_UNAVAILABLE);
+        assertThat(attempt.result()).isNull();
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -632,7 +655,7 @@ class DownloadServiceTest {
                 .thenThrow(new FileNotFoundException("No object found for the requested reference"));
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -640,11 +663,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.FILE_MISSING);
-        assertThat(streamHolder.get()).isNull();
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.FILE_MISSING);
+        assertThat(attempt.result()).isNull();
         verify(auditService)
                 .record(
                         eq(AuditAction.DOWNLOAD_FAILED.getValue()),
@@ -670,7 +693,7 @@ class DownloadServiceTest {
                 .thenThrow(new RuntimeException("audit query failed"));
 
         // When
-        var outcome = downloadService.validateAndStreamDetailed(
+        var attempt = downloadService.validateAndStreamDetailed(
                 testToken,
                 testExpires,
                 testLinkId,
@@ -678,11 +701,11 @@ class DownloadServiceTest {
                 testClientIp,
                 testUserAgent,
                 testPerformedBy,
-                streamHolder::set);
+                stream -> stream);
 
         // Then
-        assertThat(outcome).isEqualTo(DownloadOutcome.OK);
-        assertThat(streamHolder.get()).isSameAs(mockStream);
+        assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.OK);
+        assertThat(attempt.result()).isSameAs(mockStream);
     }
 
     @Test
@@ -701,7 +724,7 @@ class DownloadServiceTest {
 
         try (var logs = LogCapture.forClass(DownloadService.class)) {
             // When
-            var outcome = downloadService.validateAndStreamDetailed(
+            var attempt = downloadService.validateAndStreamDetailed(
                     testToken,
                     testExpires,
                     testLinkId,
@@ -709,10 +732,10 @@ class DownloadServiceTest {
                     testClientIp,
                     testUserAgent,
                     testPerformedBy,
-                    streamHolder::set);
+                    stream -> stream);
 
             // Then
-            assertThat(outcome).isEqualTo(DownloadOutcome.OK);
+            assertThat(attempt.outcome()).isEqualTo(DownloadOutcome.OK);
             assertThat(logs.lines()).anySatisfy(message -> assertThat(message)
                     .contains("different ip/userAgent")
                     .contains(testLinkId.toString()));

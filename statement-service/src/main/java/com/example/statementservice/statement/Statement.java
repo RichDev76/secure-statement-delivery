@@ -1,5 +1,6 @@
 package com.example.statementservice.statement;
 
+import com.example.statementservice.shared.Identified;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -22,11 +23,13 @@ import lombok.ToString;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-public class Statement {
+public class Statement implements Identified {
 
     @Id
     private UUID id;
 
+    // PII - excluded per the ADR 0025 no-PII-in-logs policy.
+    @ToString.Exclude
     @Column(name = "account_number")
     private String accountNumber;
 

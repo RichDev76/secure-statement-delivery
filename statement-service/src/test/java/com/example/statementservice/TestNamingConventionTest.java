@@ -19,6 +19,6 @@ class TestNamingConventionTest {
             .or()
             .areAnnotatedWith(ParameterizedTest.class)
             .should()
-            .haveNameMatching("Given\\w+_When\\w+_Then\\w+")
+            .haveNameMatching("Given[a-zA-Z0-9]+_When[a-zA-Z0-9]+_Then[a-zA-Z0-9]+")
             .because("the testing standard mandates Given_When_Then names that read as behavioural statements");
 }

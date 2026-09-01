@@ -19,8 +19,8 @@ gives no per-file granularity.
 Files are encrypted with `AES/GCM/NoPadding` directly under a single Master Encryption Key,
 sourced via `MasterKeyProvider` (Vault-backed). A random 12-byte IV is generated per file and
 prepended to the ciphertext stream; the 128-bit GCM tag provides integrity and authenticity.
-Account numbers are hashed (SHA-256) before use in storage paths or persistence — never stored
-in clear text.
+Account numbers are hashed (SHA-256) before use in storage object keys; the database columns
+store them in clear text, as search and audit both query by account number.
 
 ## Alternatives
 

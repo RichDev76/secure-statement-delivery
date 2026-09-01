@@ -2,7 +2,7 @@
 
 ## Context
 
-Configuration (endpoint role matrices, cleanup schedules, storage paths) and secrets (master
+Configuration (endpoint whitelist rules, cleanup schedules, storage paths) and secrets (master
 encryption key, HMAC signing secret, DB credentials) both need to vary per environment without
 being baked into the image.
 

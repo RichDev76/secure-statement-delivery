@@ -22,11 +22,8 @@ depends on a possibly-null parameter.
    `CREATE TABLE audit_logs (...) PARTITION BY RANGE (performed_at)` with composite
    `PRIMARY KEY (id, performed_at)` (Postgres requires the partition key in every unique key —
    `id` alone is no longer globally enforced-unique by Postgres, though collision isn't a practical
-   risk for a UUID), three seeded monthly partitions, and a `DEFAULT` safety-net partition. Had
-   existing data needed preserving, the alternative is rename-old-table-aside → create the
-   partitioned parent under the original name → `ATTACH` the old table as a historical partition;
-   not needed here. `AuditLog`'s JPA mapping is unaffected — it keeps its existing bare
-   `@Id UUID id`.
+   risk for a UUID), three seeded monthly partitions, and a `DEFAULT` safety-net partition.
+   `AuditLog`'s JPA mapping is unaffected — it keeps its existing bare `@Id UUID id`.
 2. **Index cleanup, evidence-led.** `statement_id`, `signed_link_id`, and `performed_by` indexes
    are dropped — no query in `AuditLogRepository`/`AuditQueryService` filters or sorts on them,
    confirmed by tracing the actual code, not assumed. A new composite `(account_number,
@@ -47,6 +44,8 @@ depends on a possibly-null parameter.
 
 ## Alternatives
 
+- Rename-old-table-aside → create the partitioned parent under the original name → `ATTACH` the
+  old table as a historical partition: not needed — no pre-production row is worth preserving.
 - `pg_partman` for partition maintenance: rejected — not bundled in the plain `postgres:18-alpine`
   image used here; adopting it would mean a custom image for one scheduled job this codebase can
   already express directly.

@@ -1,4 +1,4 @@
-# ADR-0024: GitHub Actions CI pipeline
+# 0024 — GitHub Actions CI pipeline
 
 ## Context
 
@@ -16,7 +16,8 @@ How to introduce CI with parity to the reference pipeline
 
 ## Decision
 
-GitHub Actions, seven jobs, Maven wrapper pinned to 3.9.11: `format` invokes
+GitHub Actions, seven jobs, Maven wrapper pinned (3.9.11 at authoring; Dependabot keeps
+it current): `format` invokes
 `spotless:check` directly (bypasses the lifecycle, so the bound `apply` never fires —
 one job owns the formatting verdict; every other job passes `-Dspotless.skip=true`);
 `build`, `unit-tests`, `integration-tests` (plain `./mvnw verify`, Testcontainers on
@@ -54,7 +55,8 @@ review. PIT mutation testing is deferred — see Consequences.
 
 ## Implementation Notes
 
-- `mvnw`, `mvnw.cmd`, `.mvn/wrapper/`: generated via `mvn wrapper:wrapper -Dmaven=3.9.11`.
+- `mvnw`, `mvnw.cmd`, `.mvn/wrapper/`: generated via `mvn wrapper:wrapper` (version pinned in
+  `maven-wrapper.properties`, bumped by Dependabot).
 - `.github/workflows/ci.yml`: `format`, `build`, `unit-tests`, `integration-tests`,
   `dependency-scan`, `api-compat`, `api-regression`.
 - `.github/dependabot.yml`: weekly, `github-actions`, `maven`, `docker` (both

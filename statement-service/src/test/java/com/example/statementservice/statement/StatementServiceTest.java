@@ -36,10 +36,6 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("StatementService Unit Tests")
@@ -388,19 +384,6 @@ class StatementServiceTest {
                 .isInstanceOf(StatementNotFoundException.class)
                 .hasMessageContaining("Statement not found for id: " + testId);
         verify(statementRepository).findStatementById(testId);
-    }
-
-    @Test
-    void GivenPageable_WhenGettingStatementsByAccountNumber_ThenReturnsPage() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Statement> page = new PageImpl<>(Arrays.asList(testStatement));
-        when(statementRepository.findByAccountNumber(testAccountNumber, pageable))
-                .thenReturn(page);
-        Page<Statement> result = statementService.getStatementsByAccountNumber(testAccountNumber, pageable);
-        assertThat(result).isNotNull();
-        assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().get(0).getAccountNumber()).isEqualTo(testAccountNumber);
-        verify(statementRepository).findByAccountNumber(testAccountNumber, pageable);
     }
 
     @Test

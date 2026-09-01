@@ -54,7 +54,7 @@ class AuditLogFilteringIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_NoFilters_When_Querying_Then_AllSeededRowsAreReturned() {
+    void GivenNoFilters_WhenQuerying_ThenAllSeededRowsAreReturned() {
         // When
         var page = auditLogRepository.findAll(
                 AuditLogSpecifications.filter(null, null, null), PageRequest.of(0, 500, SORT));
@@ -66,7 +66,7 @@ class AuditLogFilteringIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_AccountNumberFilter_When_Querying_Then_OnlyThatAccountsRowsAreReturned() {
+    void GivenAccountNumberFilter_WhenQuerying_ThenOnlyThatAccountsRowsAreReturned() {
         // When
         var page = auditLogRepository.findAll(
                 AuditLogSpecifications.filter(accountA, null, null), PageRequest.of(0, 500, SORT));
@@ -78,7 +78,7 @@ class AuditLogFilteringIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_DateRangeCoveringOnlySeptember_When_Querying_Then_OnlySeptemberRowsAreReturned() {
+    void GivenDateRangeCoveringOnlySeptember_WhenQuerying_ThenOnlySeptemberRowsAreReturned() {
         // Given
         var start = OffsetDateTime.of(2026, 9, 1, 0, 0, 0, 0, ZoneOffset.UTC);
         var end = OffsetDateTime.of(2026, 9, 30, 23, 59, 59, 0, ZoneOffset.UTC);
@@ -92,7 +92,7 @@ class AuditLogFilteringIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_AccountAndDateRangeFilters_When_Querying_Then_OnlyMatchingRowIsReturned() {
+    void GivenAccountAndDateRangeFilters_WhenQuerying_ThenOnlyMatchingRowIsReturned() {
         // Given
         var start = OffsetDateTime.of(2026, 9, 1, 0, 0, 0, 0, ZoneOffset.UTC);
         var end = OffsetDateTime.of(2026, 9, 30, 23, 59, 59, 0, ZoneOffset.UTC);
@@ -106,7 +106,7 @@ class AuditLogFilteringIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_DateRangeQuery_When_Explained_Then_OtherMonthPartitionsArePruned() {
+    void GivenDateRangeQuery_WhenExplained_ThenOtherMonthPartitionsArePruned() {
         // Given: the old OR-chain JPQL could never prune anything, since the planner couldn't
         // statically tell which arm of "(:param IS NULL OR ...)" was live. A plain date-range
         // query against the rewritten Specification-based query proves real partition pruning:

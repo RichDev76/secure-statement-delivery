@@ -9,7 +9,7 @@ The **Secure Statement Delivery Platform** implements a robust, production‑gra
 - **Statement upload** with strict validation, single-pass streaming digest verification, and per‑file **envelope encryption** (AES‑GCM) at rest.
 - **Time‑limited, signature-verified download links** with a bounded redemption count, Redis-backed rate limiting, and cluster‑safe cleanup.
 - **Comprehensive audit logging** of uploads, downloads, and link usage, enriched with client and user context, written asynchronously and partitioned monthly.
-- **Strong security model** using Keycloak, JWT, config‑driven role‑based authorisation, and careful file‑handling practices.
+- **Strong security model** using Keycloak, JWT, per-endpoint role authorisation enforced in code, and careful file‑handling practices.
 - **Operational maturity** with distributed locking, health groups that isolate degraded dependencies from availability, a ciphertext cache, logging aspects, correlation IDs, actuator endpoints, and a GitHub Actions CI pipeline.
 
 ---
@@ -32,7 +32,7 @@ The **Secure Statement Delivery Platform** implements a robust, production‑gra
 
 - **config-server** (Spring Cloud Config, `:8888`)
     - Centralises configuration for `statement-service` and other services
-    - Reads properties from a Git‑style config repo (`infra/config-repo`)
+    - Reads properties from a local filesystem config repo (`infra/config-repo`, mounted into the container) via Spring Cloud Config's `native` backend
     - Is the **only** component that talks to Vault directly (composite property source)
 
 - **PostgreSQL 18** (`:5432`)
@@ -45,7 +45,7 @@ The **Secure Statement Delivery Platform** implements a robust, production‑gra
 
 - **HashiCorp Vault** (`:8200`)
     - Stores the **encryption master key** and other secrets
-    - Reachable only from `config-server`; `statement-service` never calls Vault directly — it receives the master key as a config property (or a mounted secret file as a fallback) at bootstrap
+    - Only `config-server` talks to Vault; `statement-service` never calls Vault directly — it receives the master key as a config property (or a mounted secret file as a fallback) at bootstrap. In the local docker-compose runtime the key also reaches the container as an `.env`-sourced environment variable (`STATEMENT_MASTER_KEY`) that the config-repo property resolves against, so Vault is the seed store rather than the sole delivery path there.
 
 - **Keycloak** (`:8081`)
     - Identity provider (OAuth2 / OpenID Connect)
@@ -100,7 +100,7 @@ sequenceDiagram
     SS-->>US: UploadResponseDto
     US--)AU: UPLOAD_SUCCESS (async, virtual thread)
     US-->>AC: response
-    AC-->>Admin: 200 statementId + file metadata
+    AC-->>Admin: 201 statementId + file metadata
 
     Note over US,AU: Any validation or storage failure → async UPLOAD_FAILED audit<br/>with a categorised reason — the error propagates as RFC 9457 ProblemDetail
 ```
@@ -136,10 +136,11 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant AU as AuditService
 
-    P->>SC: GET /api/v1/statements/link/{statementId}
+    P->>SC: GET /api/v1/statements/link/{statementId}?accountNumber=...
     SC->>QS: getStatementWithSignedDownloadLinkById(...)
     QS->>SS: getStatementDtoById(statementId)
     SS->>DB: load statement
+    QS->>QS: verify statement belongs to accountNumber<br/>(404 on mismatch — BOLA guard)
     QS->>SL: createSignedLink(statementId, performedBy, fileName)
     SL->>SL: generate UUIDv7 linkId,<br/>expiresAt = now + expiry (default 3 min)
     SL->>LS: sign(method|path|expires|linkId)
@@ -155,8 +156,8 @@ sequenceDiagram
 
 1. Caller (e.g. portal backend) obtains a JWT with role `GenerateSignedLink`.
 2. Calls:
-    - `GET /api/v1/statements/link/{statementId}`
-3. `StatementsController` delegates to `StatementQueryService.getStatementWithSignedDownloadLinkById`, which loads the statement and calls `SignedLinkService.createSignedLink`:
+    - `GET /api/v1/statements/link/{statementId}?accountNumber=<accountNumber>` (the `accountNumber` query parameter is required)
+3. `StatementsController` delegates to `StatementQueryService.getStatementWithSignedDownloadLinkById`, which loads the statement, verifies it belongs to the supplied `accountNumber` (404 on mismatch — the BOLA guard), and calls `SignedLinkService.createSignedLink`:
     - Generates a UUIDv7 link id and an HMAC-SHA256 signature over `{method}|{path}|{expires}|{linkId}`
     - Persists a `SignedLink` row containing only the signature's **hash** (`tokenHash`), never the raw signature
     - Sets `expiresAt` a configurable duration ahead (3 minutes by default)
@@ -325,15 +326,15 @@ sequenceDiagram
 The `statement-service` module is organised by **business capability** (Screaming Architecture), with **ports & adapters** (Hexagonal Architecture) at each IO boundary. Package names state what the system does, not which technical layer a class belongs to; boundaries are enforced by an ArchUnit suite (`ArchitectureTest`) that fails the build on violations, including that generated OpenAPI types are only touched from `infrastructure` packages and that file/crypto/object-storage APIs are confined to shared infrastructure.
 
 - **`statement`** — statement lifecycle core (`Statement`, `StatementRepository`, `StatementService`), plus outbound ports owned by the domain: `StatementFileStore`, `FileCipher`, `EncryptedFileFetcher`.
-    - **`statement.upload`** — validation and upload orchestration (`StatementUploadService`, `UploadRequestValidator`, streaming digest via the shared `ContentDigest` port), fronted by `statement.upload.infrastructure.AdminController`.
-    - **`statement.search`** — statement querying (`StatementQueryService`, `StatementSearchAuditRecorder`).
-    - **`statement.download`** — signed-link download streaming (`DownloadService`), with response-building in `statement.download.infrastructure.DownloadResponseFactory`.
+    - **`statement.upload`** — validation and upload orchestration (`StatementUploadService`, `UploadRequestValidator`, streaming digest via the shared `ContentDigest` port), fronted by `statement.upload.infrastructure.AdminController` (`MultipartFileAdapter`, `UploadExceptionHandler` alongside it).
+    - **`statement.search`** — statement querying (`StatementQueryService`, `StatementSearchAuditRecorder`, `SearchExceptionHandler`).
+    - **`statement.download`** — signed-link download streaming (`DownloadService`), with response-building in `statement.download.infrastructure.DownloadResponseFactory`, `DownloadExceptionHandler`, and `DownloadMetricsAspect` (per-outcome download counters).
     - **`statement.signedlink`** — signed-link lifecycle, rate limiting and cleanup (`SignedLinkService`, `SignedLinkCleanupService`), with ports `LinkSigner`, `DownloadUrlProvider`, `SignedLinkRateLimiter`; the `@Scheduled`/`@SchedulerLock` trigger lives in `statement.signedlink.infrastructure.SignedLinkCleanupScheduler`.
-    - **`statement.infrastructure`** — `StatementsController` (link, download, and search endpoints) and `StatementApiMapper`.
+    - **`statement.infrastructure`** — `StatementsController` (link, download, and search endpoints), `StatementApiMapper`, and `StatementExceptionHandler`.
 
 - **`audit`** — audit trail (`AuditLog`, `AuditLogRepository`, `AuditService`, `AuditQueryService`, `AuditPartitionMaintenanceService`), with the `AuditPartitionRepository` port (implemented by `audit.infrastructure.JdbcAuditPartitionRepository`), fronted by `audit.infrastructure.AuditController` and `audit.infrastructure.AuditPartitionMaintenanceScheduler`.
 
-- **`infrastructure`** — genuinely shared technical concerns only: `config` (Jackson, OpenAPI, `Clock` bean), `scheduler` (ShedLock wiring), `security` (`SecurityConfig`, `KeycloakRoleConverter`, JWT resource server, `AppRole` constants and the `@PublicEndpoint` annotation backing method-level `@PreAuthorize` enforcement), `web` (`CorrelationIdFilter`, `GlobalExceptionHandler`, `SecurityProblemDetailFactory`, `RequestInfoProvider`), `logging` (`LoggingAspect`), `crypto` (`MasterKeyProvider`, `AesGcmFileCipher` implementing `FileCipher` with envelope-encryption DEK wrap/unwrap, `HmacSha256LinkSigner` implementing `LinkSigner`, `Sha256ContentDigest` implementing the shared `ContentDigest`), `storage.s3` (`S3StatementFileStore` implementing `StatementFileStore`, `S3ClientConfig`, `S3StorageProperties`, `S3HealthIndicator`), `cache` (`CachingEncryptedFileFetcher` implementing `EncryptedFileFetcher`, `RedisCacheConfig`), `ratelimit` (`Bucket4jSignedLinkRateLimiter` implementing `SignedLinkRateLimiter`, `RateLimiterConfig`), `id` (`UuidV7IdGenerator` implementing the shared `IdGenerator`).
+- **`infrastructure`** — genuinely shared technical concerns only: `config` (Jackson, OpenAPI, `Clock` bean), `scheduler` (ShedLock wiring), `security` (`SecurityConfig`, `KeycloakRoleConverter`, JWT resource server, `AppRole` constants and the `@PublicEndpoint` annotation backing method-level `@PreAuthorize` enforcement), `web` (`CorrelationIdFilter`, `GlobalExceptionHandler`, `SecurityProblemDetailFactory`, `RequestInfoProvider`, `RequestLoggingFilter`, `EndpointLabel`, `ProblemDetailSupport`), `logging` (`LoggingAspect`), `crypto` (`MasterKeyProvider`, `AesGcmFileCipher` implementing `FileCipher` with envelope-encryption DEK wrap/unwrap, `HmacSha256LinkSigner` implementing `LinkSigner`, `Sha256ContentDigest` implementing the shared `ContentDigest`), `storage.s3` (`S3StatementFileStore` implementing `StatementFileStore`, `S3ClientConfig`, `S3StorageProperties`, `S3HealthIndicator`), `cache` (`CachingEncryptedFileFetcher` implementing `EncryptedFileFetcher`, `RedisCacheConfig`), `ratelimit` (`Bucket4jSignedLinkRateLimiter` implementing `SignedLinkRateLimiter`, `RateLimiterConfig`), `id` (`UuidV7IdGenerator` implementing the shared `IdGenerator`).
 
 - **`shared`** — cross-feature, dependency-free values and ports only: `RequestInfo`, `DateMapper`, `ContentDigest`, `IdGenerator`.
 
@@ -388,7 +389,7 @@ Unauthenticated and forbidden requests get **RFC 9457 ProblemDetail** JSON (`ERR
 
 - Accepts **only PDFs**:
     - Checks `Content-Type` for `application/pdf`
-    - Inspects the file signature (magic bytes: `%PDF-`) to guard against spoofed MIME types
+    - Inspects the file signature (first four magic bytes: `%PDF`) to guard against spoofed MIME types
 - Enforces a **10MB file size cap** (`spring.servlet.multipart.max-file-size`), with a 12MB max request size.
 - **Filename sanitisation**: rejects traversal sequences (`..`) at validation, then rebuilds the display filename as a stem with any character outside `[a-zA-Z0-9_-]` replaced by `_`, re-appending `.pdf`.
 - Integrity check: the `X-Message-Digest` header (SHA‑256 hex) must match a **single-pass streaming digest** computed from the disk-spooled upload part (`multipart.file-size-threshold: 0` makes this possible without a second full-file read).
@@ -458,7 +459,7 @@ There is no `singleUse`/`used` boolean: redemption is **bounded, not binary** (`
 
 - `Bucket4jSignedLinkRateLimiter` (implementing `SignedLinkRateLimiter`) enforces a **per-link** token bucket, backed by **PostgreSQL** (`Bucket4jPostgreSQL`'s `SELECT FOR UPDATE`-based proxy manager, table `signed_link_rate_limit_buckets`), default 10 requests/minute (`statement.signed-link.rate-limit-per-minute`).
 - The rate-limit check runs **before** signature validation in `DownloadService`, so a brute-force signature-guessing flood against a real `linkId` is throttled too, not just genuinely valid requests. It smooths burst speed against one leaked link; it does not reduce a leaked link's total exposure, only how fast that exposure can be drained.
-- **Fails open**: if the rate limiter itself is unavailable (Postgres contention, connection error), the request is allowed through rather than blocking legitimate downloads on a rate-limiter outage.
+- **Fails closed**: if the rate limiter itself is unavailable (Postgres contention, connection error), the request is rejected with 429 — as the sole abuse control on an unauthenticated endpoint, a limiter outage must not open the door (`Bucket4jSignedLinkRateLimiter` logs and returns false).
 - Bucket rows carry a TTL matched to the bucket's own refill window and are swept by `deleteExpiredBuckets()`, invoked from the same ShedLock-scheduled trigger that cleans up expired signed links (no separate job for one extra `DELETE`).
 
 #### Cleanup
@@ -488,7 +489,7 @@ There is no `singleUse`/`used` boolean: redemption is **bounded, not binary** (`
 - `LoggingAspect` applies cross‑cutting logging by annotation, independent of package location (so advice survives package moves):
     - **`@RestController`‑annotated beans**: INFO entry/exit with timing; DEBUG for detailed result summaries
     - **`@Service`‑annotated beans**: DEBUG entry with arguments and exit with result + timing
-- A `safeToString` helper prevents large or sensitive data from overwhelming logs (special handling for `MultipartFile`, `byte[]`, `Resource`, `Optional`, and long strings; truncates large outputs).
+- A `safeToString` helper is a fail-closed type allowlist, not content truncation: strings are summarized as `String[len=n]` and never printed, since they routinely carry signed-link tokens and account numbers (special handling for `MultipartFile`, `byte[]`, `Resource`, `Optional`).
 
 #### Correlation IDs & MDC
 
@@ -513,7 +514,7 @@ There is no `singleUse`/`used` boolean: redemption is **bounded, not binary** (`
 
 - The service is packaged as a single **Spring Boot fat JAR**.
 - Docker uses a **multi‑stage build**:
-    - Stage 1 (build): `maven:3.9-eclipse-temurin-25` builds the `statement-service` module.
+    - Stage 1 (build): `maven:3-eclipse-temurin-25` builds the `statement-service` module.
     - Stage 2 (runtime): `eclipse-temurin:25-jre` runs the resulting JAR.
 - Entrypoint scripts (`wait-for-config.sh`, `entrypoint.sh`) ensure the Config Server is available before starting the app.
 - The container exposes port **8080**; virtual threads are enabled service-wide.
@@ -531,7 +532,7 @@ In production, these components may be deployed as separate containers or on Kub
 
 #### Continuous Integration
 
-- A GitHub Actions pipeline (`.github/workflows/ci.yml`) gates every push/PR: **format** (`spotless:check`, invoked as a direct goal so it can actually fail — see ADR-0024), **build**, **unit tests** (incl. an ArchUnit architecture suite and a naming-convention check), **integration tests** (Testcontainers: Postgres, Redis, Floci), **dependency scan** (Trivy, HIGH/CRITICAL, offline-scan to avoid Maven Central rate limits), and PR-only **API compatibility** (`oasdiff` against the base branch's OpenAPI contract).
+- A GitHub Actions pipeline (`.github/workflows/ci.yml`) gates every push/PR: **format** (`spotless:check`, invoked as a direct goal so it can actually fail — see ADR-0024), **build**, **unit tests** (incl. an ArchUnit architecture suite and a naming-convention check), **integration tests** (Testcontainers: Postgres, Redis, Floci), **dependency scan** (Trivy, HIGH/CRITICAL, offline-scan to avoid Maven Central rate limits), **image build and scan** (builds each service's Docker image, then Trivy-scans the shipped image itself for base-layer CVEs, not just sources), and PR-only **API compatibility** (`oasdiff` against the base branch's OpenAPI contract).
 - Every third-party action is pinned to a full commit SHA and the workflow's own invariants (pinning, least-privilege `permissions: contents: read`, per-job timeouts, safe triggers, Dependabot coverage) are enforced by a dedicated `CiWorkflowConventionsTest`, not just documented.
 - A black-box **API-regression job** runs the Bruno request pack against the full live compose stack on every push/PR: ephemeral secrets are generated and masked per run (nothing stored as repository secrets), service health is polled with a bounded budget, per-service compose logs are captured as an artifact on failure, and the stack is torn down unconditionally.
 - Mutation testing (PIT) remains a planned follow-up phase, not yet wired into the pipeline.
@@ -542,7 +543,7 @@ In production, these components may be deployed as separate containers or on Kub
 
 #### Security
 
-- JWT‑based authentication with Keycloak; config-driven RBAC per endpoint
+- JWT‑based authentication with Keycloak; roles enforced in code via `@PreAuthorize` per endpoint (ADR 0012) — only the actuator/swagger/download whitelist is config-driven
 - Per-file envelope encryption (AES-256-GCM) with a Vault-sourced master key never touched directly by the application
 - Signed, time‑limited, redemption-bounded download links with per-link rate limiting
 - Strong validation for file uploads (type, size, magic bytes, filenames, streaming integrity digest)

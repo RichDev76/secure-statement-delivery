@@ -20,7 +20,7 @@ class AuditLogPartitioningIT extends AbstractIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void Given_MigrationsHaveRun_When_InspectingCatalog_Then_AuditLogsIsDeclaredPartitioned() {
+    void GivenMigrationsHaveRun_WhenInspectingCatalog_ThenAuditLogsIsDeclaredPartitioned() {
         // When
         var isPartitioned = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM pg_partitioned_table WHERE partrelid = 'audit_logs'::regclass", Integer.class);
@@ -30,7 +30,7 @@ class AuditLogPartitioningIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_MigrationsHaveRun_When_InspectingPartitions_Then_SeededAndDefaultPartitionsExist() {
+    void GivenMigrationsHaveRun_WhenInspectingPartitions_ThenSeededAndDefaultPartitionsExist() {
         // When
         var partitionNames = jdbcTemplate.queryForList("""
                 SELECT c.relname FROM pg_inherits pi
@@ -44,7 +44,7 @@ class AuditLogPartitioningIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_RowWithCurrentTimestamp_When_Inserted_Then_ItLandsInTheCurrentMonthPartition() {
+    void GivenRowWithCurrentTimestamp_WhenInserted_ThenItLandsInTheCurrentMonthPartition() {
         // Given
         var performedAt = OffsetDateTime.of(2026, 9, 15, 12, 0, 0, 0, ZoneOffset.UTC);
         var log = new AuditLog();
@@ -63,7 +63,7 @@ class AuditLogPartitioningIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_RowWithTimestampBeforeSeededPartitions_When_Inserted_Then_ItLandsInTheDefaultPartition() {
+    void GivenRowWithTimestampBeforeSeededPartitions_WhenInserted_ThenItLandsInTheDefaultPartition() {
         // Given
         var performedAt = OffsetDateTime.of(2026, 7, 1, 0, 0, 0, 0, ZoneOffset.UTC);
         var log = new AuditLog();

@@ -7,6 +7,12 @@ the `x-correlation-id` header flowing unvalidated into every log line's MDC valu
 risk), nine call sites logging a customer-identifying value in plaintext, and no HTTP access-log
 filter.
 
+## Problem
+
+Default console logging can't be parsed by log aggregators, and PII reaching logs in plaintext
+is both a compliance risk and unbounded — nothing catches a new call site logging an account
+number.
+
 ## Decision
 
 1. **JSON logs via `logstash-logback-encoder`** in every profile except `local` (async-wrapped,
@@ -37,3 +43,8 @@ filter.
 - Diagnosing a customer's issue now requires resolving `statementId` through the audit API,
   rather than grepping logs for an account number.
 - A log export can be shared with an aggregator without a data-protection review.
+
+## References
+
+- `docs/standards/security.md`
+- [0022 — Fail-closed error delivery with audit-on-failure for statement transfer paths](0022-fail-closed-error-delivery-and-audit-on-failure.md)

@@ -82,7 +82,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_ValidLink_When_DownloadingTwice_Then_BothSucceedAndBothAreAudited() throws Exception {
+    void GivenValidLink_WhenDownloadingTwice_ThenBothSucceedAndBothAreAudited() throws Exception {
         // Given: a real upload so the download can actually stream decrypted bytes back.
         var originalBytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
         var file = new MockMultipartFile("file", "statement.pdf", MediaType.APPLICATION_PDF_VALUE, originalBytes);
@@ -120,7 +120,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_LinkRedeemedUpToMaxRedemptions_When_RedeemingOneMoreTime_Then_TreatedAsExpired() throws Exception {
+    void GivenLinkRedeemedUpToMaxRedemptions_WhenRedeemingOneMoreTime_ThenTreatedAsExpired() throws Exception {
         // Given: statement.signed-link.max-redemptions defaults to 3 in the test profile - a real
         // upload so every one of the first 3 downloads actually succeeds, not just the check.
         var originalBytes = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();
@@ -159,7 +159,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_TamperedSignature_When_Downloading_Then_Returns403() throws Exception {
+    void GivenTamperedSignature_WhenDownloading_ThenReturns403() throws Exception {
         // Given
         var statement = seedStatement();
         var uri = mintLinkUri(statement.getId(), statement.getAccountNumber()).build();
@@ -175,7 +175,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_TamperedExpiryParameter_When_Downloading_Then_Returns403() throws Exception {
+    void GivenTamperedExpiryParameter_WhenDownloading_ThenReturns403() throws Exception {
         // Given
         var statement = seedStatement();
         var uri = mintLinkUri(statement.getId(), statement.getAccountNumber()).build();
@@ -190,7 +190,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_TamperedLinkIdParameter_When_Downloading_Then_Returns403() throws Exception {
+    void GivenTamperedLinkIdParameter_WhenDownloading_ThenReturns403() throws Exception {
         // Given
         var statement = seedStatement();
         var uri = mintLinkUri(statement.getId(), statement.getAccountNumber()).build();
@@ -204,7 +204,7 @@ class SignedLinkLifecycleIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_ExpiredLink_When_Downloading_Then_RejectedAndFailureAudited() throws Exception {
+    void GivenExpiredLink_WhenDownloading_ThenRejectedAndFailureAudited() throws Exception {
         // Given: waits on the link's own expires epoch - polling the endpoint instead would burn
         // redemptions and pass via the redemption cap, not time expiry.
         var statement = seedStatement();

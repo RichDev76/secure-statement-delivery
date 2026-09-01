@@ -55,7 +55,7 @@ class EnvelopeEncryptionIT extends AbstractIntegrationTest {
 
     @Test
     void
-            Given_TwoUploadedStatementsWithIdenticalContent_When_InspectingStoredEncryptedDeks_Then_EachHasADistinctWrappedDek()
+            GivenTwoUploadedStatementsWithIdenticalContent_WhenInspectingStoredEncryptedDeks_ThenEachHasADistinctWrappedDek()
                     throws Exception {
         // Given: byte-for-byte identical plaintext, uploaded twice under different accounts.
         var content = ("%PDF-1.4\n" + UUID.randomUUID() + "\n%%EOF").getBytes();

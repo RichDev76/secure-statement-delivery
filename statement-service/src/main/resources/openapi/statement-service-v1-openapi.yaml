@@ -14,6 +14,7 @@ info:
     schema-validating client would have rejected the service's own payload. Also documents the sort
     parameter truthfully: single criterion only (the old text claimed multiple), sortable properties
     enumerated (response field names), unknown property/direction falls back to the default sort.
+    Also documents 500 on remaining endpoints and aligns 404 example titles.
 
     1.14.0: BREAKING. `accountNumber` is now a required query parameter on `GET /link/{statementId}`
     (new parameter) and `GET /audit/logs` (was optional). Closes an object-level authorization gap
@@ -242,10 +243,21 @@ paths:
                 $ref: '#/components/schemas/ApiProblem'
               example:
                 type: "https://api.example.com/errors/statement"
-                title: "Statement Not Found"
+                title: "Not Found"
                 status: 404
                 detail: "The requested statement could not be found."
                 errorCode: "STATEMENT_NOT_FOUND"
+        '500':
+          description: Unexpected server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/internal"
+                title: "Internal server error"
+                status: 500
+                errorCode: "INTERNAL_ERROR"
 
   /search:
     get:
@@ -319,6 +331,17 @@ paths:
                 status: 410
                 detail: "This signed download link has expired or has already been used."
                 errorCode: "LINK_EXPIRED"
+        '500':
+          description: Unexpected server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/internal"
+                title: "Internal server error"
+                status: 500
+                errorCode: "INTERNAL_ERROR"
 
   /download/{fileName}:
     get:
@@ -507,6 +530,17 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ApiProblem'
+        '500':
+          description: Unexpected server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+              example:
+                type: "https://api.example.com/errors/internal"
+                title: "Internal server error"
+                status: 500
+                errorCode: "INTERNAL_ERROR"
 
 components:
   securitySchemes:

@@ -45,7 +45,8 @@ boundaries, so violations accumulate silently.
 
 ## Implementation Notes
 
-Rules live in `ArchitectureTest.java`; freeze config in `src/test/resources/archunit.properties`.
+Migration complete; rules live directly in `ArchitectureTest.java`. The freeze store described
+above has been deleted along with `archunit.properties`.
 
 ## References
 

@@ -27,7 +27,7 @@ download links.
 - `statement-service/` - Spring Boot application exposing the Statement Upload & Search API
 - `config-server/` - Spring Cloud Config Server (reads configuration from `infra/config-repo` and Vault)
 - `infra/` - Docker Compose infrastructure (database, Vault, Keycloak, Config Server)
-- `infra/config-repo/` - Git-style configuration repo mounted into Config Server
+- `infra/config-repo/` - Local filesystem configuration repo mounted into Config Server (served via its `native` backend)
 
 ---
 
@@ -108,10 +108,10 @@ AWS_SECRET_ACCESS_KEY=test
 STATEMENT_MASTER_KEY=<32-byte-key>
 STATEMENT_SIGNATURE_SECRET=<your-signature-secret>
 ```
-```aiignore
-Sample command to use if you want to generate master key and/or signature secret : 
-openssl rand -base64 32
+Sample command to generate the master key and/or signature secret:
 
+```bash
+openssl rand -base64 32
 ```
 #### Step 2: Initial Bootstrap (First Time Only)
 
@@ -247,7 +247,7 @@ The `local` profile (`application-local.yml`) is preconfigured to:
 - Use Keycloak at `http://localhost:8081/realms/statement-service` for JWT validation
 - Use Redis at `localhost:6379` for the statement ciphertext cache
 - Use Floci at `localhost:4566` for statement storage
-- Disable Config Server dependency
+- Tolerate a missing Config Server (the `optional:configserver:` config import means startup doesn't block on it)
 
 #### Step 5: Verify the Service
 

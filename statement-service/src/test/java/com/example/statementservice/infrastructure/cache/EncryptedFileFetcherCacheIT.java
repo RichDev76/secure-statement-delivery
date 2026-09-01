@@ -27,7 +27,7 @@ class EncryptedFileFetcherCacheIT extends AbstractIntegrationTest {
     private StatementFileStore fileStore;
 
     @Test
-    void Given_SameStorageKeyFetchedTwice_When_Fetching_Then_UnderlyingStoreIsOnlyReadOnce() throws Exception {
+    void GivenSameStorageKeyFetchedTwice_WhenFetching_ThenUnderlyingStoreIsOnlyReadOnce() throws Exception {
         // Given
         var content = "encrypted-bytes".getBytes();
         var storageKey = fileStore.store(
@@ -48,7 +48,7 @@ class EncryptedFileFetcherCacheIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_DifferentStorageKeys_When_Fetching_Then_UnderlyingStoreIsReadForEachKey() throws Exception {
+    void GivenDifferentStorageKeys_WhenFetching_ThenUnderlyingStoreIsReadForEachKey() throws Exception {
         // Given
         var contentA = "file-a".getBytes();
         var contentB = "file-b".getBytes();

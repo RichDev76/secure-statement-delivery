@@ -24,7 +24,7 @@ redeemed, not how fast — so a rate limiter alone doesn't reduce exposure, only
    `maxRedemptions = 3` — tight because it now doubles as the resource-cost ceiling per leaked
    link, not just retry-tolerance. Exhausted redemptions return the *existing* expired-link result,
    not a distinguishable one.
-2. **Per-link rate limiting is Postgres-backed (`bucket4j-postgresql`), not Redis.**
+2. **Per-link rate limiting is Postgres-backed (`bucket4j_jdk17-postgresql`), not Redis.**
    `validate()` and the redemption-count update already touch Postgres on every request, so the
    marginal cost of also checking the bucket there is small; horizontal scaling rules out
    in-process state, not Postgres. Bucket state lives in `signed_link_rate_limit_buckets`, a

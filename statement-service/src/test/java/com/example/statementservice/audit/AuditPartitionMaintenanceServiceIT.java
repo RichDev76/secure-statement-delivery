@@ -28,7 +28,7 @@ class AuditPartitionMaintenanceServiceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_MonthsAheadOfThree_When_MaintenanceRuns_Then_ThreeFuturePartitionsExist() {
+    void GivenMonthsAheadOfThree_WhenMaintenanceRuns_ThenThreeFuturePartitionsExist() {
         // Given
         properties.setMonthsAhead(3);
 
@@ -41,7 +41,7 @@ class AuditPartitionMaintenanceServiceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_MaintenanceAlreadyRan_When_RunningAgain_Then_ReRunIsIdempotent() {
+    void GivenMaintenanceAlreadyRan_WhenRunningAgain_ThenReRunIsIdempotent() {
         // Given
         service().createUpcomingPartitions();
 
@@ -50,7 +50,7 @@ class AuditPartitionMaintenanceServiceIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void Given_MaintenanceHasRun_When_InspectingDefaultPartition_Then_ItRemainsEmpty() {
+    void GivenMaintenanceHasRun_WhenInspectingDefaultPartition_ThenItRemainsEmpty() {
         // When
         service().createUpcomingPartitions();
 

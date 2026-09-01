@@ -36,3 +36,4 @@ Exactly-one-instance execution without an external scheduler; adds a `shedlock` 
 ## References
 
 - [ShedLock](https://github.com/lukas-krecan/ShedLock)
+- [0019 — Keep ShedLock over a hand-rolled `SKIP LOCKED` scheduler mutex](0019-shedlock-over-skip-locked.md)

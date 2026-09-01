@@ -18,9 +18,6 @@ public class StatementSearchAuditRecorder {
 
     private final AuditService auditService;
 
-    /**
-     * Records successful link generation audit event with request context
-     */
     public void recordLinkGenerated(
             UUID statementId,
             String accountNumber,
@@ -43,9 +40,6 @@ public class StatementSearchAuditRecorder {
                 buildDetails("Link generated successfully", null, clientIp, userAgent));
     }
 
-    /**
-     * Records link generation failure due to link creation error
-     */
     public void recordLinkGenerationFailed(
             UUID statementId,
             String accountNumber,
@@ -64,9 +58,6 @@ public class StatementSearchAuditRecorder {
                 buildDetails("Failed to generate download link", ex.getMessage(), clientIp, userAgent));
     }
 
-    /**
-     * Records link generation failure due to statement not found
-     */
     public void recordStatementNotFound(UUID statementId, String performedBy, String clientIp, String userAgent) {
         log.warn("Statement not found - statementId: {}, performedBy: {}", statementId, performedBy);
 
@@ -79,9 +70,6 @@ public class StatementSearchAuditRecorder {
                 buildDetails("Statement not found", null, clientIp, userAgent));
     }
 
-    /**
-     * Records link generation failure due to unexpected error
-     */
     public void recordUnexpectedError(
             UUID statementId,
             String accountNumber,

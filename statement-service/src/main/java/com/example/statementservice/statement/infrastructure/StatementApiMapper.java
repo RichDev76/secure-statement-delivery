@@ -12,9 +12,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
 import org.mapstruct.ReportingPolicy;
 
-// unmappedTargetPolicy = ERROR: toApi(BaseStatement, URI) relies on implicit name-based matching
-// for every field except downloadLink - this turns a future field added to either generated model
-// without a corresponding mapping into a build failure instead of a silently-dropped value.
+// unmappedTargetPolicy = ERROR: an unmapped future field fails the build instead of silently dropping.
 @Mapper(
         componentModel = "spring",
         injectionStrategy = InjectionStrategy.CONSTRUCTOR,

@@ -12,9 +12,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-// Each feature handler gets its own precedence (not a shared HIGHEST_PRECEDENCE) so a future
-// @ExceptionHandler collision between two of these beans resolves deterministically instead of
-// depending on Spring's bean-registration-order tie-break.
+// Own precedence (not shared HIGHEST_PRECEDENCE) so a future handler collision resolves deterministically.
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 public class StatementExceptionHandler {

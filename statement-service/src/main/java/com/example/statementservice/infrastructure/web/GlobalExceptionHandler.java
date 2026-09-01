@@ -22,10 +22,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-// Only genuinely cross-cutting concerns live here: framework Bean Validation exceptions and the
-// safe catch-all (handleGeneric). Feature-specific exceptions are handled by each feature's own
-// @Order(HIGHEST_PRECEDENCE) advice bean (StatementExceptionHandler, UploadExceptionHandler,
-// DownloadExceptionHandler); this class runs last so it only fires when nothing more specific matched.
+// Only cross-cutting concerns live here; feature-specific exceptions have their own advice bean and this runs last.
 @Order(Ordered.LOWEST_PRECEDENCE)
 @Slf4j
 @RestControllerAdvice

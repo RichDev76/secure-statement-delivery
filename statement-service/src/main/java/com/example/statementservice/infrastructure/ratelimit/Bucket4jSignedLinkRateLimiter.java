@@ -12,11 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-// Smooths burst speed against one leaked link (thundering-herd on one S3 key, one redemption
-// cap being drained instantly) - it does not reduce total exposure from a leaked link, only
-// how fast that exposure can be consumed. Checked before signature validation in DownloadService,
-// so a signature-guessing flood against a known real linkId is throttled too, not just genuinely
-// valid requests.
+// Checked before signature validation so a guessing flood against a known linkId is throttled too.
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -40,10 +36,7 @@ public class Bucket4jSignedLinkRateLimiter implements SignedLinkRateLimiter {
         }
     }
 
-    // No FK/cascade to signed_links is possible here (Bucket4j's primary key column is text,
-    // signed_links.id is uuid - Postgres foreign keys require matching column types), so this
-    // table needs its own sweep. Reuses SignedLinkCleanupService's existing ShedLock-scheduled
-    // trigger rather than adding a new scheduled job for one extra DELETE.
+    // No FK possible (text vs uuid PK) - reuses SignedLinkCleanupService's ShedLock trigger.
     @Override
     public int deleteExpiredBuckets() {
         return jdbcTemplate.update(

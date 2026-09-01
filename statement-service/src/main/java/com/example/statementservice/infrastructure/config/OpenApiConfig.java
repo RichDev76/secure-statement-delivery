@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
         info =
                 @Info(
                         title = "Statement Upload & Search API",
-                        version = "1.12.0",
+                        version = "1.15.0",
                         description =
                                 "Secure bank statement upload and download service with encrypted storage and time-limited access"))
 public class OpenApiConfig {}

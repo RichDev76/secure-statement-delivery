@@ -9,9 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
-// Its own bean, not a method on StatementService calling itself: @Cacheable (like @Transactional)
-// only takes effect when called through Spring's proxy - a self-invocation via `this` inside the
-// same class bypasses that proxy entirely, so caching would silently never activate.
+// Own bean, not a StatementService method: @Cacheable only fires through Spring's proxy, not via self-invocation.
 @Component
 @RequiredArgsConstructor
 public class CachingEncryptedFileFetcher implements EncryptedFileFetcher {

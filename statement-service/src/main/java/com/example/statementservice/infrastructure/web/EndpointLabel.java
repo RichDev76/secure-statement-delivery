@@ -1,6 +1,6 @@
 package com.example.statementservice.infrastructure.web;
 
-/** Reduces a request URI to a bounded, non-identifying endpoint label. */
+// Reduces a request URI to a bounded, non-identifying endpoint label.
 public final class EndpointLabel {
 
     // /download/{fileName} carries a caller value; segment depth alone can't detect it.

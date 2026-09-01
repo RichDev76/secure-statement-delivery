@@ -22,12 +22,12 @@
         <logstash-logback-encoder.version>9.0</logstash-logback-encoder.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <archunit.version>1.5.0</archunit.version>
-        <awssdk.version>2.54.1</awssdk.version>
+        <awssdk.version>2.54.6</awssdk.version>
         <uuid-creator.version>6.1.1</uuid-creator.version>
         <bucket4j.version>8.19.0</bucket4j.version>
         <jackson-databind-nullable.version>0.2.11</jackson-databind-nullable.version>
-        <spotless.version>3.10.0</spotless.version>
-        <openapi-generator.version>7.24.0</openapi-generator.version>
+        <spotless.version>3.10.1</spotless.version>
+        <openapi-generator.version>7.25.0</openapi-generator.version>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>

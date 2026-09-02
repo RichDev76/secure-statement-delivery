@@ -7,7 +7,7 @@ This document describes the architecture of the **Secure Statement Delivery Plat
 The **Secure Statement Delivery Platform** implements a robust, production‑grade architecture for secure file statement delivery:
 
 - **Statement upload** with strict validation, single-pass streaming digest verification, and per‑file **envelope encryption** (AES‑GCM) at rest.
-- **Time‑limited, signature-verified download links** with a bounded redemption count, Redis-backed rate limiting, and cluster‑safe cleanup.
+- **Time‑limited, signature-verified download links** with a bounded redemption count, Postgres-backed rate limiting, and cluster‑safe cleanup.
 - **Comprehensive audit logging** of uploads, downloads, and link usage, enriched with client and user context, written asynchronously and partitioned monthly.
 - **Strong security model** using Keycloak, JWT, per-endpoint role authorisation enforced in code, and careful file‑handling practices.
 - **Operational maturity** with distributed locking, health groups that isolate degraded dependencies from availability, a ciphertext cache, logging aspects, correlation IDs, actuator endpoints, and a GitHub Actions CI pipeline.
@@ -369,7 +369,7 @@ Whitelisted paths stay config-driven (`SecurityEndpointsProperties`, sourced fro
 - `/api/v1/statements/actuator/health/**` – health check endpoints
 - `/api/v1/statements/actuator/info` – application info
 - `/api/v1/statements/v3/api-docs/**` – OpenAPI documentation
-- `/api/v1/statements/swagger-ui/**`, `/swagger-ui.html` – Swagger UI
+- `/api/v1/statements/swagger-ui/**`, `/api/v1/statements/swagger-ui.html` – Swagger UI
 
 Unauthenticated and forbidden requests get **RFC 9457 ProblemDetail** JSON (`ERROR_CODE=UNAUTHENTICATED` / `ACCESS_DENIED`) built by the shared `SecurityProblemDetailFactory`: 401s come from the dedicated `AuthenticationEntryPoint` bean in the filter chain; method-security 403s are answered by a dedicated `AccessDeniedException` handler in `GlobalExceptionHandler` (denials from `@PreAuthorize` are thrown inside MVC, not the filter chain).
 

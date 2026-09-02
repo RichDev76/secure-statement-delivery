@@ -1,6 +1,6 @@
 -- Hard cutover: assumes an empty/reset signed_links table (pre-production, no data to
 -- preserve). Single-use links (ADR 0003 baseline) are replaced by purely time-based
--- validity (ADR 0006); the raw token is replaced by a SHA-256 hash at rest (ADR 0021).
+-- validity, and the raw token is replaced by a SHA-256 hash at rest (ADR 0015).
 ALTER TABLE signed_links
     DROP COLUMN single_use,
     DROP COLUMN used,

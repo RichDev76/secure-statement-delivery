@@ -1,4 +1,4 @@
-# 0010 — Migrate to Spring Boot 4.0.7 / Spring Cloud 2025.1.2
+# 0010 — Migrate to Spring Boot 4 / Spring Cloud 2025.1.x
 
 **Addendum (2026-08):** the deferred 4.1 bump has since happened, as the routine minor upgrade we
 anticipated below — the poms now pin Boot 4.1.1 / Cloud 2025.1.3 / ShedLock 7.9.0 via ordinary
@@ -46,9 +46,10 @@ variables, and 4.1 can follow later as a routine minor bump.
 
 Jackson 2 stays on the classpath only transitively (springdoc, `jackson-databind-nullable`); no
 `spring-boot-jackson2` shim is needed since the generated models don't use `JsonNullable`.
-Regenerated OpenAPI sources diffed byte-identical against the pre-migration baseline. CSRF remains
-"explicitly ignored per matcher" — disabling it outright is a separate security decision we're not
-bundling in here.
+Regenerated OpenAPI sources diffed byte-identical against the pre-migration baseline. CSRF was left
+"explicitly ignored per matcher" at the time of this migration — disabling it outright was a
+separate security decision, made later in
+[0012](0012-method-level-role-authorization.md).
 
 ## Implementation Notes
 

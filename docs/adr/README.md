@@ -13,7 +13,7 @@ Index of ADRs for `secure-statement-delivery`.
 | 0007 | [Config Server and Vault for configuration and secrets](0007-config-server-vault-secrets.md) | Accepted |
 | 0008 | [Scheduled signed-link cleanup with ShedLock](0008-scheduled-cleanup-shedlock.md) | Accepted |
 | 0009 | [Asynchronous, fail-open audit logging](0009-asynchronous-audit-logging.md) | Accepted |
-| 0010 | [Migrate to Spring Boot 4.0.7 / Spring Cloud 2025.1.2](0010-migrate-to-spring-boot-4.md) | Accepted |
+| 0010 | [Migrate to Spring Boot 4 / Spring Cloud 2025.1.x](0010-migrate-to-spring-boot-4.md) | Accepted |
 | 0011 | [Adopt feature-first hexagonal packaging](0011-adopt-feature-first-hexagonal-packaging.md) | Accepted |
 | 0012 | [Method-level role authorization with config-driven whitelist](0012-method-level-role-authorization.md) | Accepted |
 | 0013 | [Split exception handler chain with a safe generic catch-all](0013-split-exception-handler-chain.md) | Accepted |

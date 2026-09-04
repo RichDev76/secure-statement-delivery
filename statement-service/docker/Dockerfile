@@ -37,7 +37,7 @@ RUN groupadd --gid 10001 statement-service \
 
 COPY --from=build /app/statement-service/target/*.jar /app/app.jar
 
-# copy scripts and entrypoint (paths relative to build context: statement-service-platform/)
+# copy scripts and entrypoint (paths relative to the repo root build context)
 COPY statement-service/docker/wait-for-config.sh /app/wait-for-config.sh
 COPY statement-service/docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/wait-for-config.sh /app/entrypoint.sh \

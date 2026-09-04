@@ -7,27 +7,27 @@ removal.
 
 ## Problem
 
-In a multi-instance deployment, more than one instance running the same cleanup job concurrently
-wastes DB work and risks lock contention.
+In a multi-instance deployment, more than one instance running the same cleanup job at once wastes
+DB work and risks lock contention.
 
 ## Decision
 
 `SignedLinkCleanupScheduler` runs on a configurable cron schedule, guarded by a ShedLock
-`@SchedulerLock` (backed by a `shedlock` table in Postgres) so only one instance executes per
-run, and delegates to `SignedLinkCleanupService`, which deletes expired links in batches via
-`SignedLinkRepository`. Configurable via
-`SignedLinkCleanupProperties` (`enabled`, `cron`, `retentionPeriod`, `batchSize`, `lockAtMostFor`,
-`lockAtLeastFor`).
+`@SchedulerLock` (backed by a `shedlock` table in Postgres) so only one instance executes per run.
+It delegates to `SignedLinkCleanupService`, which deletes expired links in batches via
+`SignedLinkRepository`. Everything's configurable via `SignedLinkCleanupProperties` (`enabled`,
+`cron`, `retentionPeriod`, `batchSize`, `lockAtMostFor`, `lockAtLeastFor`).
 
 ## Alternatives
 
-- Quartz: heavier, more boilerplate than needed for one periodic job.
-- Kubernetes CronJob: moves logic outside the application, harder to test and keep in sync with
-  the codebase.
+Quartz was on the table but felt heavier and more boilerplate than one periodic job needs. A
+Kubernetes CronJob would move the logic outside the application entirely, which makes it harder to
+test and keep in sync with the codebase.
 
 ## Consequences
 
-Exactly-one-instance execution without an external scheduler; adds a `shedlock` table dependency.
+We get exactly-one-instance execution without needing an external scheduler, at the cost of a new
+`shedlock` table dependency.
 
 ## Implementation Notes
 

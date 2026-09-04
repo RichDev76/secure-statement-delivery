@@ -1,7 +1,6 @@
 # Architecture Decision Records
 
-Index of ADRs for `secure-statement-delivery`. See `docs/standards/adr-guidelines.md`
-for format and process.
+Index of ADRs for `secure-statement-delivery`.
 
 | # | Title | Status |
 |---|---|---|

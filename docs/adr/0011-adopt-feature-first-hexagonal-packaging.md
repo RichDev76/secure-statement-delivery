@@ -2,55 +2,63 @@
 
 ## Context
 
-`statement-service` is packaged by technical layer (`controller/`, `service/`, `util/`, …).
-House standards (`docs/standards/architecture.md`) mandate Screaming Architecture with
-hexagonal ports & adapters.
+`statement-service` is packaged by technical layer today (`controller/`, `service/`, `util/`, …).
+We want Screaming Architecture instead — package names that shout what the system does, not how
+it's wired — built on hexagonal ports and adapters.
 
 ## Problem
 
-Layer packaging hides business capabilities, permits cross-feature tangles
-(`util/` is a dependency hub; audit is reached via two inconsistent paths), and lets IO
-concerns (file system, crypto, servlet context) leak into domain services. Nothing enforces
-boundaries, so violations accumulate silently.
+Layer packaging hides business capabilities. `util/` has turned into a dependency hub, audit gets
+reached through two inconsistent paths, and IO concerns — file system, crypto, servlet context —
+keep leaking into domain services because nothing stops them. Violations pile up silently since
+there's no enforcement anywhere.
 
 ## Decision
 
-1. Top-level packages name business capabilities: `statement/` (sub-capabilities `upload/`,
-   `search/`, `download/`, `signedlink/`), `audit/`, plus `infrastructure/` (shared technical) and
-   `shared/` (dependency-free values). Controllers and other adapters live in an `infrastructure/`
-   sub-package inside their feature; `signedlink` is a sibling of `upload`/`search`/`download`,
-   keeping the dependency graph acyclic.
-2. Outbound ports owned by the domain: `StatementFileStore`, `FileCipher`, `LinkSigner`,
-   `DownloadUrlProvider`, plus a `java.time.Clock` bean. No inbound use-case ports — the generated
-   `AdminApi`/`StatementsApi`/`AuditApi` interfaces are the inbound contracts. Generated OpenAPI
-   packages stay where the generator puts them and are adapter-only by rule, not relocation.
-3. Boundaries are executable: an ArchUnit suite (`ArchitectureTest`) enforces slice acyclicity,
-   feature/infrastructure/shared directions, adapter-only generated types, constructor injection,
-   and File/crypto confinement. Legacy violations are frozen and may only shrink; the freeze store
-   is deleted when the migration completes.
+Top-level packages now name business capabilities: `statement/` (with sub-capabilities `upload/`,
+`search/`, `download/`, `signedlink/`), `audit/`, plus `infrastructure/` for shared technical
+concerns and `shared/` for dependency-free values. Controllers and other adapters move into an
+`infrastructure/` sub-package inside their own feature. `signedlink` sits as a sibling of
+`upload`/`search`/`download` rather than nesting inside one of them, which keeps the dependency
+graph acyclic.
+
+Outbound ports belong to the domain: `StatementFileStore`, `FileCipher`, `LinkSigner`,
+`DownloadUrlProvider`, and a `java.time.Clock` bean. There are no inbound use-case ports — the
+generated `AdminApi`/`StatementsApi`/`AuditApi` interfaces already serve as the inbound contracts,
+so we didn't add a redundant layer on top. Generated OpenAPI packages stay wherever the generator
+puts them; we treat them as adapter-only by rule rather than physically relocating them.
+
+None of this holds unless it's enforced, so an ArchUnit suite (`ArchitectureTest`) checks slice
+acyclicity, feature/infrastructure/shared dependency direction, adapter-only generated types,
+constructor injection, and File/crypto confinement on every build. Existing violations are frozen
+in place and can only shrink from there; once the migration is finished, the freeze store goes
+away.
 
 ## Alternatives
 
-- Big-bang restructure: rejected — unreviewable diff, no mid-flight protection.
-- ArchUnit after migration: rejected — the migration itself would be unguarded.
-- `signedlink` as top-level feature or inside `download`: rejected — it is meaningless without
-  statements, and nesting under `download` forces a `search → download` edge.
-- Relocating generated sources into an adapter package: rejected — house standard fixes the
-  generator packages; a rule achieves the same constraint without fighting the generator.
+A big-bang restructure was tempting but would have produced an unreviewable diff with no
+protection while it was in flight, so we ruled it out. Adding ArchUnit only after the migration
+was done would have left the migration itself unguarded — exactly the period we most needed
+coverage. We also considered making `signedlink` a top-level feature, or nesting it under
+`download`, but it's meaningless without statements to sign links for, and nesting it under
+`download` would have forced an awkward `search → download` dependency. Finally, we thought about
+physically relocating generated sources into an adapter package, but the house convention already
+fixes where the generator writes its output — an ArchUnit rule gets us the same guarantee without
+fighting the generator.
 
 ## Consequences
 
-- Package tree states business intent; boundary regressions fail the build immediately.
-- Frozen debt is visible and monotonically decreasing (store diff per PR).
+The package tree now states business intent on its face, and boundary regressions fail the build
+immediately instead of surviving review. The frozen debt is visible and only ever shrinks — you
+can see it in the store diff on every PR that touches it.
 
 ## Implementation Notes
 
-Migration complete; rules live directly in `ArchitectureTest.java`. The freeze store described
-above has been deleted along with `archunit.properties`.
+Migration is complete; the rules live directly in `ArchitectureTest.java`. The freeze store
+mentioned above has been deleted along with `archunit.properties`.
 
 ## References
 
-- docs/standards/architecture.md
 - [0010 — Migrate to Spring Boot 4](0010-migrate-to-spring-boot-4.md)
 - https://alistair.cockburn.us/hexagonal-architecture/
 - https://www.archunit.org/userguide/html/000_Index.html#_freezing_arch_rules

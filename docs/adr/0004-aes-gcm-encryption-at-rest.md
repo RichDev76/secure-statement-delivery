@@ -6,38 +6,40 @@
 
 ## Context
 
-Statements contain sensitive PII and financial data and must be encrypted before they leave the
-application, independent of disk- or database-level encryption.
+Statements carry PII and financial data, so they need to be encrypted before they ever leave the
+application — disk- or database-level encryption alone isn't enough.
 
 ## Problem
 
-Relying solely on disk/DB encryption doesn't protect against a compromised storage layer and
-gives no per-file granularity.
+Disk/DB encryption doesn't help if the storage layer itself is compromised, and it gives us no
+way to control encryption per file.
 
 ## Decision
 
-Files are encrypted with `AES/GCM/NoPadding` directly under a single Master Encryption Key,
-sourced via `MasterKeyProvider` (Vault-backed). A random 12-byte IV is generated per file and
-prepended to the ciphertext stream; the 128-bit GCM tag provides integrity and authenticity.
-Account numbers are hashed (SHA-256) before use in storage object keys; the database columns
-store them in clear text, as search and audit both query by account number.
+We encrypt files with `AES/GCM/NoPadding` directly under a single Master Encryption Key, sourced
+via `MasterKeyProvider` (Vault-backed). Each file gets a random 12-byte IV, prepended to the
+ciphertext stream, and the 128-bit GCM tag gives us both integrity and authenticity. Account
+numbers are hashed (SHA-256) before they're used in storage object keys; the database columns
+keep them in clear text, since both search and audit need to query by account number.
 
 ## Alternatives
 
-- PostgreSQL `pgcrypto`: ties encryption to the database, complicating a future storage migration.
-- Cloud KMS (AWS/GCP): viable later; Vault gives a provider-agnostic starting point.
+We looked at PostgreSQL's `pgcrypto`, but that ties encryption to the database and would
+complicate any future storage migration. Cloud KMS (AWS or GCP) is a reasonable option down the
+line, but Vault gets us a provider-agnostic starting point without committing to a cloud vendor
+this early.
 
 ## Consequences
 
-- Ciphertext is unreadable without the master key, with tamper detection via the GCM tag.
-- A single master key compromise decrypts every statement — no per-file blast-radius containment.
+Ciphertext is unreadable without the master key, and the GCM tag catches tampering. The
+trade-off: a single master key compromise decrypts every statement in the system — there's no
+per-file blast-radius containment.
 
 ## Implementation Notes
 
-`EncryptionService` performs streaming encrypt/decrypt; `MasterKeyProvider` loads the key from
+`EncryptionService` handles streaming encrypt/decrypt; `MasterKeyProvider` loads the key from
 Vault-backed configuration.
 
 ## References
 
-- `docs/standards/security.md`
 - [0015 — Time-based signed links and envelope encryption](0015-time-based-signed-links-and-envelope-encryption.md)

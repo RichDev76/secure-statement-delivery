@@ -108,6 +108,7 @@
         context: ..
         dockerfile: config-server/docker/Dockerfile
       image: config-server:latest
+      pull_policy: build
       environment:
         - VAULT_ADDR=http://vault:8200
         - APPROLE_ROLE_ID_FILE=/vault/init/approle-role-id
@@ -176,6 +177,7 @@
         dockerfile: statement-service/docker/Dockerfile
       image: statement-service:latest
       container_name: statement-service
+      pull_policy: build
       restart: unless-stopped
       environment:
         - SPRING_PROFILES_ACTIVE=develop

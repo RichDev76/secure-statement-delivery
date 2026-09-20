@@ -38,12 +38,12 @@ away.
 
 A big-bang restructure was tempting but would have produced an unreviewable diff with no
 protection while it was in flight, so we ruled it out. Adding ArchUnit only after the migration
-was done would have left the migration itself unguarded — exactly the period we most needed
-coverage. We also considered making `signedlink` a top-level feature, or nesting it under
-`download`, but it's meaningless without statements to sign links for, and nesting it under
-`download` would have forced an awkward `search → download` dependency. Finally, we thought about
-physically relocating generated sources into an adapter package, but the house convention already
-fixes where the generator writes its output — an ArchUnit rule gets us the same guarantee without
+finished would have left the riskiest period completely unguarded. We also considered making
+`signedlink` a top-level feature, but it's meaningless without statements to sign links for.
+Nesting it under `download` instead would have forced an awkward `search → download` dependency,
+so it stayed a sibling of `upload`/`search`/`download`. Finally, we thought about physically
+relocating generated sources into an adapter package, but the house convention already fixes
+where the generator writes its output, so an ArchUnit rule gets us the same guarantee without
 fighting the generator.
 
 ## Consequences

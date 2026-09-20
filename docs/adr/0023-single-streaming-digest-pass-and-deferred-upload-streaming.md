@@ -1,11 +1,5 @@
 # 0023 — Compute the upload content hash in one streaming pass; defer upload streaming and bulkhead
 
-**Addendum (2026-08):** the deferred ciphertext streaming has since landed. `StatementFileStore`
-is now a pull-based port (`StreamSupplier`), `FileCipher` exposes `encryptingStream()` and
-`ciphertextLength()`, and the S3 adapter PUTs with a precomputed Content-Length, so no ciphertext
-buffer remains anywhere in the path. The one-pass digest decision below is unaffected; the
-concurrency bulkhead is still deferred.
-
 ## Context
 
 Uploads were holding up to three full copies of the file in heap at once: two `getBytes()` reads
@@ -37,7 +31,7 @@ to put it.
 ## Consequences
 
 Per-upload heap drops from roughly 3x to 1x file size — the S3 adapter's ciphertext buffer, which
-the addendum above has since removed entirely. We're accepting that upload concurrency stays
+the addendum below has since removed entirely. We're accepting that upload concurrency stays
 unbounded under virtual threads for now (the ciphertext-buffering piece of that risk was closed by
 the addendum's streaming work). Externally observable behavior — validation order, error codes,
 audit reasons — is unchanged.
@@ -54,3 +48,11 @@ disk-spooled part otherwise.
 ## References
 
 - ADR-0020 (rate limiting), ADR-0022 (10MB cap + 413)
+
+## Addendum — Ciphertext streaming landed
+
+The deferred ciphertext streaming has since landed. `StatementFileStore` is now a pull-based port
+(`StreamSupplier`), `FileCipher` exposes `encryptingStream()` and `ciphertextLength()`, and the S3
+adapter PUTs with a precomputed Content-Length, so no ciphertext buffer remains anywhere in the
+path. The one-pass digest decision above is unaffected; the concurrency bulkhead is still
+deferred.

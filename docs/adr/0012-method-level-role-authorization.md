@@ -6,8 +6,8 @@
 (`whitelist`, `upload`, `audit`, `search`, `link`), each a Bean-Validated `List<{method, pattern}>`
 mapped to a fixed `AppRole` — config-driven and method-scoped, which fixed an earlier generation of
 hardcoded, path-only matchers. That design worked, but role requirements are really part of the API
-contract — one fixed role per operation, identical in every environment — while only the open
-endpoints (signed-link download, actuator, Swagger) legitimately vary per environment.
+contract: one fixed role per operation, identical in every environment. Only the open
+endpoints — signed-link download, actuator, Swagger — actually vary per environment.
 
 ## Problem
 
@@ -41,8 +41,8 @@ Every handler has to state its authorization decision: an ArchUnit rule requires
 an explicit `@PublicEndpoint(reason)` marker on every public `@RestController` method, so a new
 endpoint can never ship without one.
 
-And CSRF is disabled outright, replacing the ignore-list mechanism entirely — the right approach
-for a purely token-based API with no cookie auth.
+And CSRF is disabled outright, replacing the ignore-list mechanism entirely, since that's the
+right approach for a purely token-based API with no cookie auth.
 
 ## Alternatives
 
@@ -59,8 +59,8 @@ authorization behavior we care about here.
 
 The role protecting an operation is now visible right on the method that implements it, and
 whitelist intent is equally explicit via `@PublicEndpoint(reason)`. A non-`POST` request to
-`/upload` isn't gated by the upload role — method security only guards the mapped handler, and only
-`authenticated()` applies elsewhere — which `SecurityRoleMatrixIT` verifies. Authenticated
+`/upload` isn't gated by the upload role, since method security only guards the mapped handler and
+only `authenticated()` applies elsewhere; `SecurityRoleMatrixIT` verifies this. Authenticated
 wrong-role callers reach argument resolution before denial: a malformed request gets a 400 from
 validation before authorization is even checked (documented by `MethodSecurityDenialIT`), and for
 upload the multipart body is parsed before the rejection happens. We accepted that: both outcomes

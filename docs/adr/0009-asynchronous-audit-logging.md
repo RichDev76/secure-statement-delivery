@@ -38,12 +38,12 @@ or sustained save failures can lose audit rows silently beyond the ERROR log.
 ## Addendum — Loss made measurable, trail made append-only
 
 Audit stays best-effort by design, but two hardening pieces close its sharpest edges. Every
-dropped write — executor rejection or save failure — now increments the
-`statement.audit.dropped` counter, which is the alertable signal that entries are actually being
+dropped write — whether from executor rejection or a save failure — now increments the
+`statement.audit.dropped` counter. That's the alertable signal that entries are actually being
 lost; the ERROR log alone couldn't give us that. A sustained nonzero rate is the trigger for
-upgrading to a transactional outbox — if a regulator ever requires every download to be evidenced,
-that upgrade stops being optional. Separately, `audit_logs` is now append-only at the database
-layer (V12): a row trigger on the partitioned parent rejects UPDATE/DELETE on every current and
-future partition. We rejected a REVOKE-based approach because the single application role owns the
-schema, making it self-revocable; genuine migration-owner vs. runtime role separation is deferred
-as infra work.
+upgrading to a transactional outbox, since that upgrade stops being optional the moment a
+regulator requires every download to be evidenced. Separately, `audit_logs` is now append-only at
+the database layer (V12): a row trigger on the partitioned parent rejects UPDATE/DELETE on every
+current and future partition. We rejected a REVOKE-based approach because the single application
+role owns the schema and could simply revoke its own restriction. Real separation between the
+migration-owner role and the runtime role is deferred as infra work.

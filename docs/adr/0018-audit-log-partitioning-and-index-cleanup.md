@@ -20,19 +20,19 @@ We're using monthly RANGE partitioning on `performed_at`. Postgres has no in-pla
 table-to-partitioned conversion, but no `audit_logs` row is worth preserving in this
 pre-production environment either, so `V7` takes the simpler of the two valid paths:
 `DROP TABLE audit_logs` followed by `CREATE TABLE audit_logs (...) PARTITION BY RANGE
-(performed_at)` with a composite `PRIMARY KEY (id, performed_at)` — Postgres requires the partition
-key in every unique key, so `id` alone is no longer globally enforced-unique by Postgres, though a
+(performed_at)` with a composite `PRIMARY KEY (id, performed_at)`. Postgres requires the partition
+key in every unique key, so `id` alone is no longer globally enforced-unique by Postgres — though a
 collision isn't a practical risk for a UUID. Three monthly partitions are seeded up front, plus a
-`DEFAULT` safety-net partition. `AuditLog`'s JPA mapping is unaffected — it keeps its existing bare
+`DEFAULT` safety-net partition. `AuditLog`'s JPA mapping is unaffected: it keeps its existing bare
 `@Id UUID id`.
 
-Index cleanup was evidence-led: the `statement_id`, `signed_link_id`, and `performed_by` indexes
-are dropped, since no query in `AuditLogRepository`/`AuditQueryService` filters or sorts on them —
-confirmed by actually tracing the code, not assumed. A new composite `(account_number,
-performed_at)` index backs the real query shape (equality plus range, `ORDER BY ... DESC`).
-`statements.idx_statements_account_number` is also dropped (`V6`), since it's a strict prefix of
-the existing unique `(account_number, statement_date)` index and was never going to be chosen by
-the planner anyway.
+Index cleanup was evidence-led: we traced the code and confirmed that the `statement_id`,
+`signed_link_id`, and `performed_by` indexes can be dropped, since no query in
+`AuditLogRepository`/`AuditQueryService` actually filters or sorts on them. A new composite
+`(account_number, performed_at)` index backs the real query shape (equality plus range, `ORDER BY
+... DESC`). `statements.idx_statements_account_number` is also dropped (`V6`), since it's a strict
+prefix of the existing unique `(account_number, statement_date)` index and the planner was never
+going to choose it anyway.
 
 Partition creation is a scheduled job, and expiry is explicitly out of scope. `V8` adds a
 `create_audit_partitions(months_ahead)` plpgsql function that anchors on the frontier — the max
@@ -63,14 +63,14 @@ demote its unique `token_hash` index to per-partition and break that uniqueness 
 
 ## Consequences
 
-Every response from `AuditQueryService` is unchanged in shape — only the query construction
-changed, not its filtering semantics, which `AuditLogFilteringIT` covers. A stalled maintenance job
-doesn't fail inserts, since the `DEFAULT` partition absorbs anything unmatched — it just degrades
-silently into "everything piles into `audit_logs_default`" until the ERROR log gets noticed. Wiring
-that to real alerting is a follow-up, not resolved here. And `V7`'s `DROP TABLE audit_logs`
-discards any existing rows outright, which is fine for this pre-production environment but would
-need the rename/`ATTACH PARTITION` approach instead before running against a database with real
-historical data worth keeping.
+Every response from `AuditQueryService` keeps the same shape as before — only the query
+construction changed, and `AuditLogFilteringIT` confirms the filtering semantics still match. A
+stalled maintenance job doesn't fail inserts, since the `DEFAULT` partition absorbs anything
+unmatched — it just degrades silently into "everything piles into `audit_logs_default`" until the
+ERROR log gets noticed. Wiring that to real alerting is a follow-up, not resolved here. And `V7`'s
+`DROP TABLE audit_logs` discards any existing rows outright, which is fine for this pre-production
+environment but would need the rename/`ATTACH PARTITION` approach instead before running against a
+database with real historical data worth keeping.
 
 ## References
 

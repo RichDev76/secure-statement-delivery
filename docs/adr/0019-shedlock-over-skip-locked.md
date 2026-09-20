@@ -37,8 +37,8 @@ ShedLock's TTL design. Postgres advisory locks (`pg_try_advisory_lock`) are the 
 Postgres-native mutex primitive — session-scoped, released on connection close — but share the same
 missing-`lockAtLeastFor` gap, and add a documented incompatibility with PgBouncer
 transaction-pooling mode. That's not used in this stack today, but it's a real constraint on a lock
-mechanism meant to last. Tightening `lockAtMostFor` instead of switching mechanisms isn't rejected
-— it's just a small, separate follow-up, not part of this decision.
+mechanism meant to last. Tightening `lockAtMostFor` instead of switching mechanisms is worth doing too — it's just a small,
+separate follow-up that isn't part of this decision.
 
 ## Consequences
 

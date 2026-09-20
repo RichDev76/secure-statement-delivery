@@ -1,10 +1,5 @@
 # 0014 — Local disk storage to Floci/S3 migration
 
-**Addendum (2026-08):** decisions 1 and 4 below were later revised by the streaming upload work
-(see the addendum on [0023](0023-single-streaming-digest-pass-and-deferred-upload-streaming.md)):
-`StatementFileStore` became a pull-based streaming port, and `store()` no longer buffers
-ciphertext — it PUTs with a precomputed Content-Length instead.
-
 ## Context
 
 Statement files were stored encrypted on a shared local disk volume via `LocalStatementFileStore`,
@@ -57,7 +52,7 @@ unrenamed would have been immediately misleading once it holds an S3 key instead
 Uploads and downloads now depend on the S3/Floci endpoint being reachable; `S3HealthIndicator`
 surfaces that on `/actuator/health`. The service can run as multiple replicas against the same
 bucket. `store()` buffers the full ciphertext in memory, which is acceptable at current statement
-sizes (and has since been removed entirely by the streaming work — see the addendum above). Out of
+sizes (and has since been removed entirely by the streaming work — see the addendum below). Out of
 scope for this change: multipart upload, S3 versioning/lifecycle, and migrating pre-existing
 statements (none exist in production yet anyway).
 
@@ -66,3 +61,10 @@ statements (none exist in production yet anyway).
 - [0005 — Local filesystem storage for encrypted statements](0005-local-filesystem-statement-storage.md)
 - [0011 — Adopt feature-first hexagonal packaging](0011-adopt-feature-first-hexagonal-packaging.md)
 - [0013 — Split exception handler chain](0013-split-exception-handler-chain.md)
+
+## Addendum — Streaming upload work revised this decision
+
+Decisions 1 and 4 above were later revised by the streaming upload work (see the addendum on
+[0023](0023-single-streaming-digest-pass-and-deferred-upload-streaming.md)): `StatementFileStore`
+became a pull-based streaming port, and `store()` no longer buffers ciphertext — it PUTs with a
+precomputed Content-Length instead.

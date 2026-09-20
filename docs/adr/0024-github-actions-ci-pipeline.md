@@ -65,16 +65,17 @@ its 429 rate limit. So `dependency-scan` runs `setup-java` plus `mvn dependency:
 populate `.m2`, and sets `TRIVY_OFFLINE_SCAN: true`. Rollback is simple: revert the `.github/`
 directory, since no other code path depends on it.
 
+## References
+
+- ADR-0002 (contract-first API development)
+
 ## Addendum — Image job and coverage gate
 
 A new `image-build` job builds both Dockerfiles from a clean context and Trivy-scans the resulting
 images (HIGH/CRITICAL, ignore-unfixed) — the images are what actually ships, and the filesystem
 scan alone left base-layer CVEs invisible. JaCoCo now runs `check` at `verify` with 90%
-instruction / 80% branch bundle thresholds; the "report-only until a baseline" condition above is
-now met (verified baseline 93%/82.7%), and the thresholds sit just below it so the gate protects
-the status quo without flaking. Publish/deploy stages remain deliberately absent — this project has
-no registry or environment to deploy to, and a fake stage would just be pipeline theater.
-
-## References
-
-- ADR-0002 (contract-first API development)
+instruction / 80% branch bundle thresholds; the "report-only until a baseline" condition mentioned
+in the Alternatives section is now met (verified baseline 93%/82.7%), and the thresholds sit just
+below it so the gate protects the status quo without flaking. Publish/deploy stages remain
+deliberately absent — this project has no registry or environment to deploy to, and a fake stage
+would just be pipeline theater.
